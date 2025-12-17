@@ -16,33 +16,28 @@ if (!process.env.VERCEL) {
 // Debug: Log available environment variables (without sensitive data)
 console.log('🔍 Environment check:');
 console.log('   VERCEL:', process.env.VERCEL ? 'true' : 'false');
-console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '***set***' : 'not set');
-console.log('   SUPABASE_URL:', process.env.SUPABASE_URL ? '***set***' : 'not set');
 console.log('   POSTGRES_URL:', process.env.POSTGRES_URL ? '***set***' : 'not set');
 console.log('   POSTGRES_PRISMA_URL:', process.env.POSTGRES_PRISMA_URL ? '***set***' : 'not set');
 console.log('   POSTGRES_URL_NON_POOLING:', process.env.POSTGRES_URL_NON_POOLING ? '***set***' : 'not set');
-console.log('   DB_HOST:', process.env.DB_HOST || 'not set');
-console.log('   DB_NAME:', process.env.DB_NAME || 'not set');
-console.log('   DB_USER:', process.env.DB_USER || 'not set');
-console.log('   DB_PASSWORD:', process.env.DB_PASSWORD ? '***set***' : 'not set');
+console.log('   POSTGRES_HOST:', process.env.POSTGRES_HOST || 'not set');
+console.log('   POSTGRES_DATABASE:', process.env.POSTGRES_DATABASE || 'not set');
+console.log('   POSTGRES_USER:', process.env.POSTGRES_USER || 'not set');
+console.log('   POSTGRES_PASSWORD:', process.env.POSTGRES_PASSWORD ? '***set***' : 'not set');
 console.log('');
 
-// Support Supabase and other PostgreSQL connection strings
-// Supabase provides DATABASE_URL or SUPABASE_URL
-// Also support POSTGRES_URL for backward compatibility
+// Support Supabase PostgreSQL connection strings
+// Supabase provides POSTGRES_URL, POSTGRES_PRISMA_URL, or POSTGRES_URL_NON_POOLING
 const databaseUrl = 
-  process.env.DATABASE_URL || 
-  process.env.SUPABASE_URL || 
   process.env.POSTGRES_URL || 
   process.env.POSTGRES_PRISMA_URL || 
   process.env.POSTGRES_URL_NON_POOLING;
 if (!databaseUrl) {
-  // Validate required environment variables for non-connection-string deployments
+  // Validate required environment variables for non-connection-string deployments (Supabase standard)
   const requiredVars = {
-    DB_HOST: process.env.DB_HOST,
-    DB_NAME: process.env.DB_NAME,
-    DB_USER: process.env.DB_USER,
-    DB_PASSWORD: process.env.DB_PASSWORD,
+    POSTGRES_HOST: process.env.POSTGRES_HOST,
+    POSTGRES_DATABASE: process.env.POSTGRES_DATABASE,
+    POSTGRES_USER: process.env.POSTGRES_USER,
+    POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD,
   };
 
   const missingVars = Object.entries(requiredVars)
@@ -64,16 +59,10 @@ if (!databaseUrl) {
       '   2. Go to Project Settings → Database'
     );
     console.error(
-      '   3. Copy the connection string (URI format)'
+      '   3. Copy the connection string (POSTGRES_URL) or individual connection parameters'
     );
     console.error(
-      '   4. Set DATABASE_URL or SUPABASE_URL in Vercel project settings'
-    );
-    console.error(
-      '\n   For other PostgreSQL databases:'
-    );
-    console.error(
-      '   Set DATABASE_URL or POSTGRES_URL in Vercel project settings'
+      '   4. Set POSTGRES_URL (or POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE) in Vercel project settings'
     );
     console.error(
       '   For local development, check your .env file at:',
@@ -96,7 +85,7 @@ import { runMigrations, testConnection } from '../src/db/migrations';
 async function main() {
   console.log('🔄 Running database migrations...\n');
   
-  const databaseUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+  const databaseUrl = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
   if (databaseUrl) {
     const isSupabase = databaseUrl.includes('supabase.co');
     if (isSupabase) {
@@ -106,9 +95,9 @@ async function main() {
     }
   } else {
     console.log(
-      `   Database: ${process.env.DB_NAME}@${process.env.DB_HOST}:${process.env.DB_PORT}`
+      `   Database: ${process.env.POSTGRES_DATABASE}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT || '5432'}`
     );
-    console.log(`   User: ${process.env.DB_USER}\n`);
+    console.log(`   User: ${process.env.POSTGRES_USER}\n`);
   }
 
   try {

@@ -11,12 +11,14 @@ if (result.error) {
   process.exit(1);
 }
 
-// Validate required environment variables
-const requiredVars = {
-  DB_HOST: process.env.DB_HOST,
-  DB_NAME: process.env.DB_NAME,
-  DB_USER: process.env.DB_USER,
-  DB_PASSWORD: process.env.DB_PASSWORD,
+// Validate required environment variables (Supabase standard format)
+// Support both connection string and individual parameters
+const hasConnectionString = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+const requiredVars = hasConnectionString ? {} : {
+  POSTGRES_HOST: process.env.POSTGRES_HOST,
+  POSTGRES_DATABASE: process.env.POSTGRES_DATABASE,
+  POSTGRES_USER: process.env.POSTGRES_USER,
+  POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD,
 };
 
 const missingVars = Object.entries(requiredVars)
@@ -37,10 +39,15 @@ import { runMigrations, testConnection } from '../src/db/migrations';
 
 async function main() {
   console.log('🔄 Running database migrations...\n');
-  console.log(
-    `   Database: ${process.env.DB_NAME}@${process.env.DB_HOST}:${process.env.DB_PORT}`
-  );
-  console.log(`   User: ${process.env.DB_USER}\n`);
+  const databaseUrl = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+  if (databaseUrl) {
+    console.log('   Using connection string');
+  } else {
+    console.log(
+      `   Database: ${process.env.POSTGRES_DATABASE}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT || '5432'}`
+    );
+    console.log(`   User: ${process.env.POSTGRES_USER}\n`);
+  }
 
   try {
     const connected = await testConnection();

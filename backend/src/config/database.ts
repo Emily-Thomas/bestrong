@@ -8,8 +8,8 @@ import { Pool, type PoolConfig } from 'pg';
 // Never try to load .env in Vercel environment (VERCEL env var is automatically set)
 if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
   // Only try to load .env if we don't have database connection info
-  const hasConnectionString = process.env.DATABASE_URL || process.env.SUPABASE_URL || process.env.POSTGRES_URL;
-  if (!hasConnectionString && !process.env.DB_PASSWORD) {
+  const hasConnectionString = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+  if (!hasConnectionString && !process.env.POSTGRES_PASSWORD) {
     const envPath = path.join(__dirname, '../../.env');
     if (existsSync(envPath)) {
       const result = config({ path: envPath });
@@ -24,14 +24,11 @@ if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
   }
 }
 
-// Support Supabase and other PostgreSQL connection strings
-// Supabase provides DATABASE_URL or SUPABASE_URL
-// Also support POSTGRES_URL for backward compatibility
+// Support Supabase PostgreSQL connection strings
+// Supabase provides POSTGRES_URL, POSTGRES_PRISMA_URL, or POSTGRES_URL_NON_POOLING
 const getPoolConfig = (): PoolConfig => {
-  // Check for connection strings (in order of preference)
+  // Check for connection strings (in order of preference - Supabase standard)
   const databaseUrl = 
-    process.env.DATABASE_URL || 
-    process.env.SUPABASE_URL || 
     process.env.POSTGRES_URL || 
     process.env.POSTGRES_PRISMA_URL || 
     process.env.POSTGRES_URL_NON_POOLING;
@@ -61,40 +58,44 @@ const getPoolConfig = (): PoolConfig => {
     };
   }
   
-  console.log('⚠️  DATABASE_URL/SUPABASE_URL/POSTGRES_URL not found, falling back to individual connection parameters');
+  console.log('⚠️  POSTGRES_URL not found, falling back to individual connection parameters');
 
-  // Fallback to individual connection parameters
+  // Fallback to individual connection parameters (Supabase standard format)
   // Ensure password is always a string (PostgreSQL requires this)
   const getPassword = (): string => {
-    const password = process.env.DB_PASSWORD;
+    const password = process.env.POSTGRES_PASSWORD;
     if (password === undefined || password === null) {
-      console.warn('⚠️  DB_PASSWORD is not set, using empty string');
+      console.warn('⚠️  POSTGRES_PASSWORD is not set, using empty string');
       return '';
     }
     // Force to string and trim whitespace
     const passwordStr = String(password).trim();
     if (passwordStr === '') {
-      console.warn('⚠️  DB_PASSWORD is empty string');
+      console.warn('⚠️  POSTGRES_PASSWORD is empty string');
     }
     return passwordStr;
   };
 
   return {
-    host: String(process.env.DB_HOST || 'localhost'),
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: String(process.env.DB_NAME || 'bestrong'),
-    user: String(process.env.DB_USER || 'postgres'),
+    host: String(process.env.POSTGRES_HOST || 'localhost'),
+    port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+    database: String(process.env.POSTGRES_DATABASE || 'postgres'),
+    user: String(process.env.POSTGRES_USER || 'postgres'),
     password: getPassword(),
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
+    // Supabase requires SSL for individual connections too
+    ssl: process.env.POSTGRES_HOST?.includes('supabase.co')
+      ? { rejectUnauthorized: false }
+      : undefined,
   };
 };
 
 const poolConfig = getPoolConfig();
 
 // Validate password is a string before creating pool (only for non-connection-string configs)
-const databaseUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+const databaseUrl = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
 if (!databaseUrl && typeof poolConfig.password !== 'string') {
   throw new Error(
     `Database password must be a string, got ${typeof poolConfig.password}`

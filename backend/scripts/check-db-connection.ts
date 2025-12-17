@@ -8,20 +8,41 @@ config({ path: envPath });
 
 async function checkConnection() {
   console.log('🔍 Testing database connection...\n');
-  console.log('Configuration:');
-  console.log(`  Host: ${process.env.DB_HOST || 'localhost'}`);
-  console.log(`  Port: ${process.env.DB_PORT || '5432'}`);
-  console.log(`  Database: ${process.env.DB_NAME || 'bestrong'}`);
-  console.log(`  User: ${process.env.DB_USER || 'postgres'}`);
-  console.log(`  Password: ${process.env.DB_PASSWORD ? '***' : 'NOT SET'}\n`);
+  
+  // Check for connection string first (Supabase standard)
+  const databaseUrl = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+  
+  if (databaseUrl) {
+    console.log('Configuration:');
+    console.log(`  Using connection string: ${databaseUrl.includes('supabase.co') ? 'Supabase' : 'PostgreSQL'}\n`);
+  } else {
+    console.log('Configuration:');
+    console.log(`  Host: ${process.env.POSTGRES_HOST || 'localhost'}`);
+    console.log(`  Port: ${process.env.POSTGRES_PORT || '5432'}`);
+    console.log(`  Database: ${process.env.POSTGRES_DATABASE || 'postgres'}`);
+    console.log(`  User: ${process.env.POSTGRES_USER || 'postgres'}`);
+    console.log(`  Password: ${process.env.POSTGRES_PASSWORD ? '***' : 'NOT SET'}\n`);
+  }
 
-  const pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'bestrong',
-    user: process.env.DB_USER || 'postgres',
-    password: String(process.env.DB_PASSWORD || ''),
-  });
+  const poolConfig = databaseUrl
+    ? {
+        connectionString: databaseUrl,
+        ssl: databaseUrl.includes('supabase.co')
+          ? { rejectUnauthorized: false }
+          : undefined,
+      }
+    : {
+        host: process.env.POSTGRES_HOST || 'localhost',
+        port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+        database: process.env.POSTGRES_DATABASE || 'postgres',
+        user: process.env.POSTGRES_USER || 'postgres',
+        password: String(process.env.POSTGRES_PASSWORD || ''),
+        ssl: process.env.POSTGRES_HOST?.includes('supabase.co')
+          ? { rejectUnauthorized: false }
+          : undefined,
+      };
+
+  const pool = new Pool(poolConfig);
 
   try {
     const result = await pool.query('SELECT NOW()');

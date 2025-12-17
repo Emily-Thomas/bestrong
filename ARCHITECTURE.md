@@ -168,11 +168,13 @@ When admins modify recommendations:
 
 Required in `backend/.env`:
 - `PORT` - Server port (default: 3001)
-- `DB_HOST` - PostgreSQL host
-- `DB_PORT` - PostgreSQL port
-- `DB_NAME` - Database name
-- `DB_USER` - Database user
-- `DB_PASSWORD` - Database password
+- `POSTGRES_URL` - PostgreSQL connection string (recommended - Supabase format)
+- Or individual parameters:
+  - `POSTGRES_HOST` - PostgreSQL host
+  - `POSTGRES_PORT` - PostgreSQL port (default: 5432)
+  - `POSTGRES_DATABASE` - Database name
+  - `POSTGRES_USER` - Database user
+  - `POSTGRES_PASSWORD` - Database password
 - `JWT_SECRET` - Secret key for JWT tokens
 
 ## Running Migrations

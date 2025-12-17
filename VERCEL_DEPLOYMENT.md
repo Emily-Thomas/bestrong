@@ -40,22 +40,32 @@ In your Vercel project settings, add the following environment variables:
 
 If you prefer to use individual parameters instead of a connection string:
 
-- `DB_HOST` - Database host (e.g., `db.xxxxx.supabase.co`)
-- `DB_PORT` - Database port (usually `5432`)
-- `DB_NAME` - Database name (usually `postgres`)
-- `DB_USER` - Database user (usually `postgres`)
-- `DB_PASSWORD` - Your database password
+- `POSTGRES_HOST` - Database host (e.g., `db.xxxxx.supabase.co`)
+- `POSTGRES_PORT` - Database port (usually `5432`)
+- `POSTGRES_DATABASE` - Database name (usually `postgres`)
+- `POSTGRES_USER` - Database user (usually `postgres`)
+- `POSTGRES_PASSWORD` - Your database password
 
 #### Example Environment Variables
 
 ```bash
-DATABASE_URL=postgresql://postgres:your-password@db.xxxxx.supabase.co:5432/postgres
+# Using connection string (recommended)
+POSTGRES_URL=postgresql://postgres:your-password@db.xxxxx.supabase.co:5432/postgres
+
+# Or using individual parameters
+POSTGRES_HOST=db.xxxxx.supabase.co
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-password
+
+# Other required variables
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
 FRONTEND_URL=https://your-app.vercel.app
 NODE_ENV=production
 ```
 
-**Note**: The application also supports `SUPABASE_URL` or `POSTGRES_URL` as alternative environment variable names for the connection string.
+**Note**: Supabase provides `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, and `POSTGRES_URL_NON_POOLING`. The application will use whichever is available.
 
 ### 3. Deploy to Vercel
 
@@ -136,7 +146,7 @@ Migrations run automatically during the build process via the `buildCommand` in 
 ```
 
 The `migrate:vercel` script:
-- Detects if `DATABASE_URL`, `SUPABASE_URL`, or `POSTGRES_URL` is set (connection string) or uses individual DB variables
+- Detects if `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, or `POSTGRES_URL_NON_POOLING` is set (connection string) or uses individual `POSTGRES_*` variables
 - Connects to the database (Supabase requires SSL)
 - Runs the schema migrations from `backend/src/db/schema.sql`
 
@@ -150,11 +160,12 @@ The frontend automatically detects the API URL:
 
 ### Database Connection Issues
 
-1. **Check environment variables**: Ensure `DATABASE_URL` or `SUPABASE_URL` is set correctly
+1. **Check environment variables**: Ensure `POSTGRES_URL` (or individual `POSTGRES_*` variables) is set correctly
 2. **Verify database exists**: Check your Supabase project dashboard
 3. **Check connection string format**: Should be `postgresql://postgres:password@db.xxxxx.supabase.co:5432/postgres`
 4. **Verify SSL**: Supabase requires SSL connections (automatically handled)
 5. **Check password**: Make sure the password in the connection string matches your Supabase database password
+6. **Check variable names**: Use Supabase standard names: `POSTGRES_URL`, `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DATABASE`
 
 ### Migration Failures
 

@@ -18,9 +18,8 @@ This document summarizes the Vercel deployment configuration for the BeStrong ap
 - Configured CORS to support Vercel preview deployments
 
 ### 3. Database Configuration (`backend/src/config/database.ts`)
-- Updated to support Supabase connection strings (`DATABASE_URL` or `SUPABASE_URL`)
-- Also supports `POSTGRES_URL` for backward compatibility
-- Falls back to individual connection parameters for local development
+- Updated to support Supabase standard connection strings (`POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`)
+- Falls back to individual Supabase standard parameters (`POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DATABASE`)
 - Handles SSL configuration for Supabase (required)
 
 ### 4. Migration Script (`backend/scripts/migrate-vercel.ts`)
@@ -63,19 +62,16 @@ bestrong/
 ## Environment Variables Required
 
 ### Production (Vercel with Supabase)
-- `DATABASE_URL` or `SUPABASE_URL` - Supabase connection string (recommended)
+- `POSTGRES_URL` - Supabase connection string (recommended - provided by Supabase)
+- Or `POSTGRES_PRISMA_URL` or `POSTGRES_URL_NON_POOLING` (alternative connection strings from Supabase)
+- Or individual parameters: `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DATABASE`
 - `JWT_SECRET` - Secret key for JWT tokens
 - `FRONTEND_URL` - Your frontend URL (optional, defaults to Vercel URL)
 - `NODE_ENV` - Set to `production`
 
-**Note**: Also supports `POSTGRES_URL` for backward compatibility.
-
 ### Alternative (External PostgreSQL)
-- `DB_HOST` - Database host
-- `DB_PORT` - Database port
-- `DB_NAME` - Database name
-- `DB_USER` - Database user
-- `DB_PASSWORD` - Database password
+- `POSTGRES_URL` - Connection string, or
+- Individual parameters: `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
 - `JWT_SECRET` - Secret key for JWT tokens
 - `FRONTEND_URL` - Your frontend URL
 
@@ -102,7 +98,7 @@ bestrong/
    - Database is initialized on first request (cached for subsequent requests)
 
 3. **Database**:
-   - Supports Supabase (via `DATABASE_URL` or `SUPABASE_URL`) - recommended
+   - Supports Supabase (via `POSTGRES_URL` or individual `POSTGRES_*` parameters) - recommended
    - Supports external PostgreSQL (via connection string or individual parameters)
    - Migrations run during build to ensure schema is up to date
    - SSL automatically configured for Supabase connections

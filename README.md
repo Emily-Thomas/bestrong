@@ -57,11 +57,14 @@ cd backend && npm install && cd ..
 3. Update `backend/.env` with your database credentials:
    ```
    PORT=3001
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=bestrong
-   DB_USER=postgres
-   DB_PASSWORD=your_password_here
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DATABASE=postgres
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your_password_here
+   
+   # Or use a connection string:
+   # POSTGRES_URL=postgresql://postgres:password@localhost:5432/postgres
    JWT_SECRET=your-super-secret-jwt-key-change-in-production
    ```
 
@@ -176,11 +179,8 @@ Husky is configured to run Biome checks on staged files before each commit. The 
 2. Follow the prompts to link your project or create a new one.
 
 3. Add environment variables in the Vercel dashboard:
-   - `DB_HOST`
-   - `DB_PORT`
-   - `DB_NAME`
-   - `DB_USER`
-   - `DB_PASSWORD`
+   - `POSTGRES_URL` (recommended - connection string from Supabase)
+   - Or individual parameters: `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DATABASE`
 
 ### Vercel Configuration
 
@@ -221,11 +221,14 @@ The project includes `vercel.json` at the root level configured for:
 
 ### Backend (.env)
 - `PORT` - Server port (default: 3001)
-- `DB_HOST` - PostgreSQL host
-- `DB_PORT` - PostgreSQL port
-- `DB_NAME` - Database name
-- `DB_USER` - Database user
-- `DB_PASSWORD` - Database password
+- `POSTGRES_URL` - PostgreSQL connection string (recommended - Supabase format)
+- Or individual parameters:
+  - `POSTGRES_HOST` - PostgreSQL host
+  - `POSTGRES_PORT` - PostgreSQL port (default: 5432)
+  - `POSTGRES_DATABASE` - Database name
+  - `POSTGRES_USER` - Database user
+  - `POSTGRES_PASSWORD` - Database password
+- `JWT_SECRET` - Secret key for JWT token signing
 
 ## License
 
