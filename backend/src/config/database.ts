@@ -13,8 +13,11 @@ if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
     if (existsSync(envPath)) {
       const result = config({ path: envPath });
       // Don't throw error if .env doesn't exist - just log
-      if (result.error && result.error.code !== 'ENOENT') {
-        console.warn('⚠️  Warning loading .env file:', result.error.message);
+      if (result.error) {
+        const error = result.error as NodeJS.ErrnoException;
+        if (error.code !== 'ENOENT') {
+          console.warn('⚠️  Warning loading .env file:', result.error.message);
+        }
       }
     }
   }
