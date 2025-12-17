@@ -24,9 +24,16 @@ async function checkConnection() {
     console.log(`  Password: ${process.env.POSTGRES_PASSWORD ? '***' : 'NOT SET'}\n`);
   }
 
+  // For Supabase, ensure SSL is enabled in connection string if not already present
+  let finalConnectionString = databaseUrl;
+  if (databaseUrl && databaseUrl.includes('supabase.co') && !databaseUrl.includes('sslmode=')) {
+    const separator = databaseUrl.includes('?') ? '&' : '?';
+    finalConnectionString = `${databaseUrl}${separator}sslmode=require`;
+  }
+  
   const poolConfig = databaseUrl
     ? {
-        connectionString: databaseUrl,
+        connectionString: finalConnectionString,
         ssl: databaseUrl.includes('supabase.co')
           ? { rejectUnauthorized: false }
           : undefined,

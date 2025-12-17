@@ -46,12 +46,21 @@ const getPoolConfig = (): PoolConfig => {
       console.log('📦 Using PostgreSQL connection string');
     }
     
+    // For Supabase, ensure SSL is enabled in connection string if not already present
+    let finalConnectionString = databaseUrl;
+    if (isSupabase && !databaseUrl.includes('sslmode=')) {
+      // Append sslmode=require to connection string if not present
+      const separator = databaseUrl.includes('?') ? '&' : '?';
+      finalConnectionString = `${databaseUrl}${separator}sslmode=require`;
+    }
+    
     return {
-      connectionString: databaseUrl,
+      connectionString: finalConnectionString,
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
-      // Supabase requires SSL, Vercel Postgres uses SSL, other providers may vary
+      // Supabase requires SSL but uses self-signed certificates
+      // Vercel Postgres uses SSL, other providers may vary
       ssl: isSupabase || isVercel
         ? { rejectUnauthorized: false }
         : undefined,
