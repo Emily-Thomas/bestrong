@@ -1,0 +1,9 @@
+{
+  "frontend/**/*.{ts,tsx,js,jsx,json,css}": [
+    "cd frontend && biome check --write"
+  ],
+  "backend/**/*.{ts,js,json}": [
+    "cd backend && biome check --write"
+  ]
+}
+
