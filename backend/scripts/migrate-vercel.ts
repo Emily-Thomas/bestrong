@@ -1,10 +1,17 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { config } from 'dotenv';
 
-// Load .env file explicitly BEFORE importing anything that uses it
-// For Vercel, environment variables are already set, so this is a no-op
+// Load .env file only if it exists and we're not in Vercel
+// In Vercel, environment variables are already set via the dashboard
 const envPath = path.join(__dirname, '../.env');
-config({ path: envPath });
+if (!process.env.VERCEL) {
+  if (existsSync(envPath)) {
+    config({ path: envPath });
+  } else {
+    console.log('ℹ️  No .env file found, using environment variables from system');
+  }
+}
 
 // Support Vercel Postgres connection string
 // Vercel Postgres provides POSTGRES_URL

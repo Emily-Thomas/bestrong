@@ -1,12 +1,15 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { config } from 'dotenv';
 import { Pool, type PoolConfig } from 'pg';
 
-// Load .env file if not already loaded (for when this module is imported directly)
-// This ensures environment variables are available
-if (!process.env.DB_PASSWORD && !process.env.POSTGRES_URL) {
+// Load .env file only if it exists and we're not in Vercel
+// In Vercel, environment variables are already set via the dashboard
+if (!process.env.VERCEL && (!process.env.DB_PASSWORD && !process.env.POSTGRES_URL)) {
   const envPath = path.join(__dirname, '../../.env');
-  config({ path: envPath });
+  if (existsSync(envPath)) {
+    config({ path: envPath });
+  }
 }
 
 // Support Vercel Postgres connection string
