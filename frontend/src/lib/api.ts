@@ -1,5 +1,10 @@
+// In production on Vercel, use relative paths (same domain)
+// In development, use the local backend URL
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined' && window.location.origin === 'http://localhost:3000'
+    ? 'http://localhost:3001/api'
+    : '/api');
 
 export interface ApiResponse<T> {
   success: boolean;

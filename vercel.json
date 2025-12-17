@@ -1,27 +1,22 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "npm run build:vercel && npm run migrate:vercel",
+  "outputDirectory": "frontend/.next",
+  "installCommand": "npm install && cd frontend && npm install && cd ../backend && npm install",
+  "framework": "nextjs",
+  "rewrites": [
     {
-      "src": "frontend/package.json",
-      "use": "@vercel/next"
-    },
-    {
-      "src": "backend/package.json",
-      "use": "@vercel/node"
+      "source": "/api/(.*)",
+      "destination": "/api"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend/src/index.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "frontend/$1"
+  "functions": {
+    "api/index.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 30
     }
-  ],
+  },
   "env": {
     "NODE_ENV": "production"
   }
 }
-
