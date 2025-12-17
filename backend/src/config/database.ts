@@ -5,10 +5,18 @@ import { Pool, type PoolConfig } from 'pg';
 
 // Load .env file only if it exists and we're not in Vercel
 // In Vercel, environment variables are already set via the dashboard
-if (!process.env.VERCEL && (!process.env.DB_PASSWORD && !process.env.POSTGRES_URL)) {
-  const envPath = path.join(__dirname, '../../.env');
-  if (existsSync(envPath)) {
-    config({ path: envPath });
+// Never try to load .env in Vercel environment (VERCEL env var is automatically set)
+if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
+  // Only try to load .env if we don't have database connection info
+  if (!process.env.POSTGRES_URL && !process.env.DB_PASSWORD) {
+    const envPath = path.join(__dirname, '../../.env');
+    if (existsSync(envPath)) {
+      const result = config({ path: envPath });
+      // Don't throw error if .env doesn't exist - just log
+      if (result.error && result.error.code !== 'ENOENT') {
+        console.warn('⚠️  Warning loading .env file:', result.error.message);
+      }
+    }
   }
 }
 
