@@ -40,28 +40,49 @@ const getPoolConfig = (): PoolConfig => {
     
     if (isSupabase) {
       console.log('📦 Using Supabase connection string');
+      console.log('   Configuring SSL to accept self-signed certificates');
     } else if (isVercel) {
       console.log('📦 Using Vercel Postgres connection string');
     } else {
       console.log('📦 Using PostgreSQL connection string');
     }
     
-    // For Supabase, ensure SSL is enabled in connection string if not already present
-    let finalConnectionString = databaseUrl;
-    if (isSupabase && !databaseUrl.includes('sslmode=')) {
-      // Append sslmode=require to connection string if not present
-      const separator = databaseUrl.includes('?') ? '&' : '?';
-      finalConnectionString = `${databaseUrl}${separator}sslmode=require`;
+    // For Supabase, parse connection string to ensure SSL is handled correctly
+    // Sometimes pg library doesn't respect ssl option with connection strings
+    if (isSupabase) {
+      try {
+        const url = new URL(databaseUrl);
+        // Parse connection string and build config explicitly
+        return {
+          host: url.hostname,
+          port: parseInt(url.port || '5432', 10),
+          database: url.pathname.slice(1) || 'postgres', // Remove leading /
+          user: url.username || 'postgres',
+          password: url.password || '',
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 2000,
+          // Supabase requires SSL but uses self-signed certificates
+          // Set rejectUnauthorized: false to accept self-signed certificates
+          ssl: { rejectUnauthorized: false },
+        };
+      } catch (error) {
+        // If URL parsing fails, fall back to connection string with SSL config
+        console.warn('   Could not parse connection string, using as-is with SSL config');
+      }
     }
     
+    // For non-Supabase or if parsing failed, use connection string with SSL config
     return {
-      connectionString: finalConnectionString,
+      connectionString: databaseUrl,
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
       // Supabase requires SSL but uses self-signed certificates
-      // Vercel Postgres uses SSL, other providers may vary
-      ssl: isSupabase || isVercel
+      // Set rejectUnauthorized: false to accept self-signed certificates
+      ssl: isSupabase
+        ? { rejectUnauthorized: false }
+        : isVercel
         ? { rejectUnauthorized: false }
         : undefined,
     };
