@@ -18,9 +18,10 @@ This document summarizes the Vercel deployment configuration for the BeStrong ap
 - Configured CORS to support Vercel preview deployments
 
 ### 3. Database Configuration (`backend/src/config/database.ts`)
-- Updated to support Vercel Postgres connection strings (`POSTGRES_URL`)
+- Updated to support Supabase connection strings (`DATABASE_URL` or `SUPABASE_URL`)
+- Also supports `POSTGRES_URL` for backward compatibility
 - Falls back to individual connection parameters for local development
-- Handles SSL configuration for Vercel Postgres
+- Handles SSL configuration for Supabase (required)
 
 ### 4. Migration Script (`backend/scripts/migrate-vercel.ts`)
 - Created Vercel-specific migration script
@@ -46,7 +47,7 @@ bestrong/
 ├── backend/
 │   ├── src/
 │   │   └── config/
-│   │       └── database.ts         # Updated for Vercel Postgres
+│   │       └── database.ts         # Updated for Supabase
 │   └── scripts/
 │       └── migrate-vercel.ts       # Vercel migration script
 ├── frontend/
@@ -61,11 +62,13 @@ bestrong/
 
 ## Environment Variables Required
 
-### Production (Vercel)
-- `POSTGRES_URL` - Vercel Postgres connection string (auto-set if using Vercel Postgres)
+### Production (Vercel with Supabase)
+- `DATABASE_URL` or `SUPABASE_URL` - Supabase connection string (recommended)
 - `JWT_SECRET` - Secret key for JWT tokens
 - `FRONTEND_URL` - Your frontend URL (optional, defaults to Vercel URL)
 - `NODE_ENV` - Set to `production`
+
+**Note**: Also supports `POSTGRES_URL` for backward compatibility.
 
 ### Alternative (External PostgreSQL)
 - `DB_HOST` - Database host
@@ -99,15 +102,16 @@ bestrong/
    - Database is initialized on first request (cached for subsequent requests)
 
 3. **Database**:
-   - Supports Vercel Postgres (via `POSTGRES_URL`)
-   - Supports external PostgreSQL (via individual connection parameters)
+   - Supports Supabase (via `DATABASE_URL` or `SUPABASE_URL`) - recommended
+   - Supports external PostgreSQL (via connection string or individual parameters)
    - Migrations run during build to ensure schema is up to date
+   - SSL automatically configured for Supabase connections
 
 ## Next Steps
 
 1. Create a Vercel account and project
-2. Set up Vercel Postgres database
-3. Add environment variables
+2. Set up Supabase database (see VERCEL_DEPLOYMENT.md for details)
+3. Add environment variables (DATABASE_URL or SUPABASE_URL)
 4. Deploy the application
 5. Verify deployment by checking:
    - `/api/health` endpoint

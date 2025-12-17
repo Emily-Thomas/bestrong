@@ -6,50 +6,56 @@ This guide explains how to deploy the BeStrong application to Vercel with both f
 
 1. A Vercel account
 2. Vercel CLI installed (optional, for local testing)
-3. A Vercel Postgres database (or external PostgreSQL database)
+3. A Supabase database (recommended) or other PostgreSQL database
 
 ## Setup Steps
 
-### 1. Create Vercel Postgres Database
+### 1. Create Supabase Database
 
-1. Go to your Vercel project dashboard
-2. Navigate to the "Storage" tab
-3. Click "Create Database" and select "Postgres"
-4. Choose a name for your database (e.g., `bestrong-db`)
-5. Select a region close to your users
-6. Vercel will automatically create the following environment variables:
-   - `POSTGRES_URL` - Connection string for the database
-   - `POSTGRES_PRISMA_URL` - Prisma-compatible connection string
-   - `POSTGRES_URL_NON_POOLING` - Direct connection string
+1. Go to [Supabase](https://supabase.com) and sign up/login
+2. Click "New Project"
+3. Fill in your project details:
+   - **Name**: Your project name (e.g., `bestrong`)
+   - **Database Password**: Choose a strong password (save this!)
+   - **Region**: Select a region close to your users
+4. Wait for the project to be created (takes a few minutes)
+5. Once created, go to **Project Settings** → **Database**
+6. Find the **Connection string** section
+7. Copy the **URI** connection string (it looks like: `postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres`)
 
-### 2. Set Environment Variables
+### 2. Set Environment Variables in Vercel
 
 In your Vercel project settings, add the following environment variables:
 
 #### Required Variables
 
-- `POSTGRES_URL` - Automatically set by Vercel Postgres (or set manually if using external DB)
+- `DATABASE_URL` or `SUPABASE_URL` - Your Supabase connection string (from step 1)
+  - Format: `postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres`
+  - Replace `[PASSWORD]` with your database password
+  - Replace `[PROJECT-REF]` with your Supabase project reference
 - `JWT_SECRET` - A secure random string for JWT token signing (generate with: `openssl rand -base64 32`)
 - `FRONTEND_URL` - Your frontend URL (e.g., `https://your-app.vercel.app`)
 
-#### Optional Variables (for external PostgreSQL)
+#### Alternative: Individual Connection Parameters
 
-If you're using an external PostgreSQL database instead of Vercel Postgres:
+If you prefer to use individual parameters instead of a connection string:
 
-- `DB_HOST` - Database host
-- `DB_PORT` - Database port (default: 5432)
-- `DB_NAME` - Database name
-- `DB_USER` - Database user
-- `DB_PASSWORD` - Database password
+- `DB_HOST` - Database host (e.g., `db.xxxxx.supabase.co`)
+- `DB_PORT` - Database port (usually `5432`)
+- `DB_NAME` - Database name (usually `postgres`)
+- `DB_USER` - Database user (usually `postgres`)
+- `DB_PASSWORD` - Your database password
 
 #### Example Environment Variables
 
 ```bash
-POSTGRES_URL=postgres://user:password@host:5432/database
+DATABASE_URL=postgresql://postgres:your-password@db.xxxxx.supabase.co:5432/postgres
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
 FRONTEND_URL=https://your-app.vercel.app
 NODE_ENV=production
 ```
+
+**Note**: The application also supports `SUPABASE_URL` or `POSTGRES_URL` as alternative environment variable names for the connection string.
 
 ### 3. Deploy to Vercel
 
@@ -102,7 +108,7 @@ bestrong/
 ├── backend/
 │   ├── src/
 │   │   ├── config/
-│   │   │   └── database.ts    # Database config (supports Vercel Postgres)
+│   │   │   └── database.ts    # Database config (supports Supabase)
 │   │   └── ...
 │   └── scripts/
 │       └── migrate-vercel.ts   # Migration script for Vercel
@@ -117,7 +123,7 @@ bestrong/
 
 The Express backend is wrapped in a Vercel serverless function at `api/index.ts`. All requests to `/api/*` are routed to this function, which:
 
-1. Initializes the database connection (supports both Vercel Postgres and external PostgreSQL)
+1. Initializes the database connection (supports Supabase and external PostgreSQL)
 2. Runs migrations on first request (cached for subsequent requests)
 3. Handles all API routes through Express
 
@@ -130,8 +136,8 @@ Migrations run automatically during the build process via the `buildCommand` in 
 ```
 
 The `migrate:vercel` script:
-- Detects if `POSTGRES_URL` is set (Vercel Postgres) or uses individual DB variables
-- Connects to the database
+- Detects if `DATABASE_URL`, `SUPABASE_URL`, or `POSTGRES_URL` is set (connection string) or uses individual DB variables
+- Connects to the database (Supabase requires SSL)
 - Runs the schema migrations from `backend/src/db/schema.sql`
 
 ### Frontend Configuration
@@ -144,9 +150,11 @@ The frontend automatically detects the API URL:
 
 ### Database Connection Issues
 
-1. **Check environment variables**: Ensure `POSTGRES_URL` is set correctly
-2. **Verify database exists**: Check Vercel Storage dashboard
-3. **Check connection string format**: Should be `postgres://user:password@host:port/database`
+1. **Check environment variables**: Ensure `DATABASE_URL` or `SUPABASE_URL` is set correctly
+2. **Verify database exists**: Check your Supabase project dashboard
+3. **Check connection string format**: Should be `postgresql://postgres:password@db.xxxxx.supabase.co:5432/postgres`
+4. **Verify SSL**: Supabase requires SSL connections (automatically handled)
+5. **Check password**: Make sure the password in the connection string matches your Supabase database password
 
 ### Migration Failures
 
