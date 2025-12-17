@@ -157,50 +157,50 @@ export default function QuestionnairePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <Slider
-                  label="How healthy and energetic do you feel on a typical day?"
-                  min={1}
-                  max={10}
-                  value={formData.section1_energy_level || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section1_energy_level: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How healthy and energetic do you feel on a typical day?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section1_energy_level || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section1_energy_level: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How consistent have you been with exercise over the past 3 months?"
-                  min={1}
-                  max={10}
-                  value={formData.section1_exercise_consistency || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section1_exercise_consistency: parseInt(
-                        e.target.value,
-                        10
-                      ),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How consistent have you been with exercise over the past 3 months?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section1_exercise_consistency || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section1_exercise_consistency: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How confident do you feel performing strength-based movements?"
-                  min={1}
-                  max={10}
-                  value={formData.section1_strength_confidence || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section1_strength_confidence: parseInt(
-                        e.target.value,
-                        10
-                      ),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How confident do you feel performing strength-based movements?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section1_strength_confidence || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section1_strength_confidence: value[0],
+                      })
+                    }
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="section1_limiting_factors">
@@ -232,44 +232,50 @@ export default function QuestionnairePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <Slider
-                  label="How motivated are you to make a real change right now?"
-                  min={1}
-                  max={10}
-                  value={formData.section2_motivation || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section2_motivation: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How motivated are you to make a real change right now?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section2_motivation || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section2_motivation: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How disciplined do you tend to be once a plan is in place?"
-                  min={1}
-                  max={10}
-                  value={formData.section2_discipline || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section2_discipline: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How disciplined do you tend to be once a plan is in place?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section2_discipline || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section2_discipline: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How supported do you feel in your current environment (friends/family/routine)?"
-                  min={1}
-                  max={10}
-                  value={formData.section2_support_level || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section2_support_level: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How supported do you feel in your current environment (friends/family/routine)?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section2_support_level || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section2_support_level: value[0],
+                      })
+                    }
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="section2_what_keeps_going">
@@ -301,50 +307,50 @@ export default function QuestionnairePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <Slider
-                  label="How limited do you feel by pain, injury, or past issues?"
-                  min={1}
-                  max={10}
-                  value={formData.section3_pain_limitations || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section3_pain_limitations: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How limited do you feel by pain, injury, or past issues?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section3_pain_limitations || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section3_pain_limitations: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How confident are you in your mobility and range of motion?"
-                  min={1}
-                  max={10}
-                  value={formData.section3_mobility_confidence || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section3_mobility_confidence: parseInt(
-                        e.target.value,
-                        10
-                      ),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How confident are you in your mobility and range of motion?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section3_mobility_confidence || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section3_mobility_confidence: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How strong do you feel compared to your ideal self?"
-                  min={1}
-                  max={10}
-                  value={formData.section3_strength_comparison || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section3_strength_comparison: parseInt(
-                        e.target.value,
-                        10
-                      ),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How strong do you feel compared to your ideal self?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section3_strength_comparison || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section3_strength_comparison: value[0],
+                      })
+                    }
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -357,60 +363,65 @@ export default function QuestionnairePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <Slider
-                  label="How aligned do you feel your nutrition habits are with your goals?"
-                  min={1}
-                  max={10}
-                  value={formData.section4_nutrition_alignment || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section4_nutrition_alignment: parseInt(
-                        e.target.value,
-                        10
-                      ),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How aligned do you feel your nutrition habits are with your goals?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section4_nutrition_alignment || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section4_nutrition_alignment: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How consistent is your meal pattern and portion awareness?"
-                  min={1}
-                  max={10}
-                  value={formData.section4_meal_consistency || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section4_meal_consistency: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How consistent is your meal pattern and portion awareness?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section4_meal_consistency || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section4_meal_consistency: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How well do you sleep and recover?"
-                  min={1}
-                  max={10}
-                  value={formData.section4_sleep_quality || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section4_sleep_quality: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How well do you sleep and recover?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section4_sleep_quality || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section4_sleep_quality: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How much daily stress do you carry right now?"
-                  min={1}
-                  max={10}
-                  value={formData.section4_stress_level || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section4_stress_level: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How much daily stress do you carry right now?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section4_stress_level || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section4_stress_level: value[0],
+                      })
+                    }
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -423,63 +434,65 @@ export default function QuestionnairePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <Slider
-                  label="How connected do you feel to your body right now?"
-                  min={1}
-                  max={10}
-                  value={formData.section5_body_connection || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section5_body_connection: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How connected do you feel to your body right now?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section5_body_connection || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section5_body_connection: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How satisfied are you with your current physical appearance?"
-                  min={1}
-                  max={10}
-                  value={formData.section5_appearance_satisfaction || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section5_appearance_satisfaction: parseInt(
-                        e.target.value,
-                        10
-                      ),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How satisfied are you with your current physical appearance?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section5_appearance_satisfaction || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section5_appearance_satisfaction: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How much of your motivation is driven by appearance vs. performance/longevity?"
-                  min={1}
-                  max={10}
-                  value={formData.section5_motivation_driver || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section5_motivation_driver: parseInt(e.target.value, 10),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How much of your motivation is driven by appearance vs. performance/longevity?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section5_motivation_driver || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section5_motivation_driver: value[0],
+                      })
+                    }
+                  />
+                </div>
 
-                <Slider
-                  label="How confident are you that you'll sustain results once you achieve them?"
-                  min={1}
-                  max={10}
-                  value={formData.section5_sustainability_confidence || 5}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      section5_sustainability_confidence: parseInt(
-                        e.target.value,
-                        10
-                      ),
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label>How confident are you that you'll sustain results once you achieve them?</Label>
+                  <Slider
+                    min={1}
+                    max={10}
+                    value={[formData.section5_sustainability_confidence || 5]}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        section5_sustainability_confidence: value[0],
+                      })
+                    }
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="section5_success_vision">

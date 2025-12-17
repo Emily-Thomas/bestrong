@@ -17,7 +17,13 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   type Recommendation,
   recommendationsApi,
@@ -201,19 +207,23 @@ export default function RecommendationDetailPage() {
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select
-                    id="status"
                     value={formData.status}
-                    onChange={(e) =>
+                    onValueChange={(value) =>
                       setFormData({
                         ...formData,
-                        status: e.target.value as Recommendation['status'],
+                        status: value as Recommendation['status'],
                       })
                     }
                   >
-                    <option value="draft">Draft</option>
-                    <option value="approved">Approved</option>
-                    <option value="active">Active</option>
-                    <option value="completed">Completed</option>
+                    <SelectTrigger id="status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
