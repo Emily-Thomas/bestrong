@@ -92,6 +92,7 @@ async function initializeDatabase() {
 }
 
 // Vercel serverless function handler
+// maxDuration: 30 seconds
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
