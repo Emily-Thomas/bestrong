@@ -1,14 +1,11 @@
 {
-  "buildCommand": "turbo run build && turbo run migrate:vercel --filter=backend",
-  "installCommand": "npm install",
+  "version": 2,
+  "framework": "nextjs",
   "outputDirectory": "frontend/.next",
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
