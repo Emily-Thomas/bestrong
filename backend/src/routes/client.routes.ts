@@ -1,7 +1,8 @@
 import { type Request, type Response, Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import * as clientService from '../services/client.service';
-import type { CreateClientInput } from '../types';
+import * as recommendationService from '../services/recommendation.service';
+import type { CreateClientInput, UpdateClientInput } from '../types';
 
 const router = Router();
 
@@ -88,7 +89,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       return;
     }
 
-    const input: Partial<CreateClientInput> = req.body;
+    const input: UpdateClientInput = req.body;
     const client = await clientService.updateClient(id, input);
 
     if (!client) {
@@ -100,6 +101,41 @@ router.put('/:id', async (req: Request, res: Response) => {
       success: true,
       data: client,
       message: 'Client updated successfully',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Activate client and accept recommendation
+router.post('/:id/activate', async (req: Request, res: Response) => {
+  try {
+    const clientId = parseInt(req.params.id, 10);
+    const { recommendation_id } = req.body;
+
+    if (Number.isNaN(clientId)) {
+      res.status(400).json({ success: false, error: 'Invalid client ID' });
+      return;
+    }
+
+    if (!recommendation_id) {
+      res.status(400).json({
+        success: false,
+        error: 'recommendation_id is required',
+      });
+      return;
+    }
+
+    const result = await recommendationService.activateClientAndRecommendation(
+      clientId,
+      recommendation_id
+    );
+
+    res.json({
+      success: true,
+      data: result,
+      message: 'Client activated and recommendation accepted',
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

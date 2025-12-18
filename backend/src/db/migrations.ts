@@ -5,6 +5,7 @@ import pool from '../config/database';
 export async function runMigrations(): Promise<void> {
   try {
     const schemaPath = path.join(__dirname, 'schema.sql');
+    const migrationPath = path.join(__dirname, '../../migrations/009_workout_execution_feature.sql');
     
     if (!fs.existsSync(schemaPath)) {
       throw new Error(`Schema file not found at: ${schemaPath}`);
@@ -16,22 +17,30 @@ export async function runMigrations(): Promise<void> {
     const client = await pool.connect();
 
     try {
-      // Split the schema into individual statements
-      // PostgreSQL allows multiple statements, but splitting helps with error reporting
-      const statements = schema
-        .split(';')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0 && !s.startsWith('--'));
-
-      console.log(`📝 Executing ${statements.length} SQL statements...`);
-
-      // Execute the entire schema as one query (PostgreSQL supports multiple statements)
-      // This is more reliable than splitting, but we'll add better error handling
+      // Execute the base schema first
       await client.query(schema);
-      console.log('✅ Database migrations completed successfully');
+      console.log('✅ Base schema executed successfully');
+      
+      // Execute the workout execution feature migration if it exists
+      if (fs.existsSync(migrationPath)) {
+        console.log('📄 Loading workout execution feature migration...');
+        const migration = fs.readFileSync(migrationPath, 'utf8');
+        await client.query(migration);
+        console.log('✅ Workout execution feature migration completed successfully');
+      } else {
+        console.log('ℹ️  Workout execution feature migration not found, skipping...');
+      }
       
       // Verify critical tables exist
-      const tablesToCheck = ['admin_users', 'clients', 'questionnaires', 'recommendations', 'workouts'];
+      const tablesToCheck = [
+        'admin_users', 
+        'clients', 
+        'questionnaires', 
+        'recommendations', 
+        'workouts',
+        'actual_workouts',
+        'week_generation_jobs'
+      ];
       for (const tableName of tablesToCheck) {
         const result = await client.query(`
           SELECT EXISTS (

@@ -30,6 +30,7 @@ export interface Client {
   email?: string;
   phone?: string;
   date_of_birth?: Date;
+  status: 'prospect' | 'active' | 'inactive' | 'archived';
   created_by: number;
   created_at: Date;
   updated_at: Date;
@@ -41,6 +42,15 @@ export interface CreateClientInput {
   email?: string;
   phone?: string;
   date_of_birth?: string;
+}
+
+export interface UpdateClientInput {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  date_of_birth?: string;
+  status?: 'prospect' | 'active' | 'inactive' | 'archived';
 }
 
 // Questionnaire Types
@@ -133,6 +143,9 @@ export interface Recommendation {
   ai_reasoning?: string;
   status: 'draft' | 'approved' | 'active' | 'completed';
   is_edited: boolean;
+  current_week: number;
+  started_at?: Date;
+  completed_at?: Date;
   created_at: Date;
   updated_at: Date;
 }
@@ -154,6 +167,7 @@ export interface UpdateRecommendationInput {
   training_style?: string;
   plan_structure?: Record<string, unknown>;
   status?: 'draft' | 'approved' | 'active' | 'completed';
+  current_week?: number;
 }
 
 // Workout Types
@@ -185,8 +199,12 @@ export interface Workout {
   workout_name?: string;
   workout_data: WorkoutData;
   workout_reasoning?: string;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'skipped' | 'cancelled';
+  scheduled_date?: Date;
+  completed_at?: Date;
   created_at: Date;
   updated_at: Date;
+  actual_workout?: ActualWorkout;
 }
 
 export interface CreateWorkoutInput {
@@ -196,6 +214,15 @@ export interface CreateWorkoutInput {
   workout_name?: string;
   workout_data: WorkoutData;
   workout_reasoning?: string;
+}
+
+export interface UpdateWorkoutInput {
+  workout_name?: string;
+  workout_data?: WorkoutData;
+  workout_reasoning?: string;
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'skipped' | 'cancelled';
+  scheduled_date?: string;
+  completed_at?: string;
 }
 
 // LLM Response Types
@@ -231,6 +258,72 @@ export interface JWTPayload {
   userId: number;
   email: string;
   type: 'admin';
+}
+
+// Actual Workout Types
+export interface ActualExercisePerformance {
+  exercise_name: string; // Matches proposed exercise name
+  sets_completed?: number;
+  reps_completed?: number | string; // Actual reps (may be range like "8-10")
+  weight_used?: string; // Actual weight/load used
+  rpe?: number; // Actual RPE (1-10)
+  rounds_completed?: number; // For circuit/round-based exercises
+  notes?: string; // Exercise-specific notes
+  rest_taken_seconds?: number; // Actual rest time
+}
+
+export interface ActualWorkoutPerformance {
+  exercises: ActualExercisePerformance[];
+  warmup_completed?: boolean;
+  cooldown_completed?: boolean;
+  total_duration_minutes?: number;
+  modifications_made?: string; // What was changed from the plan
+}
+
+export interface ActualWorkout {
+  id: number;
+  workout_id: number;
+  completed_by?: number;
+  actual_performance: ActualWorkoutPerformance;
+  session_notes?: string;
+  overall_rpe?: number; // Overall session RPE (1-10)
+  client_energy_level?: number; // 1-10 scale
+  trainer_observations?: string;
+  started_at?: Date;
+  completed_at: Date;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CreateActualWorkoutInput {
+  workout_id: number;
+  actual_performance: ActualWorkoutPerformance;
+  session_notes?: string;
+  overall_rpe?: number;
+  client_energy_level?: number;
+  trainer_observations?: string;
+  started_at?: string;
+  completed_at: string;
+}
+
+// Week Generation Job Types
+export interface WeekGenerationJob {
+  id: number;
+  recommendation_id: number;
+  week_number: number;
+  created_by?: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  current_step?: string;
+  error_message?: string;
+  created_at: Date;
+  started_at?: Date;
+  completed_at?: Date;
+  updated_at: Date;
+}
+
+export interface CreateWeekGenerationJobInput {
+  recommendation_id: number;
+  week_number: number;
 }
 
 // API Response Types

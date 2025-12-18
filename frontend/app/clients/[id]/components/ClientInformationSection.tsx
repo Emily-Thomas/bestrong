@@ -1,8 +1,20 @@
 'use client';
 
-import { Edit, Loader2, Save } from 'lucide-react';
+import { Edit, Loader2, Save, UserCheck } from 'lucide-react';
 import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -13,19 +25,29 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { type Client, clientsApi } from '@/lib/api';
+import {
+  type Client,
+  type Recommendation,
+  clientsApi,
+  recommendationsApi,
+} from '@/lib/api';
 
 interface ClientInformationSectionProps {
   client: Client;
+  recommendation: Recommendation | null;
   onClientUpdate: (updatedClient: Client) => void;
+  onRecommendationUpdate?: (recommendation: Recommendation | null) => void;
 }
 
 export function ClientInformationSection({
   client,
+  recommendation,
   onClientUpdate,
+  onRecommendationUpdate,
 }: ClientInformationSectionProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     first_name: client.first_name,
@@ -65,23 +87,106 @@ export function ClientInformationSection({
     setError('');
   };
 
+  const handleActivate = async () => {
+    if (!recommendation) {
+      setError('No recommendation available to activate');
+      return;
+    }
+
+    setActivating(true);
+    setError('');
+
+    try {
+      const response = await recommendationsApi.activateClient(
+        client.id,
+        recommendation.id
+      );
+      if (response.success && response.data) {
+        onClientUpdate(response.data.client);
+        if (onRecommendationUpdate) {
+          onRecommendationUpdate(response.data.recommendation);
+        }
+      } else {
+        setError(response.error || 'Failed to activate client');
+      }
+    } catch (err) {
+      setError('Failed to activate client');
+    } finally {
+      setActivating(false);
+    }
+  };
+
+  const getStatusBadge = (status?: Client['status']) => {
+    switch (status) {
+      case 'prospect':
+        return <Badge variant="outline">Prospect</Badge>;
+      case 'active':
+        return <Badge variant="default">Active</Badge>;
+      case 'inactive':
+        return <Badge variant="secondary">Inactive</Badge>;
+      case 'archived':
+        return <Badge variant="outline">Archived</Badge>;
+      default:
+        return <Badge variant="outline">Prospect</Badge>;
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Client Information</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Client Information</CardTitle>
+            {getStatusBadge(client.status)}
+          </div>
           <CardDescription>Contact and basics</CardDescription>
         </div>
-        {!editing && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setEditing(true)}
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {(client.status === 'prospect' || !client.status) && recommendation && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="default" size="sm" disabled={activating}>
+                  {activating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Activating...
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      Activate Client
+                    </>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Activate Client</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will activate the client and accept the current recommendation.
+                    All workouts will be marked as scheduled and ready to execute.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={activating}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleActivate} disabled={activating}>
+                    {activating ? 'Activating...' : 'Activate'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          {!editing && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditing(true)}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {error && (
@@ -194,6 +299,12 @@ export function ClientInformationSection({
           </form>
         ) : (
           <dl className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground mb-1">
+                Status
+              </dt>
+              <dd className="text-sm">{getStatusBadge(client.status)}</dd>
+            </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground mb-1">
                 First Name

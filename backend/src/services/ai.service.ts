@@ -4,6 +4,9 @@ import type {
   StructuredQuestionnaireData,
   LLMRecommendationResponse,
   LLMWorkoutResponse,
+  Recommendation,
+  Workout,
+  ActualWorkout,
 } from '../types';
 
 /**
@@ -1442,4 +1445,218 @@ export async function generateRecommendation(
   questionnaire: Questionnaire
 ): Promise<LLMRecommendationResponse> {
   return generateRecommendationWithAI(questionnaire);
+}
+
+/**
+ * Generates workouts for a specific week based on previous weeks' performance
+ * This is used for progressive week generation after Week 1
+ */
+export async function generateWeekWorkouts(
+  recommendation: Recommendation,
+  previousWeeksData: {
+    week_number: number;
+    workouts: Workout[];
+    actual_workouts: ActualWorkout[];
+  }[],
+  questionnaire: Questionnaire,
+  structuredData: StructuredQuestionnaireData | null,
+  targetWeek: number
+): Promise<LLMWorkoutResponse[]> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error(
+      'OPENAI_API_KEY environment variable is not set. Please configure it to use AI recommendations.'
+    );
+  }
+
+  const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const sessionsPerWeek = recommendation.sessions_per_week;
+
+  // Build performance history summary
+  let performanceHistoryText = '';
+  if (previousWeeksData.length > 0) {
+    performanceHistoryText = '## Performance History\n\n';
+    
+    for (const weekData of previousWeeksData) {
+      performanceHistoryText += `### Week ${weekData.week_number} Results:\n\n`;
+      
+      for (let i = 0; i < weekData.workouts.length; i++) {
+        const workout = weekData.workouts[i];
+        const actualWorkout = weekData.actual_workouts.find(
+          aw => aw.workout_id === workout.id
+        );
+
+        performanceHistoryText += `**Session ${workout.session_number}: ${workout.workout_name || 'Workout'}**\n`;
+        
+        if (actualWorkout) {
+          performanceHistoryText += `- Overall RPE: ${actualWorkout.overall_rpe || 'N/A'}/10\n`;
+          performanceHistoryText += `- Client Energy Level: ${actualWorkout.client_energy_level || 'N/A'}/10\n`;
+          
+          if (actualWorkout.actual_performance.exercises.length > 0) {
+            performanceHistoryText += `- Exercise Performance:\n`;
+            actualWorkout.actual_performance.exercises.forEach((ex) => {
+              performanceHistoryText += `  - ${ex.exercise_name}: `;
+              if (ex.sets_completed) performanceHistoryText += `${ex.sets_completed} sets, `;
+              if (ex.reps_completed) performanceHistoryText += `${ex.reps_completed} reps, `;
+              if (ex.weight_used) performanceHistoryText += `${ex.weight_used}, `;
+              if (ex.rpe) performanceHistoryText += `RPE ${ex.rpe}`;
+              performanceHistoryText += '\n';
+              if (ex.notes) {
+                performanceHistoryText += `    Notes: ${ex.notes}\n`;
+              }
+            });
+          }
+          
+          if (actualWorkout.trainer_observations) {
+            performanceHistoryText += `- Trainer Observations: ${actualWorkout.trainer_observations}\n`;
+          }
+          if (actualWorkout.session_notes) {
+            performanceHistoryText += `- Session Notes: ${actualWorkout.session_notes}\n`;
+          }
+        } else {
+          performanceHistoryText += `- Status: Not completed\n`;
+        }
+        performanceHistoryText += '\n';
+      }
+    }
+  }
+
+  const prompt = `You are an expert personal trainer generating workouts for WEEK ${targetWeek} of a 6-week training program.
+
+## Original Client Context
+
+**Selected Persona:** ${recommendation.client_type}
+**Sessions Per Week:** ${recommendation.sessions_per_week}
+**Session Length:** ${recommendation.session_length_minutes} minutes
+**Training Style:** ${recommendation.training_style}
+**Original Plan Structure:** ${JSON.stringify(recommendation.plan_structure, null, 2)}
+**Original AI Reasoning:** ${recommendation.ai_reasoning || 'N/A'}
+
+${performanceHistoryText}
+
+## Client Questionnaire
+
+${questionnaireText}
+
+## Instructions
+
+Generate workouts for WEEK ${targetWeek} ONLY (${sessionsPerWeek} total sessions). These workouts should:
+
+1. **Build on previous weeks' performance:**
+   - Adjust difficulty based on actual RPE and performance data
+   - Address any issues noted in trainer observations
+   - Progress appropriately based on what the client actually achieved
+   - Maintain client engagement and motivation
+
+2. **Follow the original plan structure** while adapting to real-world results:
+   - Stay true to the original training style and approach
+   - Maintain the overall progression strategy
+   - Adjust volume/intensity based on actual performance
+
+3. **Consider performance feedback:**
+   - If client struggled (high RPE, low energy), reduce difficulty or volume
+   - If client exceeded expectations (low RPE, high energy), increase challenge appropriately
+   - Address specific issues mentioned in trainer observations
+   - Build on exercises that worked well
+
+4. **Each workout should include:**
+   - Specific exercises with sets, reps, weight/load guidance, rest periods
+   - Warmup and cooldown exercises when appropriate
+   - Notes on form, tempo, or RPE when relevant
+   - Brief reasoning for exercise selection and progression
+
+**CRITICAL: Generate ONLY Week ${targetWeek} workouts**
+- Generate workouts for WEEK ${targetWeek} ONLY, sessions 1-${sessionsPerWeek}
+- All workouts must have week_number: ${targetWeek}
+- Each exercise must have at least a name
+- Be specific with exercise selection - use actual exercise names
+- Keep exercise notes and reasoning concise
+- Make workouts realistic and achievable based on actual performance
+
+## Output Format
+
+You must respond with a valid JSON object with this structure:
+
+{
+  "workouts": [
+    {
+      "week_number": ${targetWeek},
+      "session_number": 1,
+      "workout_name": "Upper Body Strength",
+      "workout_data": {
+        "exercises": [
+          {
+            "name": "Barbell Bench Press",
+            "sets": 4,
+            "reps": "6-8",
+            "weight": "RPE 8",
+            "rest_seconds": 180,
+            "notes": "Focus on controlled tempo",
+            "rpe": 8
+          }
+        ],
+        "warmup": [{"name": "Light Cardio", "notes": "5 minutes"}],
+        "cooldown": [{"name": "Static Stretching", "notes": "Focus on chest"}],
+        "total_duration_minutes": ${recommendation.session_length_minutes},
+        "focus_areas": ["upper body", "push", "strength"]
+      },
+      "workout_reasoning": "This workout builds on Week ${targetWeek - 1} performance..."
+    }
+  ]
+}
+
+CRITICAL: 
+- Respond with ONLY valid JSON. All strings must be properly escaped.
+- Generate exactly ${sessionsPerWeek} workouts for WEEK ${targetWeek} ONLY
+- All workouts must have "week_number": ${targetWeek}
+- Do NOT generate workouts for other weeks
+- Keep all text fields SHORT (max 100 characters per field) to prevent truncation
+- Exercise notes should be brief (1-2 sentences max)
+- Workout reasoning should explain how this week builds on previous performance`;
+
+  const responseContent = await callOpenAIWithRetry(
+    [
+      {
+        role: 'system',
+        content:
+          'You are an expert personal trainer. You MUST respond with ONLY valid JSON. No markdown code blocks, no explanations, no additional text. All string values must have properly escaped quotes (use \\" for quotes inside strings). Generate ONLY the specified week workouts. Ensure all JSON brackets and braces are properly closed. Keep all text fields concise to avoid truncation.',
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    {
+      maxTokens: 6000,
+      temperature: 0.3,
+      maxRetries: 3,
+    }
+  );
+
+  console.log(`Received week ${targetWeek} workout response (${responseContent.length} characters)`);
+
+  const parsed = parseJSONWithRepair<{ workouts: LLMWorkoutResponse[] }>(
+    responseContent,
+    3,
+    responseContent
+  );
+
+  if (!parsed.workouts || !Array.isArray(parsed.workouts)) {
+    throw new Error('Invalid workout response: missing workouts array');
+  }
+
+  // Validate we got the right number of workouts
+  if (parsed.workouts.length !== sessionsPerWeek) {
+    console.warn(`⚠️  Expected ${sessionsPerWeek} workouts for week ${targetWeek}, got ${parsed.workouts.length}`);
+  }
+
+  // Validate all workouts are for the target week
+  const invalidWeeks = parsed.workouts.filter(w => w.week_number !== targetWeek);
+  if (invalidWeeks.length > 0) {
+    console.warn(`⚠️  Found ${invalidWeeks.length} workouts not for week ${targetWeek}, filtering them out`);
+    parsed.workouts = parsed.workouts.filter(w => w.week_number === targetWeek);
+  }
+
+  console.log(`✅ Generated ${parsed.workouts.length} workouts for Week ${targetWeek}`);
+
+  return parsed.workouts;
 }

@@ -4,11 +4,17 @@ import * as aiService from '../services/ai.service';
 import * as questionnaireService from '../services/questionnaire.service';
 import * as recommendationService from '../services/recommendation.service';
 import * as workoutService from '../services/workout.service';
+import * as actualWorkoutService from '../services/actual-workout.service';
 import * as jobService from '../services/job.service';
+import * as weekGenerationJobService from '../services/week-generation-job.service';
 import type {
   CreateRecommendationInput,
   UpdateRecommendationInput,
   CreateWorkoutInput,
+  CreateActualWorkoutInput,
+  UpdateWorkoutInput,
+  ActualWorkout,
+  Workout,
 } from '../types';
 
 const router = Router();
@@ -553,6 +559,154 @@ router.get('/questionnaire/:questionnaireId', async (req: Request, res: Response
   }
 });
 
+// Generate next week workouts (async) - MUST come before /:id route
+router.post('/:id/generate-week', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    const id = parseInt(req.params.id, 10);
+    const { week_number } = req.body;
+
+    if (Number.isNaN(id)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid recommendation ID',
+      });
+      return;
+    }
+
+    if (!week_number || typeof week_number !== 'number') {
+      res.status(400).json({
+        success: false,
+        error: 'week_number is required',
+      });
+      return;
+    }
+
+    // Verify recommendation exists
+    const recommendation = await recommendationService.getRecommendationById(id);
+    if (!recommendation) {
+      res.status(404).json({
+        success: false,
+        error: 'Recommendation not found',
+      });
+      return;
+    }
+
+    // Validate week number
+    if (week_number < 2 || week_number > 6) {
+      res.status(400).json({
+        success: false,
+        error: 'Week number must be between 2 and 6',
+      });
+      return;
+    }
+
+    // Check if previous week is complete
+    const previousWeek = week_number - 1;
+    const previousWeekStatus = await workoutService.getWeekCompletionStatus(
+      id,
+      previousWeek
+    );
+    if (!previousWeekStatus.is_complete) {
+      res.status(400).json({
+        success: false,
+        error: `Week ${previousWeek} must be completed (all workouts completed or skipped) before generating Week ${week_number}`,
+        data: {
+          previous_week_status: previousWeekStatus,
+        },
+      });
+      return;
+    }
+
+    // Check if week is already generated
+    const existingWorkouts = await workoutService.getWorkoutsByWeek(id, week_number);
+    if (existingWorkouts.length > 0) {
+      res.status(400).json({
+        success: false,
+        error: `Week ${week_number} workouts already exist`,
+      });
+      return;
+    }
+
+    // Check if there's already a pending/processing job for this week
+    const existingJob = await weekGenerationJobService.getWeekGenerationJobByRecommendationAndWeek(
+      id,
+      week_number
+    );
+    if (
+      existingJob &&
+      (existingJob.status === 'pending' || existingJob.status === 'processing')
+    ) {
+      res.json({
+        success: true,
+        data: { job_id: existingJob.id },
+        message: 'Week generation already in progress',
+      });
+      return;
+    }
+
+    // Create new job
+    const job = await weekGenerationJobService.createWeekGenerationJob(
+      {
+        recommendation_id: id,
+        week_number,
+      },
+      req.user.userId
+    );
+
+    // Start processing in background (don't await)
+    processWeekGenerationJob(job.id).catch((error) => {
+      console.error(`Error processing week generation job ${job.id}:`, error);
+    });
+
+    res.status(202).json({
+      success: true,
+      data: { job_id: job.id },
+      message: 'Week generation started',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Get week generation job status - MUST come before /:id route
+router.get('/:id/generate-week/job/:jobId', async (req: Request, res: Response) => {
+  try {
+    const jobId = parseInt(req.params.jobId, 10);
+
+    if (Number.isNaN(jobId)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid job ID',
+      });
+      return;
+    }
+
+    const job = await weekGenerationJobService.getWeekGenerationJobById(jobId);
+
+    if (!job) {
+      res.status(404).json({
+        success: false,
+        error: 'Job not found',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: job,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 // Get recommendation by ID (must be last to avoid route conflicts)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
@@ -700,6 +854,234 @@ router.get('/:id/workouts', async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: workouts,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Get workouts for a specific week
+router.get('/:id/week/:weekNumber/workouts', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const weekNumber = parseInt(req.params.weekNumber, 10);
+
+    if (Number.isNaN(id) || Number.isNaN(weekNumber)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid recommendation ID or week number',
+      });
+      return;
+    }
+
+    const workouts = await workoutService.getWorkoutsByWeek(id, weekNumber);
+
+    res.json({
+      success: true,
+      data: workouts,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Get week completion status
+router.get('/:id/week/:weekNumber/status', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const weekNumber = parseInt(req.params.weekNumber, 10);
+
+    if (Number.isNaN(id) || Number.isNaN(weekNumber)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid recommendation ID or week number',
+      });
+      return;
+    }
+
+    const workouts = await workoutService.getWorkoutsByWeek(id, weekNumber);
+    const weekStatus = await workoutService.getWeekCompletionStatus(id, weekNumber);
+
+    res.json({
+      success: true,
+      data: {
+        week_number: weekNumber,
+        total_workouts: weekStatus.total,
+        completed_workouts: weekStatus.completed,
+        skipped_workouts: weekStatus.skipped,
+        in_progress_workouts: weekStatus.in_progress,
+        scheduled_workouts: weekStatus.scheduled,
+        cancelled_workouts: weekStatus.cancelled || 0,
+        is_complete: weekStatus.is_complete,
+        workouts,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * Background processor for week generation
+ */
+async function processWeekGenerationJob(jobId: number): Promise<void> {
+  try {
+    const job = await weekGenerationJobService.getWeekGenerationJobById(jobId);
+    if (!job) {
+      console.error(`Week generation job ${jobId} not found`);
+      return;
+    }
+
+    // Get recommendation
+    const recommendation = await recommendationService.getRecommendationById(
+      job.recommendation_id
+    );
+    if (!recommendation) {
+      await weekGenerationJobService.failWeekGenerationJob(
+        jobId,
+        'Recommendation not found'
+      );
+      return;
+    }
+
+    // Get questionnaire
+    let questionnaire = null;
+    if (recommendation.questionnaire_id) {
+      questionnaire = await questionnaireService.getQuestionnaireById(
+        recommendation.questionnaire_id
+      );
+    }
+
+    if (!questionnaire) {
+      await weekGenerationJobService.failWeekGenerationJob(
+        jobId,
+        'Questionnaire not found'
+      );
+      return;
+    }
+
+    // Step 1: Collect previous weeks' performance data
+    await weekGenerationJobService.updateWeekGenerationJobStatus(
+      jobId,
+      'processing',
+      'Collecting performance data...'
+    );
+
+    const previousWeeksData: {
+      week_number: number;
+      workouts: Workout[];
+      actual_workouts: ActualWorkout[];
+    }[] = [];
+
+    // Get all previous weeks (1 to targetWeek - 1)
+    for (let week = 1; week < job.week_number; week++) {
+      const workouts = await workoutService.getWorkoutsByWeek(
+        recommendation.id,
+        week
+      );
+      const actualWorkoutPromises = workouts.map((w) =>
+        actualWorkoutService.getActualWorkoutByWorkoutId(w.id)
+      );
+      const actualWorkoutResults = await Promise.all(actualWorkoutPromises);
+      
+      // Filter out null values with proper type guard
+      const validActualWorkouts = actualWorkoutResults.filter(
+        (aw): aw is ActualWorkout => aw !== null
+      );
+
+      previousWeeksData.push({
+        week_number: week,
+        workouts,
+        actual_workouts: validActualWorkouts,
+      });
+    }
+
+    // Step 2: Generate workouts for target week
+    await weekGenerationJobService.updateWeekGenerationJobStatus(
+      jobId,
+      'processing',
+      'Generating workouts...'
+    );
+
+    // Parse structured data from questionnaire
+    let structuredData = null;
+    if (questionnaire.notes) {
+      try {
+        const parsed = JSON.parse(questionnaire.notes);
+        if (parsed.section1_energy_level !== undefined) {
+          structuredData = parsed;
+        }
+      } catch {
+        // Not JSON or not structured format, use null
+      }
+    }
+
+    const workouts = await aiService.generateWeekWorkouts(
+      recommendation,
+      previousWeeksData,
+      questionnaire,
+      structuredData,
+      job.week_number
+    );
+
+    // Step 3: Save workouts
+    await weekGenerationJobService.updateWeekGenerationJobStatus(
+      jobId,
+      'processing',
+      'Saving workouts...'
+    );
+
+    const workoutsToCreate: CreateWorkoutInput[] = workouts.map((w) => ({
+      recommendation_id: recommendation.id,
+      week_number: w.week_number,
+      session_number: w.session_number,
+      workout_name: w.workout_name,
+      workout_data: w.workout_data,
+      workout_reasoning: w.workout_reasoning,
+    }));
+
+    await workoutService.createWorkouts(workoutsToCreate);
+
+    // Step 4: Update recommendation current_week
+    await recommendationService.updateRecommendation(
+      recommendation.id,
+      { current_week: job.week_number },
+      job.created_by || 0
+    );
+
+    // Complete job
+    await weekGenerationJobService.completeWeekGenerationJob(jobId);
+    console.log(`✅ Week ${job.week_number} generation completed for recommendation ${recommendation.id}`);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ Week generation job ${jobId} failed:`, errorMessage);
+    await weekGenerationJobService.failWeekGenerationJob(jobId, errorMessage);
+  }
+}
+
+
+// Get all week generation jobs for a recommendation
+router.get('/:id/week-jobs', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    if (Number.isNaN(id)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid recommendation ID',
+      });
+      return;
+    }
+
+    const jobs = await weekGenerationJobService.getWeekGenerationJobsByRecommendationId(id);
+
+    res.json({
+      success: true,
+      data: jobs,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

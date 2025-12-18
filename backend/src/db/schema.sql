@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS clients (
   email VARCHAR(255),
   phone VARCHAR(50),
   date_of_birth DATE,
+  status VARCHAR(50) DEFAULT 'prospect', -- prospect, active, inactive, archived
   created_by INTEGER REFERENCES admin_users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -75,6 +76,11 @@ CREATE TABLE IF NOT EXISTS recommendations (
   status VARCHAR(50) DEFAULT 'draft', -- draft, approved, active, completed
   is_edited BOOLEAN DEFAULT FALSE,
   
+  -- Week tracking
+  current_week INTEGER DEFAULT 1,
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -112,6 +118,11 @@ CREATE TABLE IF NOT EXISTS workouts (
   -- AI reasoning for this specific workout
   workout_reasoning TEXT,
   
+  -- Execution tracking
+  status VARCHAR(50) DEFAULT 'scheduled', -- scheduled, in_progress, completed, skipped, cancelled
+  scheduled_date DATE,
+  completed_at TIMESTAMP,
+  
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   
@@ -119,14 +130,34 @@ CREATE TABLE IF NOT EXISTS workouts (
   UNIQUE(recommendation_id, week_number, session_number)
 );
 
+-- Add new columns to existing tables (idempotent)
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'prospect';
+UPDATE clients SET status = 'prospect' WHERE status IS NULL;
+
+ALTER TABLE recommendations 
+  ADD COLUMN IF NOT EXISTS current_week INTEGER DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS started_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;
+UPDATE recommendations SET current_week = 1 WHERE current_week IS NULL;
+
+ALTER TABLE workouts 
+  ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'scheduled',
+  ADD COLUMN IF NOT EXISTS scheduled_date DATE,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;
+UPDATE workouts SET status = 'scheduled' WHERE status IS NULL;
+
 -- Indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_clients_created_by ON clients(created_by);
+CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);
 CREATE INDEX IF NOT EXISTS idx_questionnaires_client_id ON questionnaires(client_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_client_id ON recommendations(client_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_status ON recommendations(status);
+CREATE INDEX IF NOT EXISTS idx_recommendations_current_week ON recommendations(current_week);
 CREATE INDEX IF NOT EXISTS idx_recommendation_edits_recommendation_id ON recommendation_edits(recommendation_id);
 CREATE INDEX IF NOT EXISTS idx_workouts_recommendation_id ON workouts(recommendation_id);
 CREATE INDEX IF NOT EXISTS idx_workouts_week_session ON workouts(recommendation_id, week_number, session_number);
+CREATE INDEX IF NOT EXISTS idx_workouts_status ON workouts(status);
+CREATE INDEX IF NOT EXISTS idx_workouts_scheduled_date ON workouts(scheduled_date);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -184,5 +215,74 @@ CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_client_id ON recommendation_j
 -- Trigger to auto-update updated_at for recommendation_jobs
 DROP TRIGGER IF EXISTS update_recommendation_jobs_updated_at ON recommendation_jobs;
 CREATE TRIGGER update_recommendation_jobs_updated_at BEFORE UPDATE ON recommendation_jobs
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Actual Workouts (executed workout performance data)
+CREATE TABLE IF NOT EXISTS actual_workouts (
+  id SERIAL PRIMARY KEY,
+  workout_id INTEGER NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
+  completed_by INTEGER REFERENCES admin_users(id),
+  
+  -- Actual performance data (stored as JSONB for flexibility)
+  actual_performance JSONB NOT NULL,
+  
+  -- Session feedback
+  session_notes TEXT,
+  overall_rpe INTEGER, -- Overall session RPE (1-10)
+  client_energy_level INTEGER, -- 1-10 scale
+  trainer_observations TEXT,
+  
+  -- Timestamps
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Ensure one actual workout per proposed workout
+  UNIQUE(workout_id)
+);
+
+-- Indexes for actual_workouts
+CREATE INDEX IF NOT EXISTS idx_actual_workouts_workout_id ON actual_workouts(workout_id);
+CREATE INDEX IF NOT EXISTS idx_actual_workouts_completed_by ON actual_workouts(completed_by);
+CREATE INDEX IF NOT EXISTS idx_actual_workouts_completed_at ON actual_workouts(completed_at);
+
+-- Trigger to auto-update updated_at for actual_workouts
+DROP TRIGGER IF EXISTS update_actual_workouts_updated_at ON actual_workouts;
+CREATE TRIGGER update_actual_workouts_updated_at BEFORE UPDATE ON actual_workouts
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Week Generation Jobs (for progressive week generation)
+CREATE TABLE IF NOT EXISTS week_generation_jobs (
+  id SERIAL PRIMARY KEY,
+  recommendation_id INTEGER NOT NULL REFERENCES recommendations(id) ON DELETE CASCADE,
+  week_number INTEGER NOT NULL,
+  created_by INTEGER REFERENCES admin_users(id),
+  
+  -- Job status
+  status VARCHAR(50) DEFAULT 'pending', -- pending, processing, completed, failed
+  current_step VARCHAR(255),
+  
+  -- Results
+  error_message TEXT,
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Ensure one job per week per recommendation
+  UNIQUE(recommendation_id, week_number)
+);
+
+-- Indexes for week_generation_jobs
+CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_status ON week_generation_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_recommendation_id ON week_generation_jobs(recommendation_id);
+CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_week_number ON week_generation_jobs(week_number);
+
+-- Trigger to auto-update updated_at for week_generation_jobs
+DROP TRIGGER IF EXISTS update_week_generation_jobs_updated_at ON week_generation_jobs;
+CREATE TRIGGER update_week_generation_jobs_updated_at BEFORE UPDATE ON week_generation_jobs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

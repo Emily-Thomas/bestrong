@@ -1,5 +1,6 @@
 import pool from '../config/database';
 import type {
+  Client,
   CreateRecommendationInput,
   Recommendation,
   UpdateRecommendationInput,
@@ -135,6 +136,10 @@ export async function updateRecommendation(
   if (input.status !== undefined) {
     fields.push(`status = $${paramCount++}`);
     values.push(input.status);
+  }
+  if (input.current_week !== undefined) {
+    fields.push(`current_week = $${paramCount++}`);
+    values.push(input.current_week);
   }
 
   if (fields.length === 0) {
@@ -282,5 +287,75 @@ export async function createOrUpdateRecommendationForQuestionnaire(
     }
     
     return recommendation;
+  }
+}
+
+/**
+ * Activate a client and accept their recommendation.
+ * This function:
+ * 1. Updates client status to 'active'
+ * 2. Updates recommendation status to 'active'
+ * 3. Sets recommendation.started_at
+ * 4. Sets all workouts status to 'scheduled'
+ */
+export async function activateClientAndRecommendation(
+  clientId: number,
+  recommendationId: number
+): Promise<{ client: Client; recommendation: Recommendation }> {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // 1. Activate client
+    const clientResult = await client.query(
+      `UPDATE clients 
+       SET status = 'active'
+       WHERE id = $1
+       RETURNING *`,
+      [clientId]
+    );
+
+    if (!clientResult.rows[0]) {
+      throw new Error('Client not found');
+    }
+
+    // 2. Activate recommendation
+    const recResult = await client.query<Recommendation>(
+      `UPDATE recommendations 
+       SET status = 'active', started_at = NOW(), current_week = 1
+       WHERE id = $1
+       RETURNING *`,
+      [recommendationId]
+    );
+
+    if (!recResult.rows[0]) {
+      throw new Error('Recommendation not found');
+    }
+
+    const recommendation = recResult.rows[0];
+    if (typeof recommendation.plan_structure === 'string') {
+      recommendation.plan_structure = JSON.parse(recommendation.plan_structure);
+    }
+
+    // 3. Set all workouts to 'scheduled'
+    await client.query(
+      `UPDATE workouts 
+       SET status = 'scheduled'
+       WHERE recommendation_id = $1`,
+      [recommendationId]
+    );
+
+    await client.query('COMMIT');
+
+    return {
+      client: clientResult.rows[0],
+      recommendation,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 }

@@ -118,6 +118,13 @@ class ApiClient {
     });
   }
 
+  async patch<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  }
+
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
@@ -158,7 +165,7 @@ export const clientsApi = {
   getAll: () => apiClient.get<Client[]>('/clients'),
   getById: (id: number) => apiClient.get<Client>(`/clients/${id}`),
   create: (data: CreateClientInput) => apiClient.post<Client>('/clients', data),
-  update: (id: number, data: Partial<CreateClientInput>) =>
+  update: (id: number, data: Partial<CreateClientInput & { status?: Client['status'] }>) =>
     apiClient.put<Client>(`/clients/${id}`, data),
   delete: (id: number) => apiClient.delete(`/clients/${id}`),
 };
@@ -216,6 +223,34 @@ export const recommendationsApi = {
   delete: (id: number) => apiClient.delete(`/recommendations/${id}`),
   getWorkouts: (id: number) =>
     apiClient.get<Workout[]>(`/recommendations/${id}/workouts`),
+  getWorkoutsByWeek: (id: number, weekNumber: number) =>
+    apiClient.get<Workout[]>(`/recommendations/${id}/week/${weekNumber}/workouts`),
+  getWeekStatus: (id: number, weekNumber: number) =>
+    apiClient.get<{
+      week_number: number;
+      total_workouts: number;
+      completed_workouts: number;
+      skipped_workouts?: number;
+      in_progress_workouts?: number;
+      scheduled_workouts?: number;
+      is_complete: boolean;
+      workouts: Workout[];
+    }>(`/recommendations/${id}/week/${weekNumber}/status`),
+  activateClient: (clientId: number, recommendationId: number) =>
+    apiClient.post<{ client: Client; recommendation: Recommendation }>(
+      `/clients/${clientId}/activate`,
+      { recommendation_id: recommendationId }
+    ),
+  generateWeek: (id: number, weekNumber: number) =>
+    apiClient.post<{ job_id: number }>(`/recommendations/${id}/generate-week`, {
+      week_number: weekNumber,
+    }),
+  getWeekGenerationJob: (id: number, jobId: number) =>
+    apiClient.get<WeekGenerationJob>(
+      `/recommendations/${id}/generate-week/job/${jobId}`
+    ),
+  getWeekGenerationJobs: (id: number) =>
+    apiClient.get<WeekGenerationJob[]>(`/recommendations/${id}/week-jobs`),
 };
 
 // Types
@@ -226,6 +261,7 @@ export interface Client {
   email?: string;
   phone?: string;
   date_of_birth?: string;
+  status?: 'prospect' | 'active' | 'inactive' | 'archived';
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -309,8 +345,65 @@ export interface Workout {
   workout_name?: string;
   workout_data: WorkoutData;
   workout_reasoning?: string;
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'skipped' | 'cancelled';
+  scheduled_date?: string;
+  completed_at?: string;
   created_at: string;
   updated_at: string;
+  actual_workout?: ActualWorkout;
+}
+
+export interface ActualExercisePerformance {
+  exercise_name: string;
+  sets_completed?: number;
+  reps_completed?: number | string;
+  weight_used?: string;
+  rpe?: number;
+  rounds_completed?: number;
+  notes?: string;
+  rest_taken_seconds?: number;
+}
+
+export interface ActualWorkoutPerformance {
+  exercises: ActualExercisePerformance[];
+  warmup_completed?: boolean;
+  cooldown_completed?: boolean;
+  total_duration_minutes?: number;
+  modifications_made?: string;
+}
+
+export interface ActualWorkout {
+  id: number;
+  workout_id: number;
+  completed_by?: number;
+  actual_performance: ActualWorkoutPerformance;
+  session_notes?: string;
+  overall_rpe?: number;
+  client_energy_level?: number;
+  trainer_observations?: string;
+  started_at?: string;
+  completed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateActualWorkoutInput {
+  workout_id: number;
+  actual_performance: ActualWorkoutPerformance;
+  session_notes?: string;
+  overall_rpe?: number;
+  client_energy_level?: number;
+  trainer_observations?: string;
+  started_at?: string;
+  completed_at: string;
+}
+
+export interface UpdateWorkoutInput {
+  workout_name?: string;
+  workout_data?: WorkoutData;
+  workout_reasoning?: string;
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'skipped' | 'cancelled';
+  scheduled_date?: string;
 }
 
 export interface Recommendation {
@@ -326,6 +419,9 @@ export interface Recommendation {
   ai_reasoning?: string;
   status: 'draft' | 'approved' | 'active' | 'completed';
   is_edited: boolean;
+  current_week?: number;
+  started_at?: string;
+  completed_at?: string;
   created_at: string;
   updated_at: string;
   workouts?: Workout[]; // Optional, included when fetching recommendation
@@ -337,7 +433,23 @@ export interface UpdateRecommendationInput {
   training_style?: string;
   plan_structure?: Record<string, unknown>;
   status?: 'draft' | 'approved' | 'active' | 'completed';
+  current_week?: number;
 }
+
+// Workouts API
+export const workoutsApi = {
+  getById: (id: number) => apiClient.get<Workout>(`/workouts/${id}`),
+  update: (id: number, data: UpdateWorkoutInput) =>
+    apiClient.patch<Workout>(`/workouts/${id}`, data),
+  start: (id: number) => apiClient.post<Workout>(`/workouts/${id}/start`),
+  complete: (id: number, data: CreateActualWorkoutInput) =>
+    apiClient.post<{ workout: Workout; actual_workout: ActualWorkout }>(
+      `/workouts/${id}/complete`,
+      data
+    ),
+  updateActual: (id: number, data: Partial<CreateActualWorkoutInput>) =>
+    apiClient.patch<ActualWorkout>(`/workouts/${id}/actual`, data),
+};
 
 export interface RecommendationJob {
   id: number;
@@ -347,6 +459,20 @@ export interface RecommendationJob {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   current_step?: string;
   recommendation_id?: number;
+  error_message?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  updated_at: string;
+}
+
+export interface WeekGenerationJob {
+  id: number;
+  recommendation_id: number;
+  week_number: number;
+  created_by?: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  current_step?: string;
   error_message?: string;
   created_at: string;
   started_at?: string;

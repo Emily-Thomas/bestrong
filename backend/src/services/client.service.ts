@@ -1,5 +1,5 @@
 import pool from '../config/database';
-import type { Client, CreateClientInput } from '../types';
+import type { Client, CreateClientInput, UpdateClientInput } from '../types';
 
 export async function createClient(
   input: CreateClientInput,
@@ -50,7 +50,7 @@ export async function getAllClients(adminId?: number): Promise<Client[]> {
 
 export async function updateClient(
   id: number,
-  input: Partial<CreateClientInput>
+  input: UpdateClientInput
 ): Promise<Client | null> {
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -76,6 +76,10 @@ export async function updateClient(
     fields.push(`date_of_birth = $${paramCount++}`);
     values.push(input.date_of_birth);
   }
+  if (input.status !== undefined) {
+    fields.push(`status = $${paramCount++}`);
+    values.push(input.status);
+  }
 
   if (fields.length === 0) {
     return getClientById(id);
@@ -85,6 +89,17 @@ export async function updateClient(
   const query = `UPDATE clients SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
 
   const result = await pool.query<Client>(query, values);
+  return result.rows[0] || null;
+}
+
+export async function activateClient(id: number): Promise<Client | null> {
+  const result = await pool.query<Client>(
+    `UPDATE clients 
+     SET status = 'active'
+     WHERE id = $1
+     RETURNING *`,
+    [id]
+  );
   return result.rows[0] || null;
 }
 

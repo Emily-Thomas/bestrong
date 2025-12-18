@@ -30,6 +30,7 @@ import {
 import { ClientInformationSection } from './components/ClientInformationSection';
 import { QuestionnaireSection } from './components/QuestionnaireSection';
 import { TrainingPlansSection } from './components/TrainingPlansSection';
+import { WorkoutsSection } from './components/WorkoutsSection';
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -209,7 +210,9 @@ export default function ClientDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             <ClientInformationSection
               client={client}
+              recommendation={recommendation}
               onClientUpdate={handleClientUpdate}
+              onRecommendationUpdate={handleRecommendationUpdate}
             />
 
             <QuestionnaireSection
@@ -222,6 +225,11 @@ export default function ClientDetailPage() {
               questionnaire={questionnaire}
               recommendation={recommendation}
               onRecommendationUpdate={handleRecommendationUpdate}
+            />
+
+            <WorkoutsSection
+              clientId={clientId}
+              recommendation={recommendation}
             />
           </div>
         </div>

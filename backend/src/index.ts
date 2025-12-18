@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes';
 import clientRoutes from './routes/client.routes';
 import questionnaireRoutes from './routes/questionnaire.routes';
 import recommendationRoutes from './routes/recommendation.routes';
+import workoutRoutes from './routes/workout.routes';
 
 dotenv.config();
 
@@ -44,6 +45,9 @@ app.use('/api/questionnaires', questionnaireRoutes);
 
 // Recommendation routes
 app.use('/api/recommendations', recommendationRoutes);
+
+// Workout routes
+app.use('/api/workouts', workoutRoutes);
 
 // Initialize database on startup
 async function initializeDatabase() {
