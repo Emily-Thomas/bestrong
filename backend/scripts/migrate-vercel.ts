@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { config } from 'dotenv';
-import bcrypt from 'bcryptjs';
 
 // Load .env file only if it exists and we're not in Vercel
 // In Vercel, environment variables are already set via the dashboard
@@ -84,64 +83,59 @@ if (!databaseUrl) {
 import { runMigrations, testConnection } from '../src/db/migrations';
 import pool from '../src/config/database';
 
-const ADMIN_USERS = [
-  {
-    email: 'matt@bestrong.com',
-    password: 'bestrong',
-    name: 'Matt',
-  },
-  {
-    email: 'emily@bestrong.com',
-    password: 'bestrong',
-    name: 'Emily',
-  },
-];
-
-async function seedAdmins() {
-  console.log('🌱 Seeding admin users...\n');
+/**
+ * Verify that the workouts table exists after migration
+ */
+async function verifyWorkoutsTable() {
+  console.log('🔍 Verifying workouts table...\n');
 
   try {
     const client = await pool.connect();
 
     try {
-      for (const admin of ADMIN_USERS) {
-        // Check if user already exists
-        const existing = await client.query(
-          'SELECT id FROM admin_users WHERE email = $1',
-          [admin.email]
+      // Check if workouts table exists
+      const result = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'workouts'
         );
+      `);
 
-        if (existing.rows.length > 0) {
-          console.log(`⚠️  Admin ${admin.email} already exists, skipping...`);
-          continue;
-        }
-
-        // Hash password
-        const passwordHash = await bcrypt.hash(admin.password, 10);
-
-        // Insert admin user
-        const result = await client.query(
-          `INSERT INTO admin_users (email, password_hash, name)
-           VALUES ($1, $2, $3)
-           RETURNING id, email, name`,
-          [admin.email, passwordHash, admin.name]
-        );
-
-        console.log(
-          `✅ Created admin user: ${result.rows[0].email} (${result.rows[0].name})`
-        );
+      if (result.rows[0].exists) {
+        console.log('✅ Workouts table exists');
+        
+        // Check if indexes exist
+        const indexResult = await client.query(`
+          SELECT indexname 
+          FROM pg_indexes 
+          WHERE tablename = 'workouts' 
+          AND schemaname = 'public';
+        `);
+        
+        console.log(`✅ Found ${indexResult.rows.length} indexes on workouts table`);
+        
+        // Check if trigger exists
+        const triggerResult = await client.query(`
+          SELECT trigger_name 
+          FROM information_schema.triggers 
+          WHERE event_object_table = 'workouts' 
+          AND trigger_schema = 'public';
+        `);
+        
+        console.log(`✅ Found ${triggerResult.rows.length} triggers on workouts table`);
+      } else {
+        console.warn('⚠️  Workouts table does not exist - migration may have failed');
       }
-
-      console.log('\n✨ Admin seeding complete!');
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('❌ Error seeding admins:', error);
+    console.error('❌ Error verifying workouts table:', error);
     if (error instanceof Error) {
       console.error('   Error message:', error.message);
     }
-    throw error;
+    // Don't throw - this is just verification
   }
 }
 
@@ -175,8 +169,8 @@ async function main() {
     await runMigrations();
     console.log('\n✅ Migration complete!');
     
-    // Seed admin users after migrations
-    await seedAdmins();
+    // Verify that the workouts table was created
+    await verifyWorkoutsTable();
     
     process.exit(0);
   } catch (error) {
