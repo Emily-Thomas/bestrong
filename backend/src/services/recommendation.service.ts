@@ -204,16 +204,6 @@ export async function createOrUpdateRecommendationForQuestionnaire(
 
   if (existing) {
     // Update existing recommendation
-    const updateInput: UpdateRecommendationInput = {
-      client_type: input.client_type,
-      sessions_per_week: input.sessions_per_week,
-      session_length_minutes: input.session_length_minutes,
-      training_style: input.training_style,
-      plan_structure: input.plan_structure,
-      // Reset is_edited flag since we're regenerating from AI
-      // Note: We'll need to handle this differently - maybe add ai_reasoning to UpdateRecommendationInput
-    };
-
     // For regeneration, we want to update AI reasoning but not mark as manually edited
     // So we'll do a direct update without going through updateRecommendation
     const result = await pool.query<Recommendation>(
