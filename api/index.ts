@@ -19,6 +19,7 @@ const getAllowedOrigins = (): string[] => {
     origins.push(process.env.FRONTEND_URL);
   }
   
+  // Add production URL if available
   if (process.env.VERCEL_URL) {
     origins.push(`https://${process.env.VERCEL_URL}`);
   }
@@ -29,6 +30,10 @@ const getAllowedOrigins = (): string[] => {
     const project = process.env.VERCEL_PROJECT_NAME;
     if (branch && project) {
       origins.push(`https://${project}-git-${branch}-${process.env.VERCEL_ORG_ID}.vercel.app`);
+    }
+    // Add main production URL pattern
+    if (project) {
+      origins.push(`https://${project}.vercel.app`);
     }
   }
   
@@ -43,16 +48,46 @@ const getAllowedOrigins = (): string[] => {
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowedOrigins = getAllowedOrigins();
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (same-origin requests, mobile apps, curl)
+      // Same-origin requests don't send an Origin header, so this handles them
+      if (!origin) {
         callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+        return;
       }
+      
+      const allowedOrigins = getAllowedOrigins();
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      
+      // On Vercel, allow all *.vercel.app domains
+      // This handles production, preview, and branch deployments
+      if (process.env.VERCEL) {
+        try {
+          const originUrl = new URL(origin);
+          if (originUrl.hostname.endsWith('.vercel.app')) {
+            callback(null, true);
+            return;
+          }
+        } catch (e) {
+          // Invalid URL, continue to check other conditions
+        }
+      }
+      
+      // Log for debugging (only in development)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('CORS: Blocked origin:', origin);
+        console.log('CORS: Allowed origins:', allowedOrigins);
+      }
+      
+      callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   })
 );
 app.use(express.json());
