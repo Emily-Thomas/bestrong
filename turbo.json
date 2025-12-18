@@ -8,11 +8,72 @@
         "frontend/.next/**",
         "backend/dist/**",
         "!.next/cache/**"
+      ],
+      "env": [
+        "NODE_ENV",
+        "POSTGRES_URL",
+        "POSTGRES_PRISMA_URL",
+        "POSTGRES_URL_NON_POOLING",
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_DATABASE",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "DB_HOST",
+        "DB_PORT",
+        "DB_NAME",
+        "DB_USER",
+        "DB_PASSWORD",
+        "JWT_SECRET",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_SECRET_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_JWT_SECRET",
+        "FRONTEND_URL",
+        "VERCEL",
+        "VERCEL_URL",
+        "VERCEL_GIT_COMMIT_REF",
+        "VERCEL_PROJECT_NAME",
+        "VERCEL_ORG_ID"
       ]
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": [
+        "NODE_ENV",
+        "POSTGRES_URL",
+        "POSTGRES_PRISMA_URL",
+        "POSTGRES_URL_NON_POOLING",
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_DATABASE",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "DB_HOST",
+        "DB_PORT",
+        "DB_NAME",
+        "DB_USER",
+        "DB_PASSWORD",
+        "JWT_SECRET",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_SECRET_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_JWT_SECRET",
+        "FRONTEND_URL"
+      ]
     },
     "lint": {
       "dependsOn": ["^build"]
@@ -23,8 +84,28 @@
     },
     "migrate:vercel": {
       "cache": false,
-      "outputs": []
+      "outputs": [],
+      "env": [
+        "NODE_ENV",
+        "POSTGRES_URL",
+        "POSTGRES_PRISMA_URL",
+        "POSTGRES_URL_NON_POOLING",
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_DATABASE",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "DB_HOST",
+        "DB_PORT",
+        "DB_NAME",
+        "DB_USER",
+        "DB_PASSWORD",
+        "VERCEL",
+        "VERCEL_URL",
+        "VERCEL_GIT_COMMIT_REF",
+        "VERCEL_PROJECT_NAME",
+        "VERCEL_ORG_ID"
+      ]
     }
   }
 }
-
