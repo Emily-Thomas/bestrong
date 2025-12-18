@@ -1,8 +1,7 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build:vercel && npm run migrate:vercel",
+  "buildCommand": "turbo run build && turbo run migrate:vercel --filter=backend",
+  "installCommand": "npm install",
   "outputDirectory": "frontend/.next",
-  "installCommand": "npm install && cd frontend && npm install && cd ../backend && npm install",
   "rewrites": [
     {
       "source": "/api/(.*)",
