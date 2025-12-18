@@ -85,6 +85,7 @@ import pool from '../src/config/database';
 
 /**
  * Verify that the workouts table exists after migration
+ * If it doesn't exist, try to create it explicitly
  */
 async function verifyWorkoutsTable() {
   console.log('🔍 Verifying workouts table...\n');
@@ -125,17 +126,63 @@ async function verifyWorkoutsTable() {
         
         console.log(`✅ Found ${triggerResult.rows.length} triggers on workouts table`);
       } else {
-        console.warn('⚠️  Workouts table does not exist - migration may have failed');
+        console.warn('⚠️  Workouts table does not exist - attempting to create it...');
+        
+        // Try to create the workouts table explicitly
+        try {
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS workouts (
+              id SERIAL PRIMARY KEY,
+              recommendation_id INTEGER NOT NULL REFERENCES recommendations(id) ON DELETE CASCADE,
+              week_number INTEGER NOT NULL,
+              session_number INTEGER NOT NULL,
+              workout_name VARCHAR(255),
+              workout_data JSONB NOT NULL,
+              workout_reasoning TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(recommendation_id, week_number, session_number)
+            );
+          `);
+          
+          // Create indexes
+          await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_workouts_recommendation_id ON workouts(recommendation_id);
+          `);
+          
+          await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_workouts_week_session ON workouts(recommendation_id, week_number, session_number);
+          `);
+          
+          // Create trigger
+          await client.query(`
+            DROP TRIGGER IF EXISTS update_workouts_updated_at ON workouts;
+          `);
+          
+          await client.query(`
+            CREATE TRIGGER update_workouts_updated_at BEFORE UPDATE ON workouts
+              FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+          `);
+          
+          console.log('✅ Successfully created workouts table, indexes, and trigger');
+        } catch (createError) {
+          console.error('❌ Failed to create workouts table:', createError);
+          if (createError instanceof Error) {
+            console.error(`   Error: ${createError.message}`);
+          }
+          throw createError;
+        }
       }
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('❌ Error verifying workouts table:', error);
+    console.error('❌ Error verifying/creating workouts table:', error);
     if (error instanceof Error) {
       console.error('   Error message:', error.message);
     }
-    // Don't throw - this is just verification
+    // Don't throw - log the error but don't fail the deployment
+    // The table might exist but verification failed
   }
 }
 
