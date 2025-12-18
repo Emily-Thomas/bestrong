@@ -1,9 +1,19 @@
 'use client';
 
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ArrowLeft, Loader2, Save, Sparkles } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Navbar } from '@/components/Navbar';
+import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -17,7 +27,11 @@ import {
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { type CreateQuestionnaireInput, questionnairesApi } from '@/lib/api';
+import {
+  type CreateQuestionnaireInput,
+  questionnairesApi,
+  recommendationsApi,
+} from '@/lib/api';
 
 interface QuestionnaireData {
   // Section 1 - Starting Point
@@ -60,11 +74,17 @@ export default function QuestionnairePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [questionnaireId, setQuestionnaireId] = useState<number | null>(null);
+  const [hasExistingRecommendation, setHasExistingRecommendation] =
+    useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const loadQuestionnaire = async () => {
     const response = await questionnairesApi.getByClientId(clientId);
     if (response.success && response.data) {
       const q = response.data;
+      setQuestionnaireId(q.id);
       // Try to load from notes field (stored as JSON) or initialize empty
       try {
         if (q.notes) {
@@ -74,6 +94,11 @@ export default function QuestionnairePage() {
       } catch {
         // If notes is not JSON, start fresh
       }
+
+      // Check if recommendation exists for this questionnaire
+      const recResponse =
+        await recommendationsApi.getByQuestionnaireId(q.id);
+      setHasExistingRecommendation(recResponse.success && !!recResponse.data);
     }
     setLoading(false);
   };
@@ -95,61 +120,87 @@ export default function QuestionnairePage() {
     };
 
     const response = await questionnairesApi.create(questionnaireInput);
-    if (response.success) {
-      router.push(`/clients/${clientId}`);
+    if (response.success && response.data) {
+      const savedQuestionnaire = response.data;
+      setQuestionnaireId(savedQuestionnaire.id);
+
+      // Check if recommendation exists for this questionnaire
+      const recResponse = await recommendationsApi.getByQuestionnaireId(
+        savedQuestionnaire.id
+      );
+      const hasRec = recResponse.success && !!recResponse.data;
+      setHasExistingRecommendation(hasRec);
+
+      // Show dialog to generate/regenerate
+      setShowGenerateDialog(true);
     } else {
       setError(response.error || 'Failed to save questionnaire');
     }
     setSaving(false);
   };
 
+  const handleGeneratePlan = async () => {
+    if (!questionnaireId) return;
+
+    setGenerating(true);
+    setError('');
+
+    const response =
+      await recommendationsApi.generateFromQuestionnaire(questionnaireId);
+    if (response.success) {
+      setShowGenerateDialog(false);
+      router.push(`/clients/${clientId}`);
+    } else {
+      setError(response.error || 'Failed to generate training plan');
+      setGenerating(false);
+    }
+  };
+
+  const handleSkipGeneration = () => {
+    setShowGenerateDialog(false);
+    router.push(`/clients/${clientId}`);
+  };
+
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-background">
-          <Navbar />
-          <div className="container py-8">
-            <div className="flex items-center justify-center py-12">
+        <AppShell
+          title="Client Questionnaire"
+          description="Loading questionnaire..."
+        >
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
+        </AppShell>
       </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container py-8 max-w-4xl">
-          <div className="mb-8">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.back()}
-              className="mb-4"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-4xl font-bold tracking-tight mb-2">
-              Client Questionnaire
-            </h1>
-            <p className="text-muted-foreground">
-              Comprehensive assessment to create the perfect training plan
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <AppShell
+        title="Client Questionnaire"
+        description="Comprehensive assessment to create the perfect training plan"
+        action={
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        }
+      >
+        <div className="flex justify-center">
+          <div className="w-full max-w-4xl">
+            <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            {/* Section 1 - Starting Point */}
-            <Card className="border-border/50">
+              {/* Section 1 - Starting Point */}
+              <Card className="border-border/60">
               <CardHeader>
                 <CardTitle>Section 1 – Starting Point</CardTitle>
                 <CardDescription>
@@ -223,8 +274,8 @@ export default function QuestionnairePage() {
               </CardContent>
             </Card>
 
-            {/* Section 2 - Motivation & Mindset */}
-            <Card className="border-border/50">
+              {/* Section 2 - Motivation & Mindset */}
+              <Card className="border-border/60">
               <CardHeader>
                 <CardTitle>Section 2 – Motivation & Mindset</CardTitle>
                 <CardDescription>
@@ -298,8 +349,8 @@ export default function QuestionnairePage() {
               </CardContent>
             </Card>
 
-            {/* Section 3 - Body & Movement */}
-            <Card className="border-border/50">
+              {/* Section 3 - Body & Movement */}
+              <Card className="border-border/60">
               <CardHeader>
                 <CardTitle>Section 3 – Body & Movement</CardTitle>
                 <CardDescription>
@@ -354,8 +405,8 @@ export default function QuestionnairePage() {
               </CardContent>
             </Card>
 
-            {/* Section 4 - Nutrition & Recovery */}
-            <Card className="border-border/50">
+              {/* Section 4 - Nutrition & Recovery */}
+              <Card className="border-border/60">
               <CardHeader>
                 <CardTitle>Section 4 – Nutrition & Recovery</CardTitle>
                 <CardDescription>
@@ -425,8 +476,8 @@ export default function QuestionnairePage() {
               </CardContent>
             </Card>
 
-            {/* Section 5 - Identity & Self-Perception */}
-            <Card className="border-border/50">
+              {/* Section 5 - Identity & Self-Perception */}
+              <Card className="border-border/60">
               <CardHeader>
                 <CardTitle>Section 5 – Identity & Self-Perception</CardTitle>
                 <CardDescription>
@@ -515,31 +566,73 @@ export default function QuestionnairePage() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Questionnaire
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <AlertDialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {hasExistingRecommendation
+                  ? 'Regenerate Training Plan?'
+                  : 'Generate Training Plan?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {hasExistingRecommendation
+                  ? 'You already have a training plan for this questionnaire. Would you like to regenerate it based on the updated questionnaire responses?'
+                  : 'Would you like to generate an AI-powered training plan based on the questionnaire responses?'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={handleSkipGeneration}
+                disabled={generating}
               >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? (
+                Skip
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleGeneratePlan}
+                disabled={generating}
+              >
+                {generating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                    Generating...
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Questionnaire
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {hasExistingRecommendation ? 'Regenerate' : 'Generate'}
                   </>
                 )}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </AppShell>
     </ProtectedRoute>
   );
 }

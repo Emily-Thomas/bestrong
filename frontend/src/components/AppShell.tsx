@@ -16,6 +16,7 @@ interface AppShellProps {
   title?: string;
   description?: string;
   action?: React.ReactNode;
+  backAction?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -24,7 +25,7 @@ const navItems = [
   { href: '/clients', label: 'Clients', icon: Users },
 ];
 
-export function AppShell({ title, description, action, children }: AppShellProps) {
+export function AppShell({ title, description, action, backAction, children }: AppShellProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -107,17 +108,20 @@ export function AppShell({ title, description, action, children }: AppShellProps
         </header>
 
         <main className="flex-1 p-6 lg:p-8">
-          {(title || description || action) && (
-            <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                {title && (
-                  <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-                )}
-                {description && (
-                  <p className="text-sm text-muted-foreground">{description}</p>
-                )}
+          {(title || description || action || backAction) && (
+            <div className="mb-8">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1">
+                  {backAction && <div className="mb-2">{backAction}</div>}
+                  {title && (
+                    <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+                  )}
+                  {description && (
+                    <p className="text-sm text-muted-foreground">{description}</p>
+                  )}
+                </div>
+                {action && <div className="sm:ml-4">{action}</div>}
               </div>
-              {action}
             </div>
           )}
           <div className="space-y-6">{children}</div>

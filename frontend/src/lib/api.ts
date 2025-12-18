@@ -190,6 +190,10 @@ export const recommendationsApi = {
     apiClient.get<Recommendation>(`/recommendations/${id}`),
   getByClientId: (clientId: number) =>
     apiClient.get<Recommendation[]>(`/recommendations/client/${clientId}`),
+  getByQuestionnaireId: (questionnaireId: number) =>
+    apiClient.get<Recommendation>(
+      `/recommendations/questionnaire/${questionnaireId}`
+    ),
   update: (id: number, data: UpdateRecommendationInput) =>
     apiClient.put<Recommendation>(`/recommendations/${id}`, data),
   delete: (id: number) => apiClient.delete(`/recommendations/${id}`),

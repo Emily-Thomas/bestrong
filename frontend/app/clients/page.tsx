@@ -2,7 +2,8 @@
 
 import { Loader2, Plus, Users } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import {
 import { type Client, clientsApi } from '@/lib/api';
 
 export default function ClientsPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,12 +84,15 @@ export default function ClientsPage() {
                       <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">
                         Created
                       </th>
-                      <th className="px-4 py-3 text-right font-medium">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {clients.map((client) => (
-                      <tr key={client.id} className="hover:bg-accent/40 transition-colors">
+                      <tr
+                        key={client.id}
+                        onClick={() => router.push(`/clients/${client.id}`)}
+                        className="hover:bg-accent/40 transition-colors cursor-pointer"
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
@@ -109,11 +114,6 @@ export default function ClientsPage() {
                         </td>
                         <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">
                           {new Date(client.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button asChild size="sm" variant="ghost">
-                            <Link href={`/clients/${client.id}`}>Open</Link>
-                          </Button>
                         </td>
                       </tr>
                     ))}

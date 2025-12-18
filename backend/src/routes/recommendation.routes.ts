@@ -45,21 +45,11 @@ router.post(
         return;
       }
 
-      // Log questionnaire data for debugging
-      console.log('Questionnaire data:', {
-        id: questionnaire.id,
-        client_id: questionnaire.client_id,
-        has_notes: !!questionnaire.notes,
-        notes_preview: questionnaire.notes?.substring(0, 100),
-      });
-
       // Generate AI recommendation
       const aiAnalysis =
         await aiService.generateRecommendationWithAI(questionnaire);
 
-      console.log('Generated archetype:', aiAnalysis.type);
-
-      // Create recommendation record
+      // Create or update recommendation record (1:1 with questionnaire)
       const recommendationInput: CreateRecommendationInput = {
         client_id: questionnaire.client_id,
         questionnaire_id: questionnaireId,
@@ -71,10 +61,11 @@ router.post(
         ai_reasoning: aiAnalysis.reasoning,
       };
 
-      const recommendation = await recommendationService.createRecommendation(
-        recommendationInput,
-        req.user.userId
-      );
+      const recommendation =
+        await recommendationService.createOrUpdateRecommendationForQuestionnaire(
+          recommendationInput,
+          req.user.userId
+        );
 
       res.status(201).json({
         success: true,
@@ -124,7 +115,7 @@ router.post(
       const aiAnalysis =
         await aiService.generateRecommendationWithAI(questionnaire);
 
-      // Create recommendation record
+      // Create or update recommendation record (1:1 with questionnaire)
       const recommendationInput: CreateRecommendationInput = {
         client_id: clientId,
         questionnaire_id: questionnaire.id,
@@ -136,10 +127,11 @@ router.post(
         ai_reasoning: aiAnalysis.reasoning,
       };
 
-      const recommendation = await recommendationService.createRecommendation(
-        recommendationInput,
-        req.user.userId
-      );
+      const recommendation =
+        await recommendationService.createOrUpdateRecommendationForQuestionnaire(
+          recommendationInput,
+          req.user.userId
+        );
 
       res.status(201).json({
         success: true,
@@ -153,7 +145,66 @@ router.post(
   }
 );
 
-// Get recommendation by ID
+// Get all recommendations for a client
+router.get('/client/:clientId', async (req: Request, res: Response) => {
+  try {
+    const clientId = parseInt(req.params.clientId, 10);
+
+    if (Number.isNaN(clientId)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid client ID',
+      });
+      return;
+    }
+
+    const recommendations =
+      await recommendationService.getRecommendationsByClientId(clientId);
+
+    res.json({
+      success: true,
+      data: recommendations,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Get recommendation by questionnaire ID (must be before /:id route)
+router.get('/questionnaire/:questionnaireId', async (req: Request, res: Response) => {
+  try {
+    const questionnaireId = parseInt(req.params.questionnaireId, 10);
+
+    if (Number.isNaN(questionnaireId)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid questionnaire ID',
+      });
+      return;
+    }
+
+    const recommendation =
+      await recommendationService.getRecommendationByQuestionnaireId(
+        questionnaireId
+      );
+
+    if (!recommendation) {
+      res.status(404).json({
+        success: false,
+        error: 'Recommendation not found for this questionnaire',
+      });
+      return;
+    }
+
+    res.json({ success: true, data: recommendation });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Get recommendation by ID (must be last to avoid route conflicts)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -178,32 +229,6 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     res.json({ success: true, data: recommendation });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ success: false, error: message });
-  }
-});
-
-// Get all recommendations for a client
-router.get('/client/:clientId', async (req: Request, res: Response) => {
-  try {
-    const clientId = parseInt(req.params.clientId, 10);
-
-    if (Number.isNaN(clientId)) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid client ID',
-      });
-      return;
-    }
-
-    const recommendations =
-      await recommendationService.getRecommendationsByClientId(clientId);
-
-    res.json({
-      success: true,
-      data: recommendations,
-    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });
