@@ -154,3 +154,35 @@ DROP TRIGGER IF EXISTS update_workouts_updated_at ON workouts;
 CREATE TRIGGER update_workouts_updated_at BEFORE UPDATE ON workouts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Recommendation Generation Jobs (for async processing)
+CREATE TABLE IF NOT EXISTS recommendation_jobs (
+  id SERIAL PRIMARY KEY,
+  questionnaire_id INTEGER NOT NULL REFERENCES questionnaires(id) ON DELETE CASCADE,
+  client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  created_by INTEGER REFERENCES admin_users(id),
+  
+  -- Job status
+  status VARCHAR(50) DEFAULT 'pending', -- pending, processing, completed, failed
+  current_step VARCHAR(255), -- e.g., "Generating plan structure", "Generating workouts"
+  
+  -- Results
+  recommendation_id INTEGER REFERENCES recommendations(id),
+  error_message TEXT,
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for recommendation_jobs
+CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_status ON recommendation_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_questionnaire_id ON recommendation_jobs(questionnaire_id);
+CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_client_id ON recommendation_jobs(client_id);
+
+-- Trigger to auto-update updated_at for recommendation_jobs
+DROP TRIGGER IF EXISTS update_recommendation_jobs_updated_at ON recommendation_jobs;
+CREATE TRIGGER update_recommendation_jobs_updated_at BEFORE UPDATE ON recommendation_jobs
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+

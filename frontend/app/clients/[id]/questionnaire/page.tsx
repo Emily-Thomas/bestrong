@@ -1,16 +1,6 @@
 'use client';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { ArrowLeft, Loader2, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
@@ -27,7 +17,6 @@ import {
 import {
   type CreateQuestionnaireInput,
   questionnairesApi,
-  recommendationsApi,
 } from '@/lib/api';
 import { QuestionComponent } from './QuestionComponents';
 import { QUESTIONNAIRE_SECTIONS } from './config';
@@ -42,11 +31,8 @@ export default function QuestionnairePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [questionnaireId, setQuestionnaireId] = useState<number | null>(null);
-  const [hasExistingRecommendation, setHasExistingRecommendation] =
-    useState(false);
-  const [generating, setGenerating] = useState(false);
+
 
   const loadQuestionnaire = async () => {
     const response = await questionnairesApi.getByClientId(clientId);
@@ -63,10 +49,6 @@ export default function QuestionnairePage() {
         // If notes is not JSON, start fresh
       }
 
-      // Check if recommendation exists for this questionnaire
-      const recResponse =
-        await recommendationsApi.getByQuestionnaireId(q.id);
-      setHasExistingRecommendation(recResponse.success && !!recResponse.data);
     }
     setLoading(false);
   };
@@ -91,42 +73,12 @@ export default function QuestionnairePage() {
     if (response.success && response.data) {
       const savedQuestionnaire = response.data;
       setQuestionnaireId(savedQuestionnaire.id);
-
-      // Check if recommendation exists for this questionnaire
-      const recResponse = await recommendationsApi.getByQuestionnaireId(
-        savedQuestionnaire.id
-      );
-      const hasRec = recResponse.success && !!recResponse.data;
-      setHasExistingRecommendation(hasRec);
-
-      // Show dialog to generate/regenerate
-      setShowGenerateDialog(true);
-    } else {
-      setError(response.error || 'Failed to save questionnaire');
-    }
-    setSaving(false);
-  };
-
-  const handleGeneratePlan = async () => {
-    if (!questionnaireId) return;
-
-    setGenerating(true);
-    setError('');
-
-    const response =
-      await recommendationsApi.generateFromQuestionnaire(questionnaireId);
-    if (response.success) {
-      setShowGenerateDialog(false);
+      // Redirect back to client page after saving
       router.push(`/clients/${clientId}`);
     } else {
-      setError(response.error || 'Failed to generate training plan');
-      setGenerating(false);
+      setError(response.error || 'Failed to save questionnaire');
+      setSaving(false);
     }
-  };
-
-  const handleSkipGeneration = () => {
-    setShowGenerateDialog(false);
-    router.push(`/clients/${clientId}`);
   };
 
   if (loading) {
@@ -159,7 +111,7 @@ export default function QuestionnairePage() {
         }
       >
         <div className="flex justify-center">
-          <div className="w-full max-w-4xl">
+          <div className="w-full max-w-4xl space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <Alert variant="destructive">
@@ -211,47 +163,6 @@ export default function QuestionnairePage() {
             </form>
           </div>
         </div>
-
-        <AlertDialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {hasExistingRecommendation
-                  ? 'Regenerate Training Plan?'
-                  : 'Generate Training Plan?'}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {hasExistingRecommendation
-                  ? 'You already have a training plan for this questionnaire. Would you like to regenerate it based on the updated questionnaire responses?'
-                  : 'Would you like to generate an AI-powered training plan based on the questionnaire responses?'}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                onClick={handleSkipGeneration}
-                disabled={generating}
-              >
-                Skip
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleGeneratePlan}
-                disabled={generating}
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    {hasExistingRecommendation ? 'Regenerate' : 'Generate'}
-                  </>
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </AppShell>
     </ProtectedRoute>
   );

@@ -186,6 +186,107 @@ async function verifyWorkoutsTable() {
   }
 }
 
+async function verifyRecommendationJobsTable() {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'recommendation_jobs'
+        );
+      `);
+
+      if (result.rows[0].exists) {
+        console.log('✅ Recommendation jobs table exists');
+        
+        // Check if indexes exist
+        const indexResult = await client.query(`
+          SELECT indexname 
+          FROM pg_indexes 
+          WHERE tablename = 'recommendation_jobs' 
+          AND schemaname = 'public';
+        `);
+        
+        console.log(`✅ Found ${indexResult.rows.length} indexes on recommendation_jobs table`);
+        
+        // Check if trigger exists
+        const triggerResult = await client.query(`
+          SELECT trigger_name 
+          FROM information_schema.triggers 
+          WHERE event_object_table = 'recommendation_jobs' 
+          AND trigger_schema = 'public';
+        `);
+        
+        console.log(`✅ Found ${triggerResult.rows.length} triggers on recommendation_jobs table`);
+      } else {
+        console.warn('⚠️  Recommendation jobs table does not exist - attempting to create it...');
+        
+        // Try to create the recommendation_jobs table explicitly
+        try {
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS recommendation_jobs (
+              id SERIAL PRIMARY KEY,
+              questionnaire_id INTEGER NOT NULL REFERENCES questionnaires(id) ON DELETE CASCADE,
+              client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+              created_by INTEGER REFERENCES admin_users(id),
+              status VARCHAR(50) DEFAULT 'pending',
+              current_step VARCHAR(255),
+              recommendation_id INTEGER REFERENCES recommendations(id),
+              error_message TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              started_at TIMESTAMP,
+              completed_at TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+          
+          // Create indexes
+          await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_status ON recommendation_jobs(status);
+          `);
+          
+          await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_questionnaire_id ON recommendation_jobs(questionnaire_id);
+          `);
+          
+          await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_client_id ON recommendation_jobs(client_id);
+          `);
+          
+          // Create trigger
+          await client.query(`
+            DROP TRIGGER IF EXISTS update_recommendation_jobs_updated_at ON recommendation_jobs;
+          `);
+          
+          await client.query(`
+            CREATE TRIGGER update_recommendation_jobs_updated_at BEFORE UPDATE ON recommendation_jobs
+              FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+          `);
+          
+          console.log('✅ Successfully created recommendation_jobs table, indexes, and trigger');
+        } catch (createError) {
+          console.error('❌ Failed to create recommendation_jobs table:', createError);
+          if (createError instanceof Error) {
+            console.error(`   Error: ${createError.message}`);
+          }
+          throw createError;
+        }
+      }
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('❌ Error verifying/creating recommendation_jobs table:', error);
+    if (error instanceof Error) {
+      console.error('   Error message:', error.message);
+    }
+    // Don't throw - log the error but don't fail the deployment
+    // The table might exist but verification failed
+  }
+}
+
 async function main() {
   console.log('🔄 Running database migrations...\n');
   
@@ -218,6 +319,9 @@ async function main() {
     
     // Verify that the workouts table was created
     await verifyWorkoutsTable();
+    
+    // Verify that the recommendation_jobs table was created
+    await verifyRecommendationJobsTable();
     
     process.exit(0);
   } catch (error) {

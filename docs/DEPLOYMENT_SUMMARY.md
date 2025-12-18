@@ -55,8 +55,10 @@ bestrong/
 │           └── api.ts              # Updated API client
 ├── vercel.json                     # Vercel configuration
 ├── .vercelignore                   # Files to ignore in deployment
-├── VERCEL_DEPLOYMENT.md            # Detailed deployment guide
-└── DEPLOYMENT_SUMMARY.md           # This file
+├── docs/
+│   ├── VERCEL_DEPLOYMENT.md        # Detailed deployment guide
+│   └── DEPLOYMENT_SUMMARY.md       # This file
+└── README.md                        # Project README
 ```
 
 ## Environment Variables Required
@@ -106,7 +108,7 @@ bestrong/
 ## Next Steps
 
 1. Create a Vercel account and project
-2. Set up Supabase database (see VERCEL_DEPLOYMENT.md for details)
+2. Set up Supabase database (see docs/VERCEL_DEPLOYMENT.md for details)
 3. Add environment variables (DATABASE_URL or SUPABASE_URL)
 4. Deploy the application
 5. Verify deployment by checking:
@@ -114,5 +116,5 @@ bestrong/
    - `/api/api` endpoint
    - Login page functionality
 
-See `VERCEL_DEPLOYMENT.md` for detailed deployment instructions.
+See `docs/VERCEL_DEPLOYMENT.md` for detailed deployment instructions.
 

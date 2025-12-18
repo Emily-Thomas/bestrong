@@ -178,6 +178,21 @@ export const questionnairesApi = {
 
 // Recommendations API
 export const recommendationsApi = {
+  // Async job-based generation (new, recommended)
+  startGenerationFromQuestionnaire: (questionnaireId: number) =>
+    apiClient.post<{ job_id: number }>(
+      `/recommendations/generate/${questionnaireId}/start`
+    ),
+  startGenerationFromClient: (clientId: number) =>
+    apiClient.post<{ job_id: number }>(
+      `/recommendations/generate/client/${clientId}/start`
+    ),
+  getJobStatus: (jobId: number) =>
+    apiClient.get<RecommendationJob>(`/recommendations/generate/job/${jobId}`),
+  getLatestJobByQuestionnaireId: (questionnaireId: number) =>
+    apiClient.get<RecommendationJob>(`/recommendations/generate/questionnaire/${questionnaireId}/job`),
+  
+  // Legacy blocking generation (deprecated, kept for backward compatibility)
   generateFromQuestionnaire: (questionnaireId: number) =>
     apiClient.post<Recommendation>(
       `/recommendations/generate/${questionnaireId}`
@@ -186,6 +201,8 @@ export const recommendationsApi = {
     apiClient.post<Recommendation>(
       `/recommendations/generate/client/${clientId}`
     ),
+  
+  // Standard CRUD operations
   getById: (id: number) =>
     apiClient.get<Recommendation>(`/recommendations/${id}`),
   getByClientId: (clientId: number) =>
@@ -320,4 +337,19 @@ export interface UpdateRecommendationInput {
   training_style?: string;
   plan_structure?: Record<string, unknown>;
   status?: 'draft' | 'approved' | 'active' | 'completed';
+}
+
+export interface RecommendationJob {
+  id: number;
+  questionnaire_id: number;
+  client_id: number;
+  created_by?: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  current_step?: string;
+  recommendation_id?: number;
+  error_message?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  updated_at: string;
 }

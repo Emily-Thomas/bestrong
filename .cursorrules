@@ -1,0 +1,184 @@
+# Cursor Agent Configuration for BeStrong
+
+This file guides the AI assistant on how to structure and organize code in this codebase.
+
+## Component Architecture
+
+### Page Component Structure
+- **Break down large page components into smaller, focused components**
+- **Create a `components/` folder next to page files** (e.g., `app/clients/[id]/components/`)
+- **Compartmentalize logic** - each component should manage its own state and logic
+- **Keep page files focused on:**
+  - Data loading and fetching
+  - Overall page layout
+  - Coordinating between components via callbacks
+  - High-level state management (shared data)
+
+### Component Organization
+- Extract sections into separate components (e.g., `ClientInformationSection`, `QuestionnaireSection`, `TrainingPlansSection`)
+- Each component should be self-contained with its own:
+  - State management
+  - Event handlers
+  - UI rendering
+  - Error handling (when appropriate)
+- Pass data down via props and communicate up via callbacks
+
+### Example Structure
+```
+app/clients/[id]/
+  ├── page.tsx (orchestration, data loading, layout)
+  └── components/
+      ├── ClientInformationSection.tsx
+      ├── QuestionnaireSection.tsx
+      └── TrainingPlansSection.tsx
+```
+
+## Code Quality Standards
+
+### State Management
+- Minimize state in page components - move it to child components when possible
+- Use callbacks (`onUpdate`, `onChange`) to communicate from child to parent
+- Avoid prop drilling - if data needs to go deep, consider context or restructuring
+
+### Async Operations
+- Use async/background job processing for long-running operations (30+ seconds)
+- Polling intervals should be reasonable (15 seconds default)
+- Show progress indicators with current step, not percentages
+- Allow users to navigate away during async operations
+
+### Error Handling
+- Remove debug logging (`console.log`, `console.error`) from production code
+- Handle errors gracefully with user-friendly messages
+- Don't expose technical error details to end users
+
+### API Patterns
+- Use async job-based endpoints for long operations
+- Implement job status polling with reasonable intervals
+- Check for existing jobs on page load to resume progress
+- Show completion banners instead of auto-redirecting
+
+## File Organization
+
+### Documentation
+- **All documentation files** (except README.md files) go in `docs/` folder
+- Specifications, analysis, and architecture docs belong in `docs/`
+- README.md files stay at their respective locations (root, frontend/, backend/)
+- Examples:
+  - `docs/DATABASE_MIGRATION_SPEC.md`
+  - `docs/ORM_ANALYSIS.md`
+  - `docs/ARCHITECTURE.md`
+  - `README.md` (root - stays in root)
+
+### Backend
+- Services in `backend/src/services/`
+- Routes in `backend/src/routes/`
+- Database migrations in `backend/migrations/` (versioned SQL files)
+- Database seeds in `backend/seeds/development/` (dev only)
+- Migration scripts in `backend/scripts/` (migrate.ts, migrate-vercel.ts, seed.ts)
+- Keep services focused on single responsibilities
+
+### Frontend
+- Page components in `app/` directory
+- Shared components in `components/`
+- API client in `lib/api.ts`
+- Types defined near where they're used or in `lib/api.ts` for shared types
+
+## Database Migrations
+
+**See `docs/DATABASE_MIGRATION_SPEC.md` for complete migration strategy.**
+
+### Key Principles
+- **Versioned Migrations**: Each migration is a separate file in `backend/migrations/` with format `{sequence}_{description}.sql`
+- **Migration Tracking**: Use `schema_migrations` table to track applied migrations
+- **Idempotency**: All migrations must use `IF NOT EXISTS`, `DROP ... IF EXISTS`, etc.
+- **Separation**: Migrations (schema) are separate from seeds (data)
+- **Transactions**: Wrap migrations in `BEGIN;` / `COMMIT;` for atomicity
+
+### Migration Workflow
+1. Create migration file: `backend/migrations/004_description.sql`
+2. Use idempotent SQL statements
+3. Include header comments (version, description, date)
+4. Test locally with `npm run migrate`
+5. Migrations run automatically on Vercel deployment via `migrate:vercel` script
+
+### Seeds
+- Seeds go in `backend/seeds/development/` (never in production)
+- Seeds are idempotent (check before inserting)
+- Run seeds locally with `npm run seed` (only in development)
+- **Never run seeds in production automatically**
+
+### File Structure
+```
+backend/
+├── migrations/          # Schema changes (versioned)
+│   ├── 001_initial_schema.sql
+│   ├── 002_add_workouts_table.sql
+│   └── ...
+├── seeds/                # Data (environment-specific)
+│   ├── development/
+│   └── production/
+└── scripts/
+    ├── migrate.ts        # Local migration runner
+    ├── migrate-vercel.ts # Production migration runner
+    └── seed.ts           # Seed runner (dev only)
+```
+
+## Code Style
+
+### TypeScript
+- Use explicit types for function parameters and returns
+- Avoid `any` types - use proper types or `unknown`
+- Define interfaces for complex data structures
+
+### React
+- Use functional components with hooks
+- Prefer `useCallback` for functions passed as props
+- Use `useEffect` for side effects with proper dependency arrays
+- Keep components small and focused
+
+### Error Messages
+- User-facing: Clear, actionable messages
+- Developer-facing: Detailed context in logs (but not in production UI)
+
+## Performance
+
+- Poll API endpoints at reasonable intervals (15 seconds for job status)
+- Don't block UI for long operations - use async/background processing
+- Minimize unnecessary re-renders with proper memoization
+- Load data efficiently (parallel requests when possible)
+
+## Testing Considerations
+
+- Components should be testable in isolation
+- Keep business logic separate from UI logic
+- Use dependency injection patterns for API calls (pass as props or context)
+
+## When Adding New Features
+
+1. **Break down into components** if the feature is substantial
+2. **Create a components folder** if the page will have multiple sections
+3. **Move logic to components** - keep page file as orchestrator
+4. **Use async jobs** for operations that take >30 seconds
+5. **Add proper error handling** without exposing technical details
+6. **Remove debug logging** before committing
+
+## Specific Patterns
+
+### Job-Based Async Operations
+- Create job in database
+- Return job ID immediately (202 status)
+- Poll job status endpoint every 15 seconds
+- Show progress with current step
+- Show completion banner (don't auto-redirect)
+- Check for existing jobs on page load
+
+### Component Communication
+- Parent → Child: Pass data via props
+- Child → Parent: Use callback functions (`onUpdate`, `onChange`, etc.)
+- Sibling → Sibling: Lift state to common parent or use context
+
+### Route Organization
+- More specific routes come before general routes
+- Example: `/generate/questionnaire/:id/job` before `/generate/job/:id`
+- Use clear, RESTful naming conventions
+
