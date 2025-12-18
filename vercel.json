@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "turbo run build && turbo run migrate:vercel --filter=backend",
   "framework": "nextjs",
   "outputDirectory": "frontend/.next",
   "rewrites": [
