@@ -5,8 +5,8 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [
-        "frontend/.next/**",
-        "backend/dist/**",
+        ".next/**",
+        "dist/**",
         "!.next/cache/**"
       ],
       "env": [
