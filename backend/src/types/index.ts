@@ -156,6 +156,76 @@ export interface UpdateRecommendationInput {
   status?: 'draft' | 'approved' | 'active' | 'completed';
 }
 
+// Workout Types
+export interface Exercise {
+  name: string;
+  sets?: number;
+  reps?: string | number; // Can be "8-10" or 8
+  weight?: string; // Can be "bodyweight", "RPE 7", "50% 1RM", etc.
+  rest_seconds?: number;
+  notes?: string;
+  tempo?: string; // e.g., "2-0-1-0" for tempo training
+  rpe?: number; // Rate of Perceived Exertion (1-10)
+}
+
+export interface WorkoutData {
+  exercises: Exercise[];
+  warmup?: Exercise[];
+  cooldown?: Exercise[];
+  total_duration_minutes?: number;
+  focus_areas?: string[]; // e.g., ["upper body", "push", "strength"]
+  notes?: string;
+}
+
+export interface Workout {
+  id: number;
+  recommendation_id: number;
+  week_number: number;
+  session_number: number;
+  workout_name?: string;
+  workout_data: WorkoutData;
+  workout_reasoning?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CreateWorkoutInput {
+  recommendation_id: number;
+  week_number: number;
+  session_number: number;
+  workout_name?: string;
+  workout_data: WorkoutData;
+  workout_reasoning?: string;
+}
+
+// LLM Response Types
+export interface LLMRecommendationResponse {
+  client_type: string;
+  client_type_reasoning: string;
+  sessions_per_week: number;
+  session_length_minutes: number;
+  training_style: string;
+  plan_structure: {
+    archetype: string;
+    description: string;
+    weeks: number;
+    training_methods: string[];
+    weekly_structure: Record<string, string>;
+    progression_strategy?: string;
+    periodization_approach?: string;
+  };
+  ai_reasoning: string;
+  workouts: LLMWorkoutResponse[];
+}
+
+export interface LLMWorkoutResponse {
+  week_number: number;
+  session_number: number;
+  workout_name: string;
+  workout_data: WorkoutData;
+  workout_reasoning: string;
+}
+
 // JWT Payload
 export interface JWTPayload {
   userId: number;

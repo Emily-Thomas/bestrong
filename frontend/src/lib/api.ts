@@ -197,6 +197,8 @@ export const recommendationsApi = {
   update: (id: number, data: UpdateRecommendationInput) =>
     apiClient.put<Recommendation>(`/recommendations/${id}`, data),
   delete: (id: number) => apiClient.delete(`/recommendations/${id}`),
+  getWorkouts: (id: number) =>
+    apiClient.get<Workout[]>(`/recommendations/${id}/workouts`),
 };
 
 // Types
@@ -262,6 +264,38 @@ export interface CreateQuestionnaireInput {
   notes?: string;
 }
 
+export interface Exercise {
+  name: string;
+  sets?: number;
+  reps?: string | number;
+  weight?: string;
+  rest_seconds?: number;
+  notes?: string;
+  tempo?: string;
+  rpe?: number;
+}
+
+export interface WorkoutData {
+  exercises: Exercise[];
+  warmup?: Exercise[];
+  cooldown?: Exercise[];
+  total_duration_minutes?: number;
+  focus_areas?: string[];
+  notes?: string;
+}
+
+export interface Workout {
+  id: number;
+  recommendation_id: number;
+  week_number: number;
+  session_number: number;
+  workout_name?: string;
+  workout_data: WorkoutData;
+  workout_reasoning?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Recommendation {
   id: number;
   client_id: number;
@@ -277,6 +311,7 @@ export interface Recommendation {
   is_edited: boolean;
   created_at: string;
   updated_at: string;
+  workouts?: Workout[]; // Optional, included when fetching recommendation
 }
 
 export interface UpdateRecommendationInput {

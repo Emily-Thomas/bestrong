@@ -3,7 +3,9 @@ import type {
   CreateRecommendationInput,
   Recommendation,
   UpdateRecommendationInput,
+  CreateWorkoutInput,
 } from '../types';
+import * as workoutService from './workout.service';
 
 export async function createRecommendation(
   input: CreateRecommendationInput,
@@ -187,14 +189,27 @@ export async function deleteRecommendation(id: number): Promise<boolean> {
  * Create or update a recommendation for a questionnaire.
  * If a recommendation exists for the questionnaire, it updates it.
  * Otherwise, creates a new one.
+ * Optionally creates workouts if provided.
  */
 export async function createOrUpdateRecommendationForQuestionnaire(
   input: CreateRecommendationInput,
-  createdBy: number
+  createdBy: number,
+  workouts?: CreateWorkoutInput[]
 ): Promise<Recommendation> {
   if (!input.questionnaire_id) {
     // If no questionnaire_id, just create a new one
-    return createRecommendation(input, createdBy);
+    const recommendation = await createRecommendation(input, createdBy);
+    
+    // Create workouts if provided
+    if (workouts && workouts.length > 0) {
+      const workoutsWithRecId = workouts.map((w) => ({
+        ...w,
+        recommendation_id: recommendation.id,
+      }));
+      await workoutService.createWorkouts(workoutsWithRecId);
+    }
+    
+    return recommendation;
   }
 
   // Check if recommendation exists for this questionnaire
@@ -203,6 +218,11 @@ export async function createOrUpdateRecommendationForQuestionnaire(
   );
 
   if (existing) {
+    // Delete existing workouts if we're regenerating
+    if (workouts && workouts.length > 0) {
+      await workoutService.deleteWorkoutsByRecommendationId(existing.id);
+    }
+
     // Update existing recommendation
     // For regeneration, we want to update AI reasoning but not mark as manually edited
     // So we'll do a direct update without going through updateRecommendation
@@ -237,9 +257,30 @@ export async function createOrUpdateRecommendationForQuestionnaire(
     if (rec && typeof rec.plan_structure === 'string') {
       rec.plan_structure = JSON.parse(rec.plan_structure);
     }
+
+    // Create workouts if provided
+    if (workouts && workouts.length > 0) {
+      const workoutsWithRecId = workouts.map((w) => ({
+        ...w,
+        recommendation_id: rec.id,
+      }));
+      await workoutService.createWorkouts(workoutsWithRecId);
+    }
+
     return rec;
   } else {
     // Create new recommendation
-    return createRecommendation(input, createdBy);
+    const recommendation = await createRecommendation(input, createdBy);
+    
+    // Create workouts if provided
+    if (workouts && workouts.length > 0) {
+      const workoutsWithRecId = workouts.map((w) => ({
+        ...w,
+        recommendation_id: recommendation.id,
+      }));
+      await workoutService.createWorkouts(workoutsWithRecId);
+    }
+    
+    return recommendation;
   }
 }

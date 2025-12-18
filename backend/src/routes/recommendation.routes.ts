@@ -3,9 +3,11 @@ import { authenticateToken } from '../middleware/auth';
 import * as aiService from '../services/ai.service';
 import * as questionnaireService from '../services/questionnaire.service';
 import * as recommendationService from '../services/recommendation.service';
+import * as workoutService from '../services/workout.service';
 import type {
   CreateRecommendationInput,
   UpdateRecommendationInput,
+  CreateWorkoutInput,
 } from '../types';
 
 const router = Router();
@@ -45,7 +47,7 @@ router.post(
         return;
       }
 
-      // Generate AI recommendation
+      // Generate AI recommendation with workouts
       const aiAnalysis =
         await aiService.generateRecommendationWithAI(questionnaire);
 
@@ -53,23 +55,42 @@ router.post(
       const recommendationInput: CreateRecommendationInput = {
         client_id: questionnaire.client_id,
         questionnaire_id: questionnaireId,
-        client_type: aiAnalysis.type,
-        sessions_per_week: aiAnalysis.sessionsPerWeek,
-        session_length_minutes: aiAnalysis.sessionLength,
-        training_style: aiAnalysis.trainingStyle,
-        plan_structure: aiAnalysis.planStructure,
-        ai_reasoning: aiAnalysis.reasoning,
+        client_type: aiAnalysis.client_type,
+        sessions_per_week: aiAnalysis.sessions_per_week,
+        session_length_minutes: aiAnalysis.session_length_minutes,
+        training_style: aiAnalysis.training_style,
+        plan_structure: aiAnalysis.plan_structure,
+        ai_reasoning: aiAnalysis.ai_reasoning,
       };
+
+      // Convert LLM workout responses to CreateWorkoutInput format
+      const workouts: CreateWorkoutInput[] = aiAnalysis.workouts.map((w) => ({
+        recommendation_id: 0, // Will be set after recommendation is created
+        week_number: w.week_number,
+        session_number: w.session_number,
+        workout_name: w.workout_name,
+        workout_data: w.workout_data,
+        workout_reasoning: w.workout_reasoning,
+      }));
 
       const recommendation =
         await recommendationService.createOrUpdateRecommendationForQuestionnaire(
           recommendationInput,
-          req.user.userId
+          req.user.userId,
+          workouts
         );
+
+      // Fetch the created workouts to include in response
+      const createdWorkouts = await workoutService.getWorkoutsByRecommendationId(
+        recommendation.id
+      );
 
       res.status(201).json({
         success: true,
-        data: recommendation,
+        data: {
+          ...recommendation,
+          workouts: createdWorkouts,
+        },
         message: 'Recommendation generated successfully',
       });
     } catch (error) {
@@ -111,7 +132,7 @@ router.post(
         return;
       }
 
-      // Generate AI recommendation
+      // Generate AI recommendation with workouts
       const aiAnalysis =
         await aiService.generateRecommendationWithAI(questionnaire);
 
@@ -119,23 +140,42 @@ router.post(
       const recommendationInput: CreateRecommendationInput = {
         client_id: clientId,
         questionnaire_id: questionnaire.id,
-        client_type: aiAnalysis.type,
-        sessions_per_week: aiAnalysis.sessionsPerWeek,
-        session_length_minutes: aiAnalysis.sessionLength,
-        training_style: aiAnalysis.trainingStyle,
-        plan_structure: aiAnalysis.planStructure,
-        ai_reasoning: aiAnalysis.reasoning,
+        client_type: aiAnalysis.client_type,
+        sessions_per_week: aiAnalysis.sessions_per_week,
+        session_length_minutes: aiAnalysis.session_length_minutes,
+        training_style: aiAnalysis.training_style,
+        plan_structure: aiAnalysis.plan_structure,
+        ai_reasoning: aiAnalysis.ai_reasoning,
       };
+
+      // Convert LLM workout responses to CreateWorkoutInput format
+      const workouts: CreateWorkoutInput[] = aiAnalysis.workouts.map((w) => ({
+        recommendation_id: 0, // Will be set after recommendation is created
+        week_number: w.week_number,
+        session_number: w.session_number,
+        workout_name: w.workout_name,
+        workout_data: w.workout_data,
+        workout_reasoning: w.workout_reasoning,
+      }));
 
       const recommendation =
         await recommendationService.createOrUpdateRecommendationForQuestionnaire(
           recommendationInput,
-          req.user.userId
+          req.user.userId,
+          workouts
         );
+
+      // Fetch the created workouts to include in response
+      const createdWorkouts = await workoutService.getWorkoutsByRecommendationId(
+        recommendation.id
+      );
 
       res.status(201).json({
         success: true,
-        data: recommendation,
+        data: {
+          ...recommendation,
+          workouts: createdWorkouts,
+        },
         message: 'Recommendation generated successfully',
       });
     } catch (error) {
@@ -197,7 +237,18 @@ router.get('/questionnaire/:questionnaireId', async (req: Request, res: Response
       return;
     }
 
-    res.json({ success: true, data: recommendation });
+    // Fetch workouts for this recommendation
+    const workouts = await workoutService.getWorkoutsByRecommendationId(
+      recommendation.id
+    );
+
+    res.json({
+      success: true,
+      data: {
+        ...recommendation,
+        workouts,
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });
@@ -228,7 +279,16 @@ router.get('/:id', async (req: Request, res: Response) => {
       return;
     }
 
-    res.json({ success: true, data: recommendation });
+    // Fetch workouts for this recommendation
+    const workouts = await workoutService.getWorkoutsByRecommendationId(id);
+
+    res.json({
+      success: true,
+      data: {
+        ...recommendation,
+        workouts,
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });
@@ -305,6 +365,43 @@ router.delete('/:id', async (req: Request, res: Response) => {
     res.json({
       success: true,
       message: 'Recommendation deleted successfully',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Get workouts for a recommendation
+router.get('/:id/workouts', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    if (Number.isNaN(id)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid recommendation ID',
+      });
+      return;
+    }
+
+    // Verify recommendation exists
+    const recommendation =
+      await recommendationService.getRecommendationById(id);
+
+    if (!recommendation) {
+      res.status(404).json({
+        success: false,
+        error: 'Recommendation not found',
+      });
+      return;
+    }
+
+    const workouts = await workoutService.getWorkoutsByRecommendationId(id);
+
+    res.json({
+      success: true,
+      data: workouts,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

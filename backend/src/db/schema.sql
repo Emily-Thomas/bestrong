@@ -95,12 +95,38 @@ CREATE TABLE IF NOT EXISTS recommendation_edits (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Workouts (individual workout sessions within a recommendation)
+CREATE TABLE IF NOT EXISTS workouts (
+  id SERIAL PRIMARY KEY,
+  recommendation_id INTEGER NOT NULL REFERENCES recommendations(id) ON DELETE CASCADE,
+  
+  -- Workout metadata
+  week_number INTEGER NOT NULL,
+  session_number INTEGER NOT NULL, -- Session number within the week (1, 2, 3, etc.)
+  workout_name VARCHAR(255), -- Optional name for the workout
+  
+  -- Workout structure (stored as JSON)
+  -- Contains: exercises array with name, sets, reps, weight, rest, notes, etc.
+  workout_data JSONB NOT NULL,
+  
+  -- AI reasoning for this specific workout
+  workout_reasoning TEXT,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Ensure unique workout per session
+  UNIQUE(recommendation_id, week_number, session_number)
+);
+
 -- Indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_clients_created_by ON clients(created_by);
 CREATE INDEX IF NOT EXISTS idx_questionnaires_client_id ON questionnaires(client_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_client_id ON recommendations(client_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_status ON recommendations(status);
 CREATE INDEX IF NOT EXISTS idx_recommendation_edits_recommendation_id ON recommendation_edits(recommendation_id);
+CREATE INDEX IF NOT EXISTS idx_workouts_recommendation_id ON workouts(recommendation_id);
+CREATE INDEX IF NOT EXISTS idx_workouts_week_session ON workouts(recommendation_id, week_number, session_number);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -122,5 +148,8 @@ CREATE TRIGGER update_questionnaires_updated_at BEFORE UPDATE ON questionnaires
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_recommendations_updated_at BEFORE UPDATE ON recommendations
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_workouts_updated_at BEFORE UPDATE ON workouts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
