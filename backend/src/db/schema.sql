@@ -150,6 +150,7 @@ CREATE TRIGGER update_questionnaires_updated_at BEFORE UPDATE ON questionnaires
 CREATE TRIGGER update_recommendations_updated_at BEFORE UPDATE ON recommendations
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_workouts_updated_at ON workouts;
 CREATE TRIGGER update_workouts_updated_at BEFORE UPDATE ON workouts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
