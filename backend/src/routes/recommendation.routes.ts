@@ -23,76 +23,10 @@ const router = Router();
 router.use(authenticateToken);
 
 /**
- * Trigger job processing via separate serverless function
- * This ensures the job runs in a separate function context with longer timeout
- */
-function triggerJobProcessing(jobId: number): void {
-  // Get the API URL - construct from Vercel env vars or use environment variable
-  let apiUrl: string;
-  
-  if (process.env.NODE_ENV !== 'production') {
-    // In development, use localhost
-    apiUrl = 'http://localhost:3000';
-  } else {
-    // In production on Vercel
-    // Try VERCEL_URL first (available in serverless functions)
-    if (process.env.VERCEL_URL) {
-      apiUrl = `https://${process.env.VERCEL_URL}`;
-    } else if (process.env.API_URL) {
-      apiUrl = process.env.API_URL;
-    } else {
-      // Fallback: construct from project name
-      const projectName = process.env.VERCEL_PROJECT_NAME;
-      if (projectName) {
-        apiUrl = `https://${projectName}.vercel.app`;
-      } else {
-        console.error('Unable to determine API URL for job processing');
-        // Fall back to direct processing in this case
-        if (process.env.NODE_ENV !== 'production') {
-          processRecommendationJob(jobId).catch((err) => {
-            console.error(`Error in fallback processing for job ${jobId}:`, err);
-          });
-        }
-        return;
-      }
-    }
-  }
-  
-  const processJobUrl = `${apiUrl}/api/process-job`;
-  
-  // Make HTTP request to trigger job processing (fire-and-forget)
-  // Don't await - let it run in the background
-  fetch(processJobUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ jobId }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        console.error(`Failed to trigger job processing for job ${jobId}: ${response.status}`);
-      } else {
-        console.log(`✅ Triggered job processing for job ${jobId}`);
-      }
-    })
-    .catch((error) => {
-      console.error(`❌ Error triggering job processing for job ${jobId}:`, error);
-      // Fall back to direct processing in development
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`Falling back to direct processing for job ${jobId}`);
-        processRecommendationJob(jobId).catch((err) => {
-          console.error(`Error in fallback processing for job ${jobId}:`, err);
-        });
-      }
-    });
-}
-
-/**
  * Background processor for recommendation generation
  * This runs asynchronously and updates the job status
- * Used as fallback in development or if HTTP trigger fails
- * NOTE: This function has the same logic as process-job.ts but runs in the same function context
+ * Used in development for immediate processing
+ * In production, jobs are processed by the cron job at /api/cron/process-jobs
  */
 async function processRecommendationJob(jobId: number): Promise<void> {
   const startTime = Date.now();
@@ -352,21 +286,15 @@ router.post(
         return;
       }
 
-      // Trigger job processing via separate serverless function (with longer timeout)
-      // This ensures the job processing doesn't get killed when this function returns
-      try {
-        triggerJobProcessing(job.id);
-        console.log(`[${requestId}] Job processing triggered`, {
-          jobId: job.id,
-          questionnaireId,
+      // Job will be processed by the cron job (runs every minute)
+      // In development, we can trigger it immediately as a fallback
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[${requestId}] [Dev] Triggering immediate job processing for job ${job.id}`);
+        processRecommendationJob(job.id).catch((err) => {
+          console.error(`[${requestId}] Error in dev job processing for job ${job.id}:`, err);
         });
-      } catch (error) {
-        console.error(`[${requestId}] Error triggering job processing: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-          jobId: job.id,
-          questionnaireId,
-          error: error instanceof Error ? error.stack : error,
-        });
-        // Don't fail the request - job is created, processing might still work
+      } else {
+        console.log(`[${requestId}] [Prod] Job ${job.id} created, will be processed by cron job`);
       }
 
       const duration = Date.now() - startTime;
@@ -451,9 +379,16 @@ router.post(
         created_by: req.user.userId,
       });
 
-      // Trigger job processing via separate serverless function (with longer timeout)
-      // This ensures the job processing doesn't get killed when this function returns
-      triggerJobProcessing(job.id);
+      // Job will be processed by the cron job (runs every minute)
+      // In development, we can trigger it immediately as a fallback
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Dev] Triggering immediate job processing for job ${job.id}`);
+        processRecommendationJob(job.id).catch((err) => {
+          console.error(`Error in dev job processing for job ${job.id}:`, err);
+        });
+      } else {
+        console.log(`[Prod] Job ${job.id} created, will be processed by cron job`);
+      }
 
       res.status(202).json({
         success: true,

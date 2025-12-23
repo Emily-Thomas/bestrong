@@ -1,26 +1,26 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import * as jobService from '../backend/src/services/job.service';
-import * as aiService from '../backend/src/services/ai.service';
-import * as clientService from '../backend/src/services/client.service';
-import * as inbodyScanService from '../backend/src/services/inbody-scan.service';
-import * as questionnaireService from '../backend/src/services/questionnaire.service';
-import * as recommendationService from '../backend/src/services/recommendation.service';
+import * as jobService from '../../backend/src/services/job.service';
+import * as aiService from '../../backend/src/services/ai.service';
+import * as clientService from '../../backend/src/services/client.service';
+import * as inbodyScanService from '../../backend/src/services/inbody-scan.service';
+import * as questionnaireService from '../../backend/src/services/questionnaire.service';
+import * as recommendationService from '../../backend/src/services/recommendation.service';
 import type {
   CreateRecommendationInput,
   CreateWorkoutInput,
   Questionnaire,
   Client,
   InBodyScan,
-} from '../backend/src/types';
+} from '../../backend/src/types';
 
-// Configure longer timeout for this function (up to 300s on Pro plan)
+// Configure longer timeout for cron job (up to 300s on Pro plan)
 export const config = {
   maxDuration: 300, // 5 minutes
 };
 
 /**
- * Background processor for recommendation generation
- * This runs as a separate serverless function with extended timeout
+ * Process a single recommendation job
+ * Extracted to a separate function for reuse
  */
 async function processRecommendationJob(jobId: number): Promise<void> {
   const startTime = Date.now();
@@ -39,6 +39,12 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       return;
     }
     console.log(`[Job ${jobId}] Job found: questionnaire_id=${job.questionnaire_id}, client_id=${job.client_id}`, logContext);
+
+    // Skip if job is already completed or failed
+    if (job.status === 'completed' || job.status === 'failed') {
+      console.log(`[Job ${jobId}] Job already ${job.status}, skipping`, logContext);
+      return;
+    }
 
     // Step 0.1: Get questionnaire
     console.log(`[Job ${jobId}] Fetching questionnaire (ID: ${job.questionnaire_id})...`);
@@ -312,84 +318,97 @@ async function processRecommendationJob(jobId: number): Promise<void> {
   }
 }
 
-// Vercel serverless function handler
+/**
+ * Vercel Cron Job handler
+ * Processes pending recommendation jobs
+ * Runs every minute to check for pending jobs
+ */
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  const requestStartTime = Date.now();
-  const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  // Verify this is a cron job request (Vercel sends a special header)
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
   
-  console.log(`[${requestId}] Process job request received`, {
-    method: req.method,
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    console.warn('Unauthorized cron job request', {
+      hasAuth: !!authHeader,
+      hasSecret: !!cronSecret,
+    });
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+
+  const startTime = Date.now();
+  console.log('[Cron] Processing pending recommendation jobs...', {
     timestamp: new Date().toISOString(),
   });
 
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    console.warn(`[${requestId}] Invalid method: ${req.method}`, { method: req.method });
-    res.status(405).json({ success: false, error: 'Method not allowed' });
-    return;
-  }
-
-  // Get job ID from request body
-  const { jobId } = req.body;
-
-  if (!jobId) {
-    console.error(`[${requestId}] Missing jobId in request body`, { body: req.body });
-    res.status(400).json({
-      success: false,
-      error: 'jobId is required in request body',
-    });
-    return;
-  }
-
-  if (typeof jobId !== 'number') {
-    console.error(`[${requestId}] Invalid jobId type: expected number, got ${typeof jobId}`, {
-      jobId,
-      jobIdType: typeof jobId,
-    });
-    res.status(400).json({
-      success: false,
-      error: 'jobId must be a number',
-    });
-    return;
-  }
-
-  console.log(`[${requestId}] Processing job ${jobId}`, { jobId, requestId });
-
-  // Process the job (await to ensure it completes within the extended timeout)
-  // This function has maxDuration: 300s configured, so it can run longer
   try {
-    await processRecommendationJob(jobId);
-    const duration = Date.now() - requestStartTime;
-    console.log(`[${requestId}] Job ${jobId} processing completed in ${duration}ms`, {
-      jobId,
-      requestId,
-      duration,
+    // Get all pending jobs
+    // Query the database directly to get pending jobs
+    const pool = (await import('../../backend/src/config/database')).default;
+    const result = await pool.query<{ id: number }>(
+      `SELECT id FROM recommendation_jobs 
+       WHERE status = 'pending' 
+       ORDER BY created_at ASC 
+       LIMIT 5`
+    );
+
+    const pendingJobs = result.rows;
+    console.log(`[Cron] Found ${pendingJobs.length} pending jobs`, {
+      jobIds: pendingJobs.map(j => j.id),
     });
+
+    if (pendingJobs.length === 0) {
+      res.status(200).json({
+        success: true,
+        message: 'No pending jobs to process',
+        processed: 0,
+      });
+      return;
+    }
+
+    // Process jobs sequentially (to avoid overwhelming the system)
+    const results: Array<{ jobId: number; status: string; error?: string }> = [];
+    for (const job of pendingJobs) {
+      try {
+        await processRecommendationJob(job.id);
+        results.push({ jobId: job.id, status: 'processed' });
+      } catch (error) {
+        console.error(`[Cron] Error processing job ${job.id}:`, error);
+        results.push({ 
+          jobId: job.id, 
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`[Cron] Completed processing ${pendingJobs.length} jobs in ${duration}ms`, {
+      duration,
+      results,
+    });
+
     res.status(200).json({
       success: true,
-      message: 'Job processing completed',
-      data: { job_id: jobId },
+      message: `Processed ${pendingJobs.length} jobs`,
+      processed: pendingJobs.length,
+      results,
     });
   } catch (error) {
-    const duration = Date.now() - requestStartTime;
+    const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    console.error(`[${requestId}] Error processing job ${jobId} after ${duration}ms: ${errorMessage}`, {
-      jobId,
-      requestId,
+    console.error(`[Cron] Error in cron job after ${duration}ms: ${errorMessage}`, {
       duration,
-      error: errorStack,
-      error_message: errorMessage,
+      error: error instanceof Error ? error.stack : error,
     });
     
     res.status(500).json({
       success: false,
       error: errorMessage,
-      data: { job_id: jobId },
     });
   }
 }
