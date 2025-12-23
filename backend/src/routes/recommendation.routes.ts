@@ -23,10 +23,8 @@ const router = Router();
 router.use(authenticateToken);
 
 /**
- * Background processor for recommendation generation
- * This runs asynchronously and updates the job status
- * Used in development for immediate processing
- * In production, jobs are processed by the cron job at /api/cron/process-jobs
+ * Process a single recommendation job
+ * This is the main processing function used by both the route handler and background processing
  */
 async function processRecommendationJob(jobId: number): Promise<void> {
   const startTime = Date.now();
@@ -286,16 +284,13 @@ router.post(
         return;
       }
 
-      // Job will be processed by the cron job (runs every minute)
-      // In development, we can trigger it immediately as a fallback
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[${requestId}] [Dev] Triggering immediate job processing for job ${job.id}`);
-        processRecommendationJob(job.id).catch((err) => {
-          console.error(`[${requestId}] Error in dev job processing for job ${job.id}:`, err);
-        });
-      } else {
-        console.log(`[${requestId}] [Prod] Job ${job.id} created, will be processed by cron job`);
-      }
+      // Trigger job processing immediately (fire-and-forget)
+      // This will run in the background and may timeout on Hobby plan (10s limit)
+      // If it times out, the job will remain in 'processing' state and can be retried
+      console.log(`[${requestId}] Triggering job processing for job ${job.id}`);
+      processRecommendationJob(job.id).catch((err) => {
+        console.error(`[${requestId}] Error in background job processing for job ${job.id}:`, err);
+      });
 
       const duration = Date.now() - startTime;
       console.log(`[${requestId}] Request completed successfully in ${duration}ms`, {
@@ -462,6 +457,76 @@ router.get('/generate/job/:jobId', async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: job,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Manually trigger job processing (for retries or manual processing)
+// This is useful when jobs timeout on Hobby plan (10s limit)
+router.post('/generate/job/:jobId/process', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    const jobId = parseInt(req.params.jobId, 10);
+
+    if (Number.isNaN(jobId)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid job ID',
+      });
+      return;
+    }
+
+    const job = await jobService.getJobById(jobId);
+
+    if (!job) {
+      res.status(404).json({
+        success: false,
+        error: 'Job not found',
+      });
+      return;
+    }
+
+    // Only allow processing of pending or failed jobs
+    // If job is already processing, don't start another process
+    if (job.status === 'processing') {
+      res.status(400).json({
+        success: false,
+        error: 'Job is already being processed',
+        data: job,
+      });
+      return;
+    }
+
+    if (job.status === 'completed') {
+      res.status(400).json({
+        success: false,
+        error: 'Job is already completed',
+        data: job,
+      });
+      return;
+    }
+
+    // Reset failed jobs to pending before processing
+    if (job.status === 'failed') {
+      await jobService.updateJobStatus(jobId, 'pending', 'Retrying...');
+    }
+
+    // Start processing in background (fire-and-forget)
+    processRecommendationJob(jobId).catch((err) => {
+      console.error(`Error processing job ${jobId} (manual trigger):`, err);
+    });
+
+    res.status(202).json({
+      success: true,
+      message: 'Job processing started',
+      data: { job_id: jobId },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
