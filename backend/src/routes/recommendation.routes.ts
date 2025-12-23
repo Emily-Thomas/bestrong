@@ -1,6 +1,8 @@
 import { type Request, type Response, Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import * as aiService from '../services/ai.service';
+import * as clientService from '../services/client.service';
+import * as inbodyScanService from '../services/inbody-scan.service';
 import * as questionnaireService from '../services/questionnaire.service';
 import * as recommendationService from '../services/recommendation.service';
 import * as workoutService from '../services/workout.service';
@@ -11,8 +13,6 @@ import type {
   CreateRecommendationInput,
   UpdateRecommendationInput,
   CreateWorkoutInput,
-  CreateActualWorkoutInput,
-  UpdateWorkoutInput,
   ActualWorkout,
   Workout,
 } from '../types';
@@ -43,6 +43,22 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       return;
     }
 
+    // Get client data
+    const client = await clientService.getClientById(questionnaire.client_id);
+    if (!client) {
+      await jobService.failJob(jobId, 'Client not found');
+      return;
+    }
+
+    // Get latest verified InBody scan for client
+    const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(
+      questionnaire.client_id
+    );
+    // Fallback to latest unverified if no verified scan exists
+    const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(
+      questionnaire.client_id
+    );
+
     // Step 1: Generate recommendation structure
     await jobService.updateJobStatus(
       jobId,
@@ -50,7 +66,7 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       'Generating plan structure...'
     );
     const recommendationStructure =
-      await aiService.generateRecommendationStructure(questionnaire, null);
+      await aiService.generateRecommendationStructure(questionnaire, null, latestScan, client);
 
     // Step 2: Generate workouts
     await jobService.updateJobStatus(
@@ -61,7 +77,9 @@ async function processRecommendationJob(jobId: number): Promise<void> {
     const workouts = await aiService.generateWorkouts(
       recommendationStructure,
       questionnaire,
-      null
+      null,
+      latestScan,
+      client
     );
 
     // Step 3: Save to database
@@ -80,6 +98,7 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       training_style: recommendationStructure.training_style,
       plan_structure: recommendationStructure.plan_structure,
       ai_reasoning: recommendationStructure.ai_reasoning,
+      inbody_scan_id: latestScan?.id,
     };
 
     // Convert LLM workout responses to CreateWorkoutInput format
@@ -138,6 +157,16 @@ router.post(
         res.status(404).json({
           success: false,
           error: 'Questionnaire not found',
+        });
+        return;
+      }
+
+      // Check if client has at least one InBody scan
+      const hasScan = await inbodyScanService.hasInBodyScan(questionnaire.client_id);
+      if (!hasScan) {
+        res.status(400).json({
+          success: false,
+          error: 'At least one InBody scan is required before generating recommendations',
         });
         return;
       }
@@ -351,9 +380,27 @@ router.post(
         return;
       }
 
+      // Get client data
+      const client = await clientService.getClientById(questionnaire.client_id);
+      if (!client) {
+        res.status(404).json({
+          success: false,
+          error: 'Client not found',
+        });
+        return;
+      }
+
+      // Get latest InBody scan
+      const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(
+        questionnaire.client_id
+      );
+      const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(
+        questionnaire.client_id
+      );
+
       // Generate AI recommendation with workouts
       const aiAnalysis =
-        await aiService.generateRecommendationWithAI(questionnaire);
+        await aiService.generateRecommendationWithAI(questionnaire, latestScan, client);
 
       // Create or update recommendation record (1:1 with questionnaire)
       const recommendationInput: CreateRecommendationInput = {
@@ -365,6 +412,7 @@ router.post(
         training_style: aiAnalysis.training_style,
         plan_structure: aiAnalysis.plan_structure,
         ai_reasoning: aiAnalysis.ai_reasoning,
+        inbody_scan_id: latestScan?.id,
       };
 
       // Convert LLM workout responses to CreateWorkoutInput format
@@ -436,9 +484,23 @@ router.post(
         return;
       }
 
+      // Get client data
+      const client = await clientService.getClientById(clientId);
+      if (!client) {
+        res.status(404).json({
+          success: false,
+          error: 'Client not found',
+        });
+        return;
+      }
+
+      // Get latest InBody scan
+      const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(clientId);
+      const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(clientId);
+
       // Generate AI recommendation with workouts
       const aiAnalysis =
-        await aiService.generateRecommendationWithAI(questionnaire);
+        await aiService.generateRecommendationWithAI(questionnaire, latestScan, client);
 
       // Create or update recommendation record (1:1 with questionnaire)
       const recommendationInput: CreateRecommendationInput = {
@@ -450,6 +512,7 @@ router.post(
         training_style: aiAnalysis.training_style,
         plan_structure: aiAnalysis.plan_structure,
         ai_reasoning: aiAnalysis.ai_reasoning,
+        inbody_scan_id: latestScan?.id,
       };
 
       // Convert LLM workout responses to CreateWorkoutInput format
@@ -1019,12 +1082,25 @@ async function processWeekGenerationJob(jobId: number): Promise<void> {
       }
     }
 
+    // Get client data
+    const client = await clientService.getClientById(recommendation.client_id);
+
+    // Get latest InBody scan
+    const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(
+      recommendation.client_id
+    );
+    const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(
+      recommendation.client_id
+    );
+
     const workouts = await aiService.generateWeekWorkouts(
       recommendation,
       previousWeeksData,
       questionnaire,
       structuredData,
-      job.week_number
+      job.week_number,
+      latestScan,
+      client
     );
 
     // Step 3: Save workouts

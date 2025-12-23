@@ -159,6 +159,7 @@ export interface CreateRecommendationInput {
   training_style: string;
   plan_structure: Record<string, unknown>;
   ai_reasoning?: string;
+  inbody_scan_id?: number;
 }
 
 export interface UpdateRecommendationInput {
@@ -324,6 +325,89 @@ export interface WeekGenerationJob {
 export interface CreateWeekGenerationJobInput {
   recommendation_id: number;
   week_number: number;
+}
+
+// InBody Scan Types
+export interface SegmentAnalysis {
+  right_arm?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+  left_arm?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+  trunk?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+  right_leg?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+  left_leg?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+}
+
+export interface InBodyScan {
+  id: number;
+  client_id: number;
+  uploaded_by: number;
+  file_path: string;
+  file_name: string;
+  file_size_bytes?: number;
+  mime_type: string;
+  scan_date?: Date;
+  weight_lbs?: number;
+  smm_lbs?: number;
+  body_fat_mass_lbs?: number;
+  bmi?: number;
+  percent_body_fat?: number;
+  segment_analysis?: SegmentAnalysis;
+  extraction_status: 'pending' | 'completed' | 'failed' | 'verified';
+  extraction_raw_response?: string;
+  verified: boolean;
+  verified_at?: Date;
+  verified_by?: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CreateInBodyScanInput {
+  client_id: number;
+  file_path: string;
+  file_name: string;
+  file_size_bytes?: number;
+  mime_type?: string;
+}
+
+export interface UpdateInBodyScanInput {
+  scan_date?: Date | string;
+  weight_lbs?: number;
+  smm_lbs?: number;
+  body_fat_mass_lbs?: number;
+  bmi?: number;
+  percent_body_fat?: number;
+  segment_analysis?: SegmentAnalysis;
+  verified?: boolean;
+  extraction_status?: 'pending' | 'completed' | 'failed' | 'verified';
+}
+
+export interface ExtractedInBodyData {
+  weight_lbs?: number;
+  smm_lbs?: number;
+  body_fat_mass_lbs?: number;
+  bmi?: number;
+  percent_body_fat?: number;
+  scan_date?: string;
+  segment_analysis?: SegmentAnalysis;
 }
 
 // API Response Types

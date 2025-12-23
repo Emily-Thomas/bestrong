@@ -28,6 +28,7 @@ import {
   recommendationsApi,
 } from '@/lib/api';
 import { ClientInformationSection } from './components/ClientInformationSection';
+import { InBodyScansSection } from './components/InBodyScansSection';
 import { QuestionnaireSection } from './components/QuestionnaireSection';
 import { TrainingPlansSection } from './components/TrainingPlansSection';
 import { WorkoutsSection } from './components/WorkoutsSection';
@@ -214,6 +215,8 @@ export default function ClientDetailPage() {
               onClientUpdate={handleClientUpdate}
               onRecommendationUpdate={handleRecommendationUpdate}
             />
+
+            <InBodyScansSection clientId={clientId} />
 
             <QuestionnaireSection
               clientId={clientId}

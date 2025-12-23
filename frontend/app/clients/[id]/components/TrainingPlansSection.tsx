@@ -18,6 +18,7 @@ import {
   type Questionnaire,
   type Recommendation,
   recommendationsApi,
+  inbodyScansApi,
 } from '@/lib/api';
 
 interface TrainingPlansSectionProps {
@@ -39,6 +40,8 @@ export function TrainingPlansSection({
   const [completed, setCompleted] = useState(false);
   const [completedRecommendationId, setCompletedRecommendationId] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [hasInBodyScan, setHasInBodyScan] = useState<boolean | null>(null);
+  const [checkingScan, setCheckingScan] = useState(true);
 
   // Poll for job status
   const pollJobStatus = useCallback(async (jobId: number) => {
@@ -111,6 +114,26 @@ export function TrainingPlansSection({
     }
   }, [pollJobStatus]);
 
+  // Check for InBody scan requirement
+  useEffect(() => {
+    const checkInBodyScan = async () => {
+      try {
+        const response = await inbodyScansApi.hasScan(clientId);
+        if (response.success && response.data) {
+          setHasInBodyScan(response.data.has_scan);
+        }
+      } catch (err) {
+        console.error('Error checking InBody scan:', err);
+      } finally {
+        setCheckingScan(false);
+      }
+    };
+
+    if (clientId) {
+      checkInBodyScan();
+    }
+  }, [clientId]);
+
   // Check for existing jobs when questionnaire is loaded
   useEffect(() => {
     if (questionnaire?.id) {
@@ -121,6 +144,12 @@ export function TrainingPlansSection({
   const handleGenerateRecommendation = async () => {
     if (!questionnaire) {
       router.push(`/clients/${clientId}/questionnaire`);
+      return;
+    }
+
+    // Check InBody scan requirement
+    if (hasInBodyScan === false) {
+      setError('Please upload at least one InBody scan before generating recommendations.');
       return;
     }
 
@@ -162,7 +191,12 @@ export function TrainingPlansSection({
           <Button
             size="sm"
             onClick={handleGenerateRecommendation}
-            disabled={generating}
+            disabled={generating || checkingScan || hasInBodyScan === false}
+            title={
+              hasInBodyScan === false
+                ? 'Please upload at least one InBody scan before generating recommendations'
+                : undefined
+            }
           >
             {generating ? (
               <>
@@ -182,6 +216,36 @@ export function TrainingPlansSection({
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {!checkingScan && hasInBodyScan === false && (
+          <Alert className="mb-6">
+            <AlertDescription>
+              <div className="flex items-center justify-between">
+                <span>
+                  Please upload at least one InBody scan before generating recommendations.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Scroll to InBody scans section
+                    const element = document.getElementById('inbody-scans-section');
+                    element?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      const element = document.getElementById('inbody-scans-section');
+                      element?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                >
+                  Upload Scan
+                </Button>
+              </div>
+            </AlertDescription>
           </Alert>
         )}
 
@@ -247,19 +311,15 @@ export function TrainingPlansSection({
               : 'Fill out the questionnaire first.'}
           </p>
         ) : (
-          <div
+          <Link
+            href={generating ? '#' : `/clients/${clientId}/recommendations/${recommendation.id}`}
+            className={generating ? 'pointer-events-none opacity-50 cursor-not-allowed' : ''}
             onClick={(e) => {
               if (generating) {
                 e.preventDefault();
-                e.stopPropagation();
               }
             }}
-            className={generating ? 'opacity-50 cursor-not-allowed' : ''}
           >
-            <Link
-              href={generating ? '#' : `/clients/${clientId}/recommendations/${recommendation.id}`}
-              className={generating ? 'pointer-events-none' : ''}
-            >
               <Card className="transition-colors cursor-pointer hover:bg-muted">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
@@ -279,8 +339,7 @@ export function TrainingPlansSection({
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          </div>
+          </Link>
         )}
       </CardContent>
     </Card>

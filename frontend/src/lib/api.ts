@@ -128,6 +128,65 @@ class ApiClient {
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
+
+  async uploadFile<T>(
+    endpoint: string,
+    file: File,
+    additionalData: Record<string, string> = {}
+  ): Promise<ApiResponse<T>> {
+    // Sync token from localStorage
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('auth_token');
+      if (storedToken) {
+        this.token = storedToken;
+      }
+    }
+
+    const url = `${this.baseUrl}${endpoint}`;
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Add additional form data
+    Object.entries(additionalData).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            this.token = null;
+          }
+        }
+        return {
+          success: false,
+          error: data.error || 'An error occurred',
+        };
+      }
+
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+      };
+    }
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
@@ -251,6 +310,40 @@ export const recommendationsApi = {
     ),
   getWeekGenerationJobs: (id: number) =>
     apiClient.get<WeekGenerationJob[]>(`/recommendations/${id}/week-jobs`),
+};
+
+// InBody Scans API
+export const inbodyScansApi = {
+  upload: (clientId: number, file: File) =>
+    apiClient.uploadFile<{ scan_id: number; extraction_status: string }>(
+      '/inbody-scans/upload',
+      file,
+      { client_id: clientId.toString() }
+    ),
+  getById: (id: number) => apiClient.get<InBodyScan>(`/inbody-scans/${id}`),
+  getStatus: (id: number) =>
+    apiClient.get<{
+      extraction_status: string;
+      scan?: InBodyScan;
+    }>(`/inbody-scans/${id}/status`),
+  getByClientId: (clientId: number) =>
+    apiClient.get<InBodyScan[]>(`/inbody-scans/client/${clientId}`),
+  getLatestByClientId: (clientId: number) =>
+    apiClient.get<InBodyScan>(`/inbody-scans/client/${clientId}/latest`),
+  hasScan: (clientId: number) =>
+    apiClient.get<{
+      has_scan: boolean;
+      scan_count: number;
+      latest_scan_id: number | null;
+    }>(`/inbody-scans/client/${clientId}/has-scan`),
+  update: (id: number, data: UpdateInBodyScanInput) =>
+    apiClient.put<InBodyScan>(`/inbody-scans/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/inbody-scans/${id}`),
+  download: (id: number) => {
+    // Download redirects, so we return the URL
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    return `/api/inbody-scans/${id}/download${token ? `?token=${token}` : ''}`;
+  },
 };
 
 // Types
@@ -464,6 +557,69 @@ export interface RecommendationJob {
   started_at?: string;
   completed_at?: string;
   updated_at: string;
+}
+
+export interface SegmentAnalysis {
+  right_arm?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+  left_arm?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+  trunk?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+  right_leg?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+  left_leg?: {
+    muscle_mass_lbs?: number;
+    fat_mass_lbs?: number;
+    percent_fat?: number;
+  };
+}
+
+export interface InBodyScan {
+  id: number;
+  client_id: number;
+  uploaded_by: number;
+  file_path: string;
+  file_name: string;
+  file_size_bytes?: number;
+  mime_type: string;
+  scan_date?: string;
+  weight_lbs?: number;
+  smm_lbs?: number;
+  body_fat_mass_lbs?: number;
+  bmi?: number;
+  percent_body_fat?: number;
+  segment_analysis?: SegmentAnalysis;
+  extraction_status: 'pending' | 'completed' | 'failed' | 'verified';
+  extraction_raw_response?: string;
+  verified: boolean;
+  verified_at?: string;
+  verified_by?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateInBodyScanInput {
+  scan_date?: string;
+  weight_lbs?: number;
+  smm_lbs?: number;
+  body_fat_mass_lbs?: number;
+  bmi?: number;
+  percent_body_fat?: number;
+  segment_analysis?: SegmentAnalysis;
+  verified?: boolean;
 }
 
 export interface WeekGenerationJob {

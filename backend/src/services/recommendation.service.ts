@@ -21,15 +21,16 @@ export async function createRecommendation(
     training_style,
     plan_structure,
     ai_reasoning,
+    inbody_scan_id,
   } = input;
 
   const result = await pool.query<Recommendation>(
     `INSERT INTO recommendations (
       client_id, questionnaire_id, created_by, client_type,
       sessions_per_week, session_length_minutes, training_style,
-      plan_structure, ai_reasoning, status
+      plan_structure, ai_reasoning, status, inbody_scan_id
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     RETURNING *`,
     [
       client_id,
@@ -42,6 +43,7 @@ export async function createRecommendation(
       JSON.stringify(plan_structure),
       ai_reasoning || null,
       'draft',
+      inbody_scan_id || null,
     ]
   );
 

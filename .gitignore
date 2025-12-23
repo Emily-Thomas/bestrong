@@ -38,3 +38,7 @@ coverage/
 .cache/
 .turbo/
 
+# Local file uploads (development only)
+uploads/
+**/uploads/
+

@@ -5,7 +5,7 @@ import pool from '../config/database';
 export async function runMigrations(): Promise<void> {
   try {
     const schemaPath = path.join(__dirname, 'schema.sql');
-    const migrationPath = path.join(__dirname, '../../migrations/009_workout_execution_feature.sql');
+    const migrationsDir = path.join(__dirname, '../../migrations');
     
     if (!fs.existsSync(schemaPath)) {
       throw new Error(`Schema file not found at: ${schemaPath}`);
@@ -17,18 +17,82 @@ export async function runMigrations(): Promise<void> {
     const client = await pool.connect();
 
     try {
-      // Execute the base schema first
-      await client.query(schema);
-      console.log('✅ Base schema executed successfully');
+      // Create schema_migrations table if it doesn't exist
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+          version VARCHAR(255) PRIMARY KEY,
+          applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          description TEXT
+        );
+      `);
+      console.log('✅ Schema migrations table ready');
+
+      // Execute the base schema first (with error handling for existing objects)
+      try {
+        await client.query(schema);
+        console.log('✅ Base schema executed successfully');
+      } catch (error) {
+        // If schema already exists, that's okay
+        if (error instanceof Error && error.message.includes('already exists')) {
+          console.log('ℹ️  Base schema objects already exist, continuing...');
+        } else {
+          throw error;
+        }
+      }
       
-      // Execute the workout execution feature migration if it exists
-      if (fs.existsSync(migrationPath)) {
-        console.log('📄 Loading workout execution feature migration...');
-        const migration = fs.readFileSync(migrationPath, 'utf8');
-        await client.query(migration);
-        console.log('✅ Workout execution feature migration completed successfully');
+      // Get all migration files and sort them
+      if (fs.existsSync(migrationsDir)) {
+        const migrationFiles = fs.readdirSync(migrationsDir)
+          .filter(file => file.endsWith('.sql'))
+          .sort(); // Sort alphabetically (which works for numbered files like 001_, 002_, etc.)
+        
+        console.log(`📄 Found ${migrationFiles.length} migration files`);
+        
+        for (const migrationFile of migrationFiles) {
+          const migrationVersion = migrationFile.replace('.sql', '');
+          
+          // Check if migration has already been applied
+          const checkResult = await client.query(
+            'SELECT version FROM schema_migrations WHERE version = $1',
+            [migrationVersion]
+          );
+          
+          if (checkResult.rows.length > 0) {
+            console.log(`⏭️  Migration ${migrationVersion} already applied, skipping...`);
+            continue;
+          }
+          
+          const migrationPath = path.join(migrationsDir, migrationFile);
+          const migration = fs.readFileSync(migrationPath, 'utf8');
+          
+          console.log(`📄 Running migration: ${migrationVersion}...`);
+          
+          try {
+            await client.query(migration);
+            
+            // Record migration as applied
+            await client.query(
+              'INSERT INTO schema_migrations (version, description) VALUES ($1, $2)',
+              [migrationVersion, `Migration: ${migrationVersion}`]
+            );
+            
+            console.log(`✅ Migration ${migrationVersion} completed successfully`);
+          } catch (error) {
+            // If migration fails due to objects already existing, that's okay (idempotent)
+            if (error instanceof Error && error.message.includes('already exists')) {
+              console.log(`ℹ️  Migration ${migrationVersion} - some objects already exist, marking as applied...`);
+              // Still record it as applied since it's idempotent
+              await client.query(
+                'INSERT INTO schema_migrations (version, description) VALUES ($1, $2) ON CONFLICT (version) DO NOTHING',
+                [migrationVersion, `Migration: ${migrationVersion}`]
+              );
+            } else {
+              throw error;
+            }
+          }
+        }
       } else {
-        console.log('ℹ️  Workout execution feature migration not found, skipping...');
+        console.log('ℹ️  Migrations directory not found, skipping...');
       }
       
       // Verify critical tables exist
@@ -39,7 +103,8 @@ export async function runMigrations(): Promise<void> {
         'recommendations', 
         'workouts',
         'actual_workouts',
-        'week_generation_jobs'
+        'week_generation_jobs',
+        'inbody_scans'
       ];
       for (const tableName of tablesToCheck) {
         const result = await client.query(`

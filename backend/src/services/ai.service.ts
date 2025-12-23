@@ -7,6 +7,8 @@ import type {
   Recommendation,
   Workout,
   ActualWorkout,
+  InBodyScan,
+  Client,
 } from '../types';
 
 /**
@@ -1017,158 +1019,185 @@ function formatQuestionnaireForPrompt(
 }
 
 /**
- * Builds the LLM prompt with client personas and questionnaire data
+ * Calculates age from date of birth
  */
-function buildLLMPrompt(
-  questionnaire: Questionnaire,
-  structuredData: StructuredQuestionnaireData | null
-): string {
-  const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+function calculateAge(dateOfBirth: Date | string | undefined): number | null {
+  if (!dateOfBirth) {
+    return null;
+  }
+  
+  const birthDate = typeof dateOfBirth === 'string' ? new Date(dateOfBirth) : dateOfBirth;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+}
 
-  const personasText = Object.values(CLIENT_ARCHETYPES)
-    .map(
-      (archetype) =>
-        `**${archetype.type}**\n` +
-        `Description: ${archetype.description}\n` +
-        `Training Methods: ${archetype.trainingMethods.join(', ')}\n` +
-        `Why It Fits: ${archetype.whyItFits}\n`
-    )
-    .join('\n');
+/**
+ * Formats client information for inclusion in LLM prompt
+ */
+function formatClientInfoForPrompt(client: Client | null): string {
+  if (!client) {
+    return '';
+  }
 
-  return `You are an expert personal trainer creating a comprehensive 6-week training program for a client. Your task is to:
-
-1. **Analyze the client's questionnaire data** and select the most appropriate client persona/archetype from the options provided below.
-
-2. **Design a complete training plan** that includes:
-   - Sessions per week (typically 2-6)
-   - Session length in minutes (typically 30-90)
-   - Training style description
-   - 6-week plan structure with progression strategy
-   - Detailed reasoning for all decisions
-
-3. **Generate actual workouts** for the entire 6-week program. Each workout should include:
-   - Specific exercises with sets, reps, weight/load guidance, rest periods
-   - Warmup and cooldown exercises when appropriate
-   - Notes on form, tempo, or RPE when relevant
-   - Reasoning for exercise selection based on the client's needs
-
-## Available Client Personas
-
-${personasText}
-
-## Client Questionnaire
-
-${questionnaireText}
-
-## Instructions
-
-1. **Select the ONE client persona** that best matches this client based on their questionnaire responses. Provide clear reasoning for your selection.
-
-2. **Design the training plan** considering:
-   - The selected persona's training methods
-   - The client's specific responses (energy, motivation, limitations, etc.)
-   - Realistic progression over 6 weeks
-   - Sustainability and adherence
-
-3. **Generate ALL workouts** for the 6-week program:
-   - For each week, create the specified number of sessions
-   - Each workout should be complete with exercises, sets, reps, and guidance
-   - Exercises should be appropriate for the client's level and goals
-   - Include variety and progression across weeks
-   - Consider equipment availability (assume standard gym equipment unless noted otherwise)
-
-4. **Provide detailed reasoning** for:
-   - Why this persona was selected
-   - Why this training frequency and duration
-   - Why these specific exercises and structure
-   - How the program progresses over 6 weeks
-
-## Output Format
-
-You must respond with a valid JSON object matching this exact structure:
-
-{
-  "client_type": "The [Persona Name]",
-  "client_type_reasoning": "Detailed explanation of why this persona was selected...",
-  "sessions_per_week": 3,
-  "session_length_minutes": 60,
-  "training_style": "Description of the training approach...",
-  "plan_structure": {
-    "archetype": "The [Persona Name]",
-    "description": "Brief description",
-    "weeks": 6,
-    "training_methods": ["Method 1", "Method 2", "Method 3"],
-    "weekly_structure": {
-      "week1_2": "Description of weeks 1-2 focus",
-      "week3_4": "Description of weeks 3-4 focus",
-      "week5_6": "Description of weeks 5-6 focus"
-    },
-    "progression_strategy": "How the program progresses",
-    "periodization_approach": "Type of periodization used"
-  },
-  "ai_reasoning": "Comprehensive reasoning for the entire program design...",
-  "workouts": [
-    {
-      "week_number": 1,
-      "session_number": 1,
-      "workout_name": "Upper Body Strength",
-      "workout_data": {
-        "exercises": [
-          {
-            "name": "Barbell Bench Press",
-            "sets": 4,
-            "reps": "6-8",
-            "weight": "RPE 8",
-            "rest_seconds": 180,
-            "notes": "Focus on controlled tempo, full range of motion",
-            "rpe": 8
-          }
-        ],
-        "warmup": [
-          {
-            "name": "Light Cardio",
-            "notes": "5 minutes on bike or rower"
-          }
-        ],
-        "cooldown": [
-          {
-            "name": "Static Stretching",
-            "notes": "Focus on chest, shoulders, triceps"
-          }
-        ],
-        "total_duration_minutes": 60,
-        "focus_areas": ["upper body", "push", "strength"]
-      },
-      "workout_reasoning": "This workout focuses on building upper body strength..."
+  let text = `## Client Information\n\n`;
+  
+  if (client.date_of_birth) {
+    const age = calculateAge(client.date_of_birth);
+    if (age !== null) {
+      text += `- Age: ${age} years old\n`;
     }
-  ]
+    const birthDate = typeof client.date_of_birth === 'string' 
+      ? new Date(client.date_of_birth) 
+      : client.date_of_birth;
+    text += `- Date of Birth: ${birthDate.toLocaleDateString()}\n`;
+  }
+  
+  text += `\nConsider the client's age when:
+- Selecting age-appropriate exercises and training methods
+- Setting realistic progression expectations based on age
+- Adjusting recovery time and training frequency
+- Choosing appropriate intensity levels
+- Designing programs that account for age-related factors (mobility, recovery, etc.)`;
+
+  return text;
 }
 
-CRITICAL JSON FORMATTING REQUIREMENTS:
-- You MUST respond with ONLY valid JSON, no markdown code blocks, no additional text
-- All string values must be properly escaped (use \\" for quotes within strings)
-- Keep text fields concise to avoid response truncation
-- Ensure all JSON brackets and braces are properly closed
-- Do not include any text before or after the JSON object
+/**
+ * Formats InBody scan data for inclusion in LLM prompt
+ */
+function formatInBodyScanForPrompt(scan: InBodyScan | null): string {
+  if (!scan) {
+    return '';
+  }
 
-Important:
-- Generate workouts for ALL weeks and ALL sessions (e.g., if sessions_per_week is 3, generate 18 total workouts)
-- Each exercise must have at least a name
-- Be specific with exercise selection - use actual exercise names
-- Consider exercise variety and progression
-- Make workouts realistic and achievable for the client's level
-- Include proper warmup and cooldown when appropriate
-- Keep exercise notes and reasoning concise to fit within token limits`;
+  let text = `## Client Body Composition (InBody Scan)
+
+The client's latest InBody scan shows:`;
+
+  // Helper function to safely convert to number and format
+  // PostgreSQL may return numeric values as strings, so we need to handle both
+  const formatNumber = (value: unknown): string | null => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string') {
+      if (value.trim() === '') return null;
+      const num = parseFloat(value);
+      if (Number.isNaN(num) || !Number.isFinite(num)) return null;
+      return num.toFixed(1);
+    }
+    if (typeof value === 'number') {
+      if (Number.isNaN(value) || !Number.isFinite(value)) return null;
+      return value.toFixed(1);
+    }
+    // Try to convert other types
+    const num = Number(value);
+    if (Number.isNaN(num) || !Number.isFinite(num)) return null;
+    return num.toFixed(1);
+  };
+
+  const weight = formatNumber(scan.weight_lbs);
+  if (weight !== null) {
+    text += `\n- Weight: ${weight} lbs`;
+  }
+  const smm = formatNumber(scan.smm_lbs);
+  if (smm !== null) {
+    text += `\n- Skeletal Muscle Mass (SMM): ${smm} lbs`;
+  }
+  const bodyFatMass = formatNumber(scan.body_fat_mass_lbs);
+  if (bodyFatMass !== null) {
+    text += `\n- Body Fat Mass: ${bodyFatMass} lbs`;
+  }
+  const bmi = formatNumber(scan.bmi);
+  if (bmi !== null) {
+    text += `\n- BMI: ${bmi}`;
+  }
+  const percentBodyFat = formatNumber(scan.percent_body_fat);
+  if (percentBodyFat !== null) {
+    text += `\n- Percent Body Fat: ${percentBodyFat}%`;
+  }
+
+  if (scan.segment_analysis) {
+    text += `\n\nSegment Analysis:`;
+    const segments = [
+      { key: 'right_arm', label: 'Right Arm' },
+      { key: 'left_arm', label: 'Left Arm' },
+      { key: 'trunk', label: 'Trunk' },
+      { key: 'right_leg', label: 'Right Leg' },
+      { key: 'left_leg', label: 'Left Leg' },
+    ];
+
+    // Helper function to safely convert to number and format
+    // PostgreSQL may return numeric values as strings, so we need to handle both
+    const formatNumber = (value: unknown): string | null => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'string') {
+        if (value.trim() === '') return null;
+        const num = parseFloat(value);
+        if (Number.isNaN(num) || !Number.isFinite(num)) return null;
+        return num.toFixed(1);
+      }
+      if (typeof value === 'number') {
+        if (Number.isNaN(value) || !Number.isFinite(value)) return null;
+        return value.toFixed(1);
+      }
+      // Try to convert other types
+      const num = Number(value);
+      if (Number.isNaN(num) || !Number.isFinite(num)) return null;
+      return num.toFixed(1);
+    };
+
+    for (const segment of segments) {
+      const data = scan.segment_analysis[segment.key as keyof typeof scan.segment_analysis];
+      if (data && typeof data === 'object') {
+        const parts: string[] = [];
+        const muscleMass = formatNumber(data.muscle_mass_lbs);
+        if (muscleMass !== null) {
+          parts.push(`${muscleMass} lbs muscle`);
+        }
+        const fatMass = formatNumber(data.fat_mass_lbs);
+        if (fatMass !== null) {
+          parts.push(`${fatMass} lbs fat`);
+        }
+        const percentFat = formatNumber(data.percent_fat);
+        if (percentFat !== null) {
+          parts.push(`${percentFat}% fat`);
+        }
+        if (parts.length > 0) {
+          text += `\n- ${segment.label}: ${parts.join(', ')}`;
+        }
+      }
+    }
+  }
+
+  text += `\n\nConsider this body composition when:
+- Selecting appropriate training intensity based on current muscle mass and body fat levels
+- Choosing exercises that match current muscle mass distribution
+- Setting realistic progression goals that account for body composition
+- Adjusting volume and load based on body composition metrics
+- Designing programs that address any muscle imbalances indicated by segment analysis`;
+
+  return text;
 }
+
 
 /**
  * Generates the recommendation structure (without workouts) using OpenAI
  */
 export async function generateRecommendationStructure(
   questionnaire: Questionnaire,
-  structuredData: StructuredQuestionnaireData | null
+  structuredData: StructuredQuestionnaireData | null,
+  inbodyScan: InBodyScan | null = null,
+  client: Client | null = null
 ): Promise<Omit<LLMRecommendationResponse, 'workouts'>> {
   const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const inbodyText = formatInBodyScanForPrompt(inbodyScan);
+  const clientInfoText = formatClientInfoForPrompt(client);
 
   const personasText = Object.values(CLIENT_ARCHETYPES)
     .map(
@@ -1186,23 +1215,25 @@ export async function generateRecommendationStructure(
 
 ${personasText}
 
-## Client Questionnaire
+${clientInfoText ? `${clientInfoText}\n\n` : ''}## Client Questionnaire
 
 ${questionnaireText}
-
+${inbodyText ? `\n${inbodyText}\n` : ''}
 ## Instructions
 
-1. **Select the ONE client persona** that best matches this client based on their questionnaire responses. Provide clear reasoning for your selection.
+1. **Select the ONE client persona** that best matches this client based on their questionnaire responses, body composition, and age. Provide clear reasoning for your selection.
 
 2. **Design the training plan** considering:
    - The selected persona's training methods
    - The client's specific responses (energy, motivation, limitations, etc.)
+   - The client's age and age-appropriate training considerations
+   - The client's current body composition (muscle mass, body fat %, segment analysis)
    - Realistic progression over 6 weeks
    - Sustainability and adherence
 
 3. **Determine training parameters**:
-   - Sessions per week (typically 2-6)
-   - Session length in minutes (typically 30-90)
+   - Sessions per week (the options are 1-3)
+   - Session length in minutes (the options are 30min or 45min)
    - Training style description
    - 6-week plan structure with progression strategy
 
@@ -1274,9 +1305,13 @@ CRITICAL: Respond with ONLY valid JSON, no markdown, no additional text.`;
 export async function generateWorkouts(
   recommendation: Omit<LLMRecommendationResponse, 'workouts'>,
   questionnaire: Questionnaire,
-  structuredData: StructuredQuestionnaireData | null
+  structuredData: StructuredQuestionnaireData | null,
+  inbodyScan: InBodyScan | null = null,
+  client: Client | null = null
 ): Promise<LLMWorkoutResponse[]> {
   const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const inbodyText = formatInBodyScanForPrompt(inbodyScan);
+  const clientInfoText = formatClientInfoForPrompt(client);
   const week1Workouts = recommendation.sessions_per_week; // Only week 1
 
   const prompt = `You are an expert personal trainer generating detailed workouts for WEEK 1 of a 6-week training program.
@@ -1288,10 +1323,10 @@ export async function generateWorkouts(
 **Session Length:** ${recommendation.session_length_minutes} minutes
 **Training Style:** ${recommendation.training_style}
 
-## Client Questionnaire
+${clientInfoText ? `${clientInfoText}\n\n` : ''}## Client Questionnaire
 
 ${questionnaireText}
-
+${inbodyText ? `\n${inbodyText}\n` : ''}
 ## Instructions
 
 Generate ONLY WEEK 1 workouts (${week1Workouts} total sessions for week 1). Each workout should include:
@@ -1305,9 +1340,11 @@ Generate ONLY WEEK 1 workouts (${week1Workouts} total sessions for week 1). Each
 - All workouts must have week_number: 1
 - Each exercise must have at least a name
 - Be specific with exercise selection - use actual exercise names
+- Be specific with load - using lbs, percentage of 1RM, bodyweight, RPE, etc
 - These are foundational workouts to establish the program
 - Keep exercise notes and reasoning concise
 - Make workouts realistic and achievable for the client's level
+- Plan exercises, rest periods, warmup, and cooldown to fit within ${recommendation.session_length_minutes} minutes total, if in doubt provide more workout material rather than less.
 
 ## Output Format
 
@@ -1403,7 +1440,9 @@ CRITICAL:
  * Uses a two-step approach: first generate structure, then workouts
  */
 export async function generateRecommendationWithAI(
-  questionnaire: Questionnaire
+  questionnaire: Questionnaire,
+  inbodyScan: InBodyScan | null = null,
+  client: Client | null = null
 ): Promise<LLMRecommendationResponse> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
@@ -1416,11 +1455,11 @@ export async function generateRecommendationWithAI(
   try {
     console.log('Step 1: Generating recommendation structure...');
     // Step 1: Generate the recommendation structure (without workouts)
-    const recommendation = await generateRecommendationStructure(questionnaire, structuredData);
+    const recommendation = await generateRecommendationStructure(questionnaire, structuredData, inbodyScan, client);
 
     console.log(`Step 2: Generating Week 1 workouts (${recommendation.sessions_per_week} sessions)...`);
     // Step 2: Generate workouts for Week 1 only (to keep token usage manageable)
-    const workouts = await generateWorkouts(recommendation, questionnaire, structuredData);
+    const workouts = await generateWorkouts(recommendation, questionnaire, structuredData, inbodyScan, client);
 
     console.log(`✅ Successfully generated recommendation with ${workouts.length} Week 1 workouts`);
 
@@ -1460,7 +1499,9 @@ export async function generateWeekWorkouts(
   }[],
   questionnaire: Questionnaire,
   structuredData: StructuredQuestionnaireData | null,
-  targetWeek: number
+  targetWeek: number,
+  inbodyScan: InBodyScan | null = null,
+  client: Client | null = null
 ): Promise<LLMWorkoutResponse[]> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
@@ -1469,6 +1510,8 @@ export async function generateWeekWorkouts(
   }
 
   const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const inbodyText = formatInBodyScanForPrompt(inbodyScan);
+  const clientInfoText = formatClientInfoForPrompt(client);
   const sessionsPerWeek = recommendation.sessions_per_week;
 
   // Build performance history summary
@@ -1533,10 +1576,10 @@ export async function generateWeekWorkouts(
 
 ${performanceHistoryText}
 
-## Client Questionnaire
+${clientInfoText ? `${clientInfoText}\n\n` : ''}## Client Questionnaire
 
 ${questionnaireText}
-
+${inbodyText ? `\n${inbodyText}\n` : ''}
 ## Instructions
 
 Generate workouts for WEEK ${targetWeek} ONLY (${sessionsPerWeek} total sessions). These workouts should:

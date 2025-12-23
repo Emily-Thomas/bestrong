@@ -4,6 +4,7 @@ import cors from 'cors';
 import { runMigrations, testConnection } from '../backend/src/db/migrations';
 import authRoutes from '../backend/src/routes/auth.routes';
 import clientRoutes from '../backend/src/routes/client.routes';
+import inbodyScanRoutes from '../backend/src/routes/inbody-scan.routes';
 import questionnaireRoutes from '../backend/src/routes/questionnaire.routes';
 import recommendationRoutes from '../backend/src/routes/recommendation.routes';
 
@@ -106,6 +107,7 @@ app.get('/api', (_req, res) => {
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
+app.use('/api/inbody-scans', inbodyScanRoutes);
 app.use('/api/questionnaires', questionnaireRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 
