@@ -760,7 +760,7 @@ async function callOpenAIWithRetry(
   // Default to 1 retry (only for rate limits) - can be overridden via env var
   const defaultMaxRetries = parseInt(process.env.OPENAI_MAX_RETRIES || '1', 10);
   const maxRetries = options.maxRetries ?? defaultMaxRetries;
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
 
   // Calculate approximate input tokens (rough estimate: 4 chars per token)
   const inputText = messages.map(m => 
@@ -775,8 +775,7 @@ async function callOpenAIWithRetry(
         model,
         messages,
         response_format: { type: 'json_object' },
-        temperature: options.temperature ?? 0.5,
-        max_tokens: options.maxTokens ?? 8000,
+        max_completion_tokens: options.maxTokens ?? 8000,
       });
 
       const duration = Date.now() - startTime;
@@ -1047,26 +1046,6 @@ function formatQuestionnaireForPrompt(
 }
 
 /**
- * Calculates age from date of birth
- */
-function calculateAge(dateOfBirth: Date | string | undefined): number | null {
-  if (!dateOfBirth) {
-    return null;
-  }
-  
-  const birthDate = typeof dateOfBirth === 'string' ? new Date(dateOfBirth) : dateOfBirth;
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  
-  return age;
-}
-
-/**
  * Formats client information for inclusion in LLM prompt
  */
 function formatClientInfoForPrompt(client: Client | null): string {
@@ -1077,17 +1056,13 @@ function formatClientInfoForPrompt(client: Client | null): string {
   let text = `## Client Information\n\n`;
   
   if (client.date_of_birth) {
-    const age = calculateAge(client.date_of_birth);
-    if (age !== null) {
-      text += `- Age: ${age} years old\n`;
-    }
     const birthDate = typeof client.date_of_birth === 'string' 
       ? new Date(client.date_of_birth) 
       : client.date_of_birth;
     text += `- Date of Birth: ${birthDate.toLocaleDateString()}\n`;
   }
   
-  text += `\nConsider the client's age when:
+  text += `\nConsider the client's age (calculate from date of birth) when:
 - Selecting age-appropriate exercises and training methods
 - Setting realistic progression expectations based on age
 - Adjusting recovery time and training frequency
@@ -1307,7 +1282,6 @@ CRITICAL: Respond with ONLY valid JSON, no markdown, no additional text.`;
     ],
     {
       maxTokens: 4000,
-      temperature: 0.3, // Lower temperature for more consistent JSON
       maxRetries: 1, // Only retry on rate limits - don't waste tokens on API errors
     }
   );
@@ -1429,7 +1403,6 @@ CRITICAL:
     ],
     {
       maxTokens: 6000, // Reduced to prevent truncation issues
-      temperature: 0.3, // Lower temperature for more consistent JSON
       maxRetries: 1, // Only retry on rate limits - don't waste tokens on API errors
     }
   );
@@ -1698,7 +1671,6 @@ CRITICAL:
     ],
     {
       maxTokens: 6000,
-      temperature: 0.3,
       maxRetries: 1, // Only retry on rate limits - don't waste tokens on API errors
     }
   );

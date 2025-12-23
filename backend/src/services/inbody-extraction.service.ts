@@ -60,8 +60,9 @@ Return as JSON with this exact structure:
 If a value is not found, use null. All numbers should be numeric values, not strings.`;
 
     // Step 2: Call OpenAI Vision API
+    const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o', // Using GPT-4o for vision capabilities
+      model, // Using configurable model (defaults to gpt-5-mini, which supports vision)
       messages: [
         {
           role: 'system',
@@ -84,8 +85,7 @@ If a value is not found, use null. All numbers should be numeric values, not str
           ],
         },
       ],
-      temperature: 0.1, // Low temperature for consistent extraction
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     });
 
     const responseContent = response.choices[0]?.message?.content;

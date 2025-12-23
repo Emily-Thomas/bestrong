@@ -26,7 +26,7 @@ Add the following environment variable to your `.env` file:
 
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-4o  # Optional, defaults to gpt-4o if not set
+OPENAI_MODEL=gpt-5-mini  # Optional, defaults to gpt-5-mini if not set
 ```
 
 You can get an API key from [OpenAI](https://platform.openai.com/api-keys).
@@ -163,7 +163,7 @@ New types have been added in `backend/src/types/index.ts`:
 ### AI Service (`ai.service.ts`)
 
 - `generateRecommendationWithAI()`: Main function that calls OpenAI and returns structured recommendation with workouts
-- Uses GPT-4o by default (configurable via `OPENAI_MODEL`)
+- Uses gpt-5-mini by default (configurable via `OPENAI_MODEL`)
 - Returns JSON with structured output format
 - Includes comprehensive prompt with client personas and questionnaire data
 
@@ -193,8 +193,8 @@ New service for managing workouts:
 
 - Each recommendation generation makes one API call to OpenAI
 - The prompt is comprehensive and may use significant tokens
-- Using GPT-4o provides high-quality results but at higher cost
-- Consider using `gpt-4o-mini` for lower costs if needed (set `OPENAI_MODEL` env var)
+- Using gpt-5-mini by default provides good quality results at lower cost
+- You can switch to `gpt-4o` or `gpt-5` for higher quality if needed (set `OPENAI_MODEL` env var)
 
 ## Testing
 
