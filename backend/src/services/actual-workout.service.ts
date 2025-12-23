@@ -11,7 +11,7 @@ export async function createActualWorkout(
     workout_id,
     actual_performance,
     session_notes,
-    overall_rpe,
+    overall_rir,
     client_energy_level,
     trainer_observations,
     started_at,
@@ -21,7 +21,7 @@ export async function createActualWorkout(
   const result = await pool.query<ActualWorkout>(
     `INSERT INTO actual_workouts (
       workout_id, completed_by, actual_performance,
-      session_notes, overall_rpe, client_energy_level,
+      session_notes, overall_rir, client_energy_level,
       trainer_observations, started_at, completed_at
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -31,7 +31,7 @@ export async function createActualWorkout(
       null, // completed_by will be set via update if needed
       JSON.stringify(actual_performance),
       session_notes || null,
-      overall_rpe || null,
+      overall_rir || null,
       client_energy_level || null,
       trainer_observations || null,
       started_at ? new Date(started_at) : null,
@@ -101,9 +101,9 @@ export async function updateActualWorkout(
     values.push(updates.session_notes || null);
     paramCount++;
   }
-  if (updates.overall_rpe !== undefined) {
-    updateFields.push(`overall_rpe = $${paramCount}`);
-    values.push(updates.overall_rpe || null);
+  if (updates.overall_rir !== undefined) {
+    updateFields.push(`overall_rir = $${paramCount}`);
+    values.push(updates.overall_rir || null);
     paramCount++;
   }
   if (updates.client_energy_level !== undefined) {

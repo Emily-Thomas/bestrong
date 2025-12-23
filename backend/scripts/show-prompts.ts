@@ -265,7 +265,7 @@ Why It Fits: Needs fast results with visible payoff. These pair calorie-burning 
 
 **The Maintenance Pro**
 Description: Advanced, consistent, data-driven
-Training Methods: Autoregulated Hypertrophy (RIR/RPE-based), Block Periodization, Athlete Monitoring Systems (InBody, HRV, etc.)
+Training Methods: Autoregulated Hypertrophy (RIR-based), Block Periodization, Athlete Monitoring Systems (InBody, HRV, etc.)
 Why It Fits: Already efficient—focus on fine-tuning. Block periodization keeps novelty; RIR-based training ensures precision without overtraining.
 
 **The Overwhelmed Beginner**
@@ -379,7 +379,7 @@ Generate ${week1Workouts} workouts for WEEK 1 ONLY
 - Workout reasoning should be concise (2-3 sentences max)
 
 Each workout must include:
-- Specific exercises with sets, reps, weight/RPE, rest periods
+- Specific exercises with sets, reps, weight/RIR, rest periods
 - Warmup and cooldown exercises
 - Total duration matching session length
 - Focus areas for the workout
@@ -401,10 +401,10 @@ You must respond with a valid JSON object matching this exact structure:
             "name": "Barbell Bench Press",
             "sets": 4,
             "reps": "6-8",
-            "weight": "RPE 8",
+            "weight": "RIR 2",
             "rest_seconds": 180,
             "notes": "Focus on controlled tempo",
-            "rpe": 8
+            "rir": 2
           }
         ],
         "warmup": [{"name": "Light Cardio", "notes": "5 minutes"}],

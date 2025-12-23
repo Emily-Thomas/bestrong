@@ -194,7 +194,7 @@ export async function getWorkoutByIdWithActual(
     actual_workout_completed_by?: number;
     actual_workout_performance?: string | unknown;
     actual_workout_session_notes?: string;
-    actual_workout_overall_rpe?: number;
+    actual_workout_overall_rir?: number;
     actual_workout_client_energy_level?: number;
     actual_workout_trainer_observations?: string;
     actual_workout_started_at?: Date;
@@ -210,7 +210,7 @@ export async function getWorkoutByIdWithActual(
       aw.completed_by as actual_workout_completed_by,
       aw.actual_performance as actual_workout_performance,
       aw.session_notes as actual_workout_session_notes,
-      aw.overall_rpe as actual_workout_overall_rpe,
+      aw.overall_rir as actual_workout_overall_rir,
       aw.client_energy_level as actual_workout_client_energy_level,
       aw.trainer_observations as actual_workout_trainer_observations,
       aw.started_at as actual_workout_started_at,
@@ -259,12 +259,12 @@ export async function getWorkoutByIdWithActual(
               sets_completed?: number;
               reps_completed?: number | string;
               weight_used?: string;
-              rpe?: number;
+              rir?: number;
               notes?: string;
             }>;
           }),
       session_notes: row.actual_workout_session_notes || undefined,
-      overall_rpe: row.actual_workout_overall_rpe || undefined,
+      overall_rir: row.actual_workout_overall_rir || undefined,
       client_energy_level: row.actual_workout_client_energy_level || undefined,
       trainer_observations: row.actual_workout_trainer_observations || undefined,
       started_at: row.actual_workout_started_at || undefined,

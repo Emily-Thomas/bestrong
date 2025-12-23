@@ -83,10 +83,10 @@ Response now includes:
               "name": "Barbell Bench Press",
               "sets": 4,
               "reps": "6-8",
-              "weight": "RPE 8",
+              "weight": "RIR 2",
               "rest_seconds": 180,
               "notes": "...",
-              "rpe": 8
+              "rir": 2
             }
           ],
           "warmup": [...],
@@ -137,10 +137,10 @@ Each workout includes:
   - Name
   - Sets
   - Reps (can be range like "8-10" or number)
-  - Weight/load guidance (RPE, percentage, bodyweight, etc.)
+  - Weight/load guidance (RIR, percentage, bodyweight, etc.)
   - Rest periods in seconds
   - Notes on form, tempo, etc.
-  - RPE (Rate of Perceived Exertion) when applicable
+  - RIR (Reps in Reserve, 0-5 scale) when applicable
 - **Warmup**: Optional warmup exercises
 - **Cooldown**: Optional cooldown exercises
 - **Focus Areas**: Array of focus areas (e.g., ["upper body", "push", "strength"])

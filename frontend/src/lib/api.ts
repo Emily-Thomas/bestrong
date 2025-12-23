@@ -420,7 +420,7 @@ export interface Exercise {
   rest_seconds?: number;
   notes?: string;
   tempo?: string;
-  rpe?: number;
+  rir?: number;
 }
 
 export interface WorkoutData {
@@ -453,7 +453,7 @@ export interface ActualExercisePerformance {
   sets_completed?: number;
   reps_completed?: number | string;
   weight_used?: string;
-  rpe?: number;
+  rir?: number;
   rounds_completed?: number;
   notes?: string;
   rest_taken_seconds?: number;
@@ -473,7 +473,7 @@ export interface ActualWorkout {
   completed_by?: number;
   actual_performance: ActualWorkoutPerformance;
   session_notes?: string;
-  overall_rpe?: number;
+  overall_rir?: number;
   client_energy_level?: number;
   trainer_observations?: string;
   started_at?: string;
@@ -486,7 +486,7 @@ export interface CreateActualWorkoutInput {
   workout_id: number;
   actual_performance: ActualWorkoutPerformance;
   session_notes?: string;
-  overall_rpe?: number;
+  overall_rir?: number;
   client_energy_level?: number;
   trainer_observations?: string;
   started_at?: string;

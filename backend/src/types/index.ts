@@ -176,11 +176,11 @@ export interface Exercise {
   name: string;
   sets?: number;
   reps?: string | number; // Can be "8-10" or 8
-  weight?: string; // Can be "bodyweight", "RPE 7", "50% 1RM", etc.
+  weight?: string; // Can be "bodyweight", "RIR 2", "50% 1RM", etc.
   rest_seconds?: number;
   notes?: string;
   tempo?: string; // e.g., "2-0-1-0" for tempo training
-  rpe?: number; // Rate of Perceived Exertion (1-10)
+  rir?: number; // Reps in Reserve (0-5 scale: 0=failure, 1-5=reps remaining)
 }
 
 export interface WorkoutData {
@@ -267,7 +267,7 @@ export interface ActualExercisePerformance {
   sets_completed?: number;
   reps_completed?: number | string; // Actual reps (may be range like "8-10")
   weight_used?: string; // Actual weight/load used
-  rpe?: number; // Actual RPE (1-10)
+  rir?: number; // Actual RIR (Reps in Reserve, 0-5 scale: 0=failure, 1-5=reps remaining)
   rounds_completed?: number; // For circuit/round-based exercises
   notes?: string; // Exercise-specific notes
   rest_taken_seconds?: number; // Actual rest time
@@ -287,7 +287,7 @@ export interface ActualWorkout {
   completed_by?: number;
   actual_performance: ActualWorkoutPerformance;
   session_notes?: string;
-  overall_rpe?: number; // Overall session RPE (1-10)
+  overall_rir?: number; // Overall session RIR (Reps in Reserve, 0-5 scale: 0=failure, 1-5=reps remaining)
   client_energy_level?: number; // 1-10 scale
   trainer_observations?: string;
   started_at?: Date;
@@ -300,7 +300,7 @@ export interface CreateActualWorkoutInput {
   workout_id: number;
   actual_performance: ActualWorkoutPerformance;
   session_notes?: string;
-  overall_rpe?: number;
+  overall_rir?: number;
   client_energy_level?: number;
   trainer_observations?: string;
   started_at?: string;

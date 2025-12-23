@@ -228,7 +228,7 @@ CREATE TABLE IF NOT EXISTS actual_workouts (
   
   -- Session feedback
   session_notes TEXT,
-  overall_rpe INTEGER, -- Overall session RPE (1-10)
+  overall_rir INTEGER, -- Overall session RIR (Reps in Reserve, 0-5 scale)
   client_energy_level INTEGER, -- 1-10 scale
   trainer_observations TEXT,
   

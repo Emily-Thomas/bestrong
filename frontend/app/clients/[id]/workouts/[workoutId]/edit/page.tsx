@@ -289,7 +289,7 @@ export default function EditWorkoutPage() {
                           onChange={(e) =>
                             updateExercise(index, { weight: e.target.value })
                           }
-                          placeholder="e.g., RPE 8 or 185 lbs"
+                          placeholder="e.g., RIR 2 or 185 lbs"
                         />
                       </div>
                       <div className="space-y-2">
@@ -309,16 +309,16 @@ export default function EditWorkoutPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor={`rpe-${index}`}>RPE</Label>
+                        <Label htmlFor={`rir-${index}`}>RIR (0-5)</Label>
                         <Input
-                          id={`rpe-${index}`}
+                          id={`rir-${index}`}
                           type="number"
-                          min="1"
-                          max="10"
-                          value={exercise.rpe || ''}
+                          min="0"
+                          max="5"
+                          value={exercise.rir !== undefined ? exercise.rir : ''}
                           onChange={(e) =>
                             updateExercise(index, {
-                              rpe: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                              rir: e.target.value ? parseInt(e.target.value, 10) : undefined,
                             })
                           }
                         />

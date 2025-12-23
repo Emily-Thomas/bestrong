@@ -130,7 +130,7 @@ async function main() {
           completed_by INTEGER REFERENCES admin_users(id),
           actual_performance JSONB NOT NULL,
           session_notes TEXT,
-          overall_rpe INTEGER,
+          overall_rir INTEGER,
           client_energy_level INTEGER,
           trainer_observations TEXT,
           started_at TIMESTAMP,

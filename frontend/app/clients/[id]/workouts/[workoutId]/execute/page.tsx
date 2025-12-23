@@ -43,7 +43,7 @@ export default function WorkoutExecutionPage() {
     exercises: [],
   });
   const [sessionNotes, setSessionNotes] = useState('');
-  const [overallRPE, setOverallRPE] = useState<number>(5);
+  const [overallRIR, setOverallRIR] = useState<number>(2);
   const [clientEnergyLevel, setClientEnergyLevel] = useState<number>(5);
   const [trainerObservations, setTrainerObservations] = useState('');
 
@@ -65,7 +65,7 @@ export default function WorkoutExecutionPage() {
               sets_completed: ex.sets,
               reps_completed: typeof ex.reps === 'number' ? ex.reps : ex.reps || '',
               weight_used: ex.weight || '',
-              rpe: ex.rpe,
+              rir: ex.rir,
             })
           );
           setActualPerformance({ exercises });
@@ -75,7 +75,7 @@ export default function WorkoutExecutionPage() {
         if (w.actual_workout) {
           setActualPerformance(w.actual_workout.actual_performance);
           setSessionNotes(w.actual_workout.session_notes || '');
-          setOverallRPE(w.actual_workout.overall_rpe || 5);
+          setOverallRIR(w.actual_workout.overall_rir || 2);
           setClientEnergyLevel(w.actual_workout.client_energy_level || 5);
           setTrainerObservations(w.actual_workout.trainer_observations || '');
         }
@@ -138,7 +138,7 @@ export default function WorkoutExecutionPage() {
       workout_id: workout.id,
       actual_performance: actualPerformance,
       session_notes: sessionNotes,
-      overall_rpe: overallRPE,
+      overall_rir: overallRIR,
       client_energy_level: clientEnergyLevel,
       trainer_observations: trainerObservations,
       completed_at: new Date().toISOString(),
@@ -249,7 +249,7 @@ export default function WorkoutExecutionPage() {
                         {ex.sets && <span>{ex.sets} sets</span>}
                         {ex.reps && <span> • {ex.reps} reps</span>}
                         {ex.weight && <span> • {ex.weight}</span>}
-                        {ex.rpe && <span> • RPE {ex.rpe}</span>}
+                        {ex.rir !== undefined && <span> • RIR {ex.rir}</span>}
                       </div>
                       {ex.notes && (
                         <div className="text-xs text-muted-foreground mt-1">
@@ -338,21 +338,21 @@ export default function WorkoutExecutionPage() {
                                   weight_used: e.target.value,
                                 })
                               }
-                              placeholder="e.g., 185 lbs or RPE 8"
+                              placeholder="e.g., 185 lbs or RIR 2"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`rpe-${idx}`}>
-                              RPE (1-10): {ex.rpe || 5}
+                            <Label htmlFor={`rir-${idx}`}>
+                              RIR (0-5): {ex.rir !== undefined ? ex.rir : 2}
                             </Label>
                             <Slider
-                              id={`rpe-${idx}`}
-                              min={1}
-                              max={10}
+                              id={`rir-${idx}`}
+                              min={0}
+                              max={5}
                               step={1}
-                              value={[ex.rpe || 5]}
+                              value={[ex.rir !== undefined ? ex.rir : 2]}
                               onValueChange={([value]) =>
-                                updateExercisePerformance(idx, { rpe: value })
+                                updateExercisePerformance(idx, { rir: value })
                               }
                             />
                           </div>
@@ -384,13 +384,13 @@ export default function WorkoutExecutionPage() {
                 <h4 className="font-semibold">Session Summary</h4>
 
                 <div className="space-y-2">
-                  <Label>Overall Session RPE (1-10): {overallRPE}</Label>
+                  <Label>Overall Session RIR (0-5): {overallRIR}</Label>
                   <Slider
-                    min={1}
-                    max={10}
+                    min={0}
+                    max={5}
                     step={1}
-                    value={[overallRPE]}
-                    onValueChange={([value]) => setOverallRPE(value)}
+                    value={[overallRIR]}
+                    onValueChange={([value]) => setOverallRIR(value)}
                   />
                 </div>
 

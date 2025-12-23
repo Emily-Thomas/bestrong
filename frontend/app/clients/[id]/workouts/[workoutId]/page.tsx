@@ -189,7 +189,7 @@ export default function WorkoutDetailPage() {
                         {ex.sets && <span>{ex.sets} sets</span>}
                         {ex.reps && <span> • {ex.reps} reps</span>}
                         {ex.weight && <span> • {ex.weight}</span>}
-                        {ex.rpe && <span> • RPE {ex.rpe}</span>}
+                        {ex.rir !== undefined && <span> • RIR {ex.rir}</span>}
                         {ex.rest_seconds && (
                           <span> • {ex.rest_seconds}s rest</span>
                         )}
@@ -228,10 +228,10 @@ export default function WorkoutDetailPage() {
                 <CardDescription>What the client actually did</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {workout.actual_workout.overall_rpe && (
+                {workout.actual_workout.overall_rir !== undefined && (
                   <div>
-                    <span className="font-semibold">Overall Session RPE: </span>
-                    {workout.actual_workout.overall_rpe}/10
+                    <span className="font-semibold">Overall Session RIR: </span>
+                    {workout.actual_workout.overall_rir}/5
                   </div>
                 )}
                 {workout.actual_workout.client_energy_level && (
@@ -267,8 +267,8 @@ export default function WorkoutDetailPage() {
                                   {proposedEx?.weight && (
                                     <span> • {proposedEx.weight}</span>
                                   )}
-                                  {proposedEx?.rpe && (
-                                    <span> • RPE {proposedEx.rpe}</span>
+                                  {proposedEx?.rir !== undefined && (
+                                    <span> • RIR {proposedEx.rir}</span>
                                   )}
                                 </div>
                               </div>
@@ -286,7 +286,7 @@ export default function WorkoutDetailPage() {
                                   {ex.weight_used && (
                                     <span> • {ex.weight_used}</span>
                                   )}
-                                  {ex.rpe && <span> • RPE {ex.rpe}</span>}
+                                  {ex.rir !== undefined && <span> • RIR {ex.rir}</span>}
                                 </div>
                               </div>
                             </div>

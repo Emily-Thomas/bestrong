@@ -23,7 +23,7 @@ This feature enables trainers to execute AI-proposed workouts, track actual clie
 1. **Client Status Management**: Transition clients from "prospect" to "active" when they sign up
 2. **Recommendation Acceptance**: Accept AI-proposed recommendations when client becomes active
 3. **Workout Execution**: Track when workouts are run and record actual performance data
-4. **Performance Tracking**: Store actual reps, RPE, rounds, and feedback notes for each workout
+4. **Performance Tracking**: Store actual reps, RIR, rounds, and feedback notes for each workout
 5. **Progressive Generation**: Generate next week's workouts based on original plan + actual performance data
 6. **Week Management**: Complete all workouts in a week before generating the next week
 
@@ -50,7 +50,7 @@ This feature enables trainers to execute AI-proposed workouts, track actual clie
 4. System displays the proposed workout plan
 5. During/after the workout, trainer inputs:
    - **Actual reps** for each exercise (may differ from proposed)
-   - **Actual RPE** (Rate of Perceived Exertion) for each exercise
+   - **Actual RIR** (Reps in Reserve, 0-5 scale) for each exercise
    - **Actual rounds** (if applicable, e.g., circuit training)
    - **Actual weight/load** used (if applicable)
    - **Feedback notes** about the session (e.g., "Client struggled with form on squats", "Great energy today")
@@ -69,7 +69,7 @@ This feature enables trainers to execute AI-proposed workouts, track actual clie
 5. System:
    - Collects context:
      - Original recommendation (plan structure, goals, AI reasoning)
-     - All actual workout data from Week 1 (performance, feedback, RPE, etc.)
+     - All actual workout data from Week 1 (performance, feedback, RIR, etc.)
      - Client's original questionnaire data
    - Calls AI service to generate Week 2 workouts
    - Creates new workout records for Week 2 (status: `scheduled`)
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS actual_workouts (
   
   -- Session feedback
   session_notes TEXT,
-  overall_rpe INTEGER, -- Overall session RPE (1-10)
+  overall_rir INTEGER, -- Overall session RIR (Reps in Reserve, 0-5 scale)
   client_energy_level INTEGER, -- 1-10 scale
   trainer_observations TEXT,
   
@@ -274,7 +274,7 @@ export interface ActualExercisePerformance {
   sets_completed?: number;
   reps_completed?: number | string; // Actual reps (may be range like "8-10")
   weight_used?: string; // Actual weight/load used
-  rpe?: number; // Actual RPE (1-10)
+  rir?: number; // Actual RIR (Reps in Reserve, 0-5 scale: 0=failure, 1-5=reps remaining)
   rounds_completed?: number; // For circuit/round-based exercises
   notes?: string; // Exercise-specific notes
   rest_taken_seconds?: number; // Actual rest time
@@ -294,7 +294,7 @@ export interface ActualWorkout {
   completed_by?: number;
   actual_performance: ActualWorkoutPerformance;
   session_notes?: string;
-  overall_rpe?: number; // Overall session RPE (1-10)
+  overall_rir?: number; // Overall session RIR (Reps in Reserve, 0-5 scale: 0=failure, 1-5=reps remaining)
   client_energy_level?: number; // 1-10 scale
   trainer_observations?: string;
   started_at?: Date;
@@ -307,7 +307,7 @@ export interface CreateActualWorkoutInput {
   workout_id: number;
   actual_performance: ActualWorkoutPerformance;
   session_notes?: string;
-  overall_rpe?: number;
+  overall_rir?: number;
   client_energy_level?: number;
   trainer_observations?: string;
   started_at?: string;
@@ -556,7 +556,7 @@ The prompt should include:
 2. **Performance History:**
    - For each previous week:
      - Proposed workouts
-     - Actual performance data (reps, RPE, rounds, notes)
+     - Actual performance data (reps, RIR, rounds, notes)
      - Trainer observations
      - Client energy levels
      - What worked well / what didn't
@@ -585,7 +585,7 @@ The prompt should include:
 
 ### Week 1 Results:
 - Session 1: [Actual performance summary]
-  - Client struggled with [exercise], RPE was higher than expected
+  - Client struggled with [exercise], RIR was lower than expected
   - Trainer notes: [observations]
 - Session 2: [Actual performance summary]
   - Client exceeded expectations on [exercise]
@@ -597,7 +597,7 @@ The prompt should include:
 Generate Week [X] workouts that:
 1. Build on the progression from previous weeks
 2. Address any issues noted in performance feedback
-3. Adjust difficulty based on actual RPE and performance
+3. Adjust difficulty based on actual RIR and performance
 4. Maintain client engagement and motivation
 5. Follow the original plan structure while adapting to real-world results
 
@@ -634,12 +634,12 @@ Generate Week [X] workouts that:
    - Display proposed workout plan
    - For each exercise, input fields for:
      - Actual reps (number input)
-     - Actual RPE (1-10 slider or number input)
+     - Actual RIR (0-5 slider or number input)
      - Actual weight/load (text input)
      - Actual rounds (if applicable)
      - Exercise-specific notes (textarea)
    - Session-level inputs:
-     - Overall session RPE (1-10)
+     - Overall session RIR (0-5)
      - Client energy level (1-10)
      - Trainer observations (textarea)
      - Session notes (textarea)
@@ -834,8 +834,8 @@ Client Detail Page
         "name": "Barbell Bench Press",
         "sets": 4,
         "reps": "6-8",
-        "weight": "RPE 8",
-        "rpe": 8
+        "weight": "RIR 2",
+        "rir": 2
       },
       {
         "name": "Pull-ups",
@@ -858,7 +858,7 @@ Client Detail Page
         "sets_completed": 4,
         "reps_completed": "6, 6, 7, 6",
         "weight_used": "185 lbs",
-        "rpe": 9,
+        "rir": 1,
         "notes": "Client struggled on last set, form broke down slightly"
       },
       {
@@ -866,7 +866,7 @@ Client Detail Page
         "sets_completed": 3,
         "reps_completed": "8, 7, 6",
         "weight_used": "Bodyweight + 10 lbs assistance",
-        "rpe": 8,
+        "rir": 2,
         "notes": "Used assistance band for last set"
       }
     ],
@@ -874,7 +874,7 @@ Client Detail Page
     "modifications_made": "Reduced rest time between sets to fit schedule"
   },
   "session_notes": "Great session overall. Client is progressing well on bench press. Pull-ups need more work.",
-  "overall_rpe": 8,
+  "overall_rir": 2,
   "client_energy_level": 7,
   "trainer_observations": "Client showed good form on bench press but fatigued quickly. Need to focus on pull-up strength."
 }
@@ -886,13 +886,13 @@ When generating Week 2, the AI receives:
 
 1. **Original Context**: Client persona, 6-week plan structure, training style
 2. **Week 1 Performance Summary**:
-   - Bench press: Completed 4 sets, RPE 9 (higher than planned 8), form broke down on last set
-   - Pull-ups: Needed assistance, completed 3 sets, RPE 8
+   - Bench press: Completed 4 sets, RIR 1 (lower than planned 2), form broke down on last set
+   - Pull-ups: Needed assistance, completed 3 sets, RIR 2
    - Overall: Client energy 7/10, session went well but client fatigued quickly
    - Trainer observation: Need to focus on pull-up strength
 
 3. **AI Adjustments for Week 2**:
-   - Slightly reduce bench press intensity (RPE 7-8 instead of 8)
+   - Slightly reduce bench press intensity (RIR 2-3 instead of 2)
    - Add pull-up assistance work or alternative exercises
    - Maintain overall volume but adjust based on fatigue patterns
    - Continue progression but at adjusted pace

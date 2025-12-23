@@ -914,7 +914,7 @@ const CLIENT_ARCHETYPES = {
     type: 'The Maintenance Pro',
     description: 'Advanced, consistent, data-driven',
     trainingMethods: [
-      'Autoregulated Hypertrophy (RIR/RPE-based)',
+      'Autoregulated Hypertrophy (RIR-based)',
       'Block Periodization',
       'Athlete Monitoring Systems (InBody, HRV, etc.)',
     ],
@@ -1334,7 +1334,7 @@ ${inbodyText ? `\n${inbodyText}\n` : ''}
 Generate ONLY WEEK 1 workouts (${week1Workouts} total sessions for week 1). Each workout should include:
 - Specific exercises with sets, reps, weight/load guidance, rest periods
 - Warmup and cooldown exercises when appropriate
-- Notes on form, tempo, or RPE when relevant
+- Notes on form, tempo, or RIR when relevant
 - Brief reasoning for exercise selection
 
 **CRITICAL: Generate ONLY Week 1 workouts**
@@ -1342,11 +1342,11 @@ Generate ONLY WEEK 1 workouts (${week1Workouts} total sessions for week 1). Each
 - All workouts must have week_number: 1
 - Each exercise must have at least a name
 - Be specific with exercise selection - use actual exercise names
-- Be specific with load - using lbs, percentage of 1RM, bodyweight, RPE, etc
+- Be specific with load - using lbs, percentage of 1RM, bodyweight, RIR, etc
 - These are foundational workouts to establish the program
 - Keep exercise notes and reasoning concise
 - Make workouts realistic and achievable for the client's level
-- Plan exercises, rest periods, warmup, and cooldown to fit within ${recommendation.session_length_minutes} minutes total, if in doubt provide more workout material rather than less.
+- Plan exercises, rest periods, warmup, and cooldown to fit within ${recommendation.session_length_minutes} minutes total.
 
 ## Output Format
 
@@ -1364,10 +1364,10 @@ You must respond with a valid JSON object with this structure:
             "name": "Barbell Bench Press",
             "sets": 4,
             "reps": "6-8",
-            "weight": "RPE 8",
+            "weight": "RIR 2",
             "rest_seconds": 180,
             "notes": "Focus on controlled tempo",
-            "rpe": 8
+            "rir": 2
           }
         ],
         "warmup": [{"name": "Light Cardio", "notes": "5 minutes"}],
@@ -1532,7 +1532,7 @@ export async function generateWeekWorkouts(
         performanceHistoryText += `**Session ${workout.session_number}: ${workout.workout_name || 'Workout'}**\n`;
         
         if (actualWorkout) {
-          performanceHistoryText += `- Overall RPE: ${actualWorkout.overall_rpe || 'N/A'}/10\n`;
+          performanceHistoryText += `- Overall RIR: ${actualWorkout.overall_rir || 'N/A'}/5\n`;
           performanceHistoryText += `- Client Energy Level: ${actualWorkout.client_energy_level || 'N/A'}/10\n`;
           
           if (actualWorkout.actual_performance.exercises.length > 0) {
@@ -1542,7 +1542,7 @@ export async function generateWeekWorkouts(
               if (ex.sets_completed) performanceHistoryText += `${ex.sets_completed} sets, `;
               if (ex.reps_completed) performanceHistoryText += `${ex.reps_completed} reps, `;
               if (ex.weight_used) performanceHistoryText += `${ex.weight_used}, `;
-              if (ex.rpe) performanceHistoryText += `RPE ${ex.rpe}`;
+              if (ex.rir !== undefined) performanceHistoryText += `RIR ${ex.rir}`;
               performanceHistoryText += '\n';
               if (ex.notes) {
                 performanceHistoryText += `    Notes: ${ex.notes}\n`;
@@ -1586,7 +1586,7 @@ ${inbodyText ? `\n${inbodyText}\n` : ''}
 Generate workouts for WEEK ${targetWeek} ONLY (${sessionsPerWeek} total sessions). These workouts should:
 
 1. **Build on previous weeks' performance:**
-   - Adjust difficulty based on actual RPE and performance data
+   - Adjust difficulty based on actual RIR and performance data
    - Address any issues noted in trainer observations
    - Progress appropriately based on what the client actually achieved
    - Maintain client engagement and motivation
@@ -1597,15 +1597,15 @@ Generate workouts for WEEK ${targetWeek} ONLY (${sessionsPerWeek} total sessions
    - Adjust volume/intensity based on actual performance
 
 3. **Consider performance feedback:**
-   - If client struggled (high RPE, low energy), reduce difficulty or volume
-   - If client exceeded expectations (low RPE, high energy), increase challenge appropriately
+   - If client struggled (low RIR, low energy), reduce difficulty or volume
+   - If client exceeded expectations (high RIR, high energy), increase challenge appropriately
    - Address specific issues mentioned in trainer observations
    - Build on exercises that worked well
 
 4. **Each workout should include:**
    - Specific exercises with sets, reps, weight/load guidance, rest periods
    - Warmup and cooldown exercises when appropriate
-   - Notes on form, tempo, or RPE when relevant
+   - Notes on form, tempo, or RIR when relevant
    - Brief reasoning for exercise selection and progression
 
 **CRITICAL: Generate ONLY Week ${targetWeek} workouts**
@@ -1632,10 +1632,10 @@ You must respond with a valid JSON object with this structure:
             "name": "Barbell Bench Press",
             "sets": 4,
             "reps": "6-8",
-            "weight": "RPE 8",
+            "weight": "RIR 2",
             "rest_seconds": 180,
             "notes": "Focus on controlled tempo",
-            "rpe": 8
+            "rir": 2
           }
         ],
         "warmup": [{"name": "Light Cardio", "notes": "5 minutes"}],

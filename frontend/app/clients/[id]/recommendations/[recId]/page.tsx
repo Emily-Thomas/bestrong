@@ -527,7 +527,7 @@ function WorkoutCard({ workout }: { workout: Workout }) {
 }
 
 // Component to display a list of exercises
-function ExerciseList({ exercises }: { exercises: Array<{ name: string; sets?: number; reps?: string | number; weight?: string; rest_seconds?: number; notes?: string; tempo?: string; rpe?: number }> }) {
+function ExerciseList({ exercises }: { exercises: Array<{ name: string; sets?: number; reps?: string | number; weight?: string; rest_seconds?: number; notes?: string; tempo?: string; rir?: number }> }) {
   return (
     <div className="space-y-2">
       {exercises.map((exercise, idx) => (
@@ -563,9 +563,9 @@ function ExerciseList({ exercises }: { exercises: Array<{ name: string; sets?: n
                   <strong>Tempo:</strong> {exercise.tempo}
                 </span>
               )}
-              {exercise.rpe && (
+              {exercise.rir !== undefined && (
                 <span>
-                  <strong>RPE:</strong> {exercise.rpe}
+                  <strong>RIR:</strong> {exercise.rir}
                 </span>
               )}
             </div>
