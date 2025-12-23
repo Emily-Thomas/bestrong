@@ -88,7 +88,8 @@ export async function hasInBodyScan(clientId: number): Promise<boolean> {
 
 export async function updateInBodyScan(
   id: number,
-  input: UpdateInBodyScanInput
+  input: UpdateInBodyScanInput,
+  verifiedBy?: number
 ): Promise<InBodyScan | null> {
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -132,6 +133,10 @@ export async function updateInBodyScan(
     if (input.verified) {
       // Set verified_at and verified_by when marking as verified
       fields.push(`verified_at = CURRENT_TIMESTAMP`);
+      if (verifiedBy) {
+        fields.push(`verified_by = $${paramCount++}`);
+        values.push(verifiedBy);
+      }
     }
   }
 

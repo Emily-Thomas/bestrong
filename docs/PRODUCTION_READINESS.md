@@ -39,7 +39,8 @@ All migrations are ready for production deployment:
 - `POSTGRES_URL` or `POSTGRES_PRISMA_URL` or `POSTGRES_URL_NON_POOLING` - Database connection
 - `JWT_SECRET` - JWT token signing secret
 - `OPENAI_API_KEY` - OpenAI API key for AI recommendations
-- `BLOB_READ_WRITE_TOKEN` - Vercel Blob storage token (for InBody scan uploads)
+- `BLOB_READ_WRITE_TOKEN` - **Vercel Blob storage token (REQUIRED for InBody scan uploads)**
+  - See `docs/VERCEL_BLOB_SETUP.md` for detailed setup instructions
 - `FRONTEND_URL` - Frontend URL (optional, defaults to Vercel URL)
 
 ### Optional

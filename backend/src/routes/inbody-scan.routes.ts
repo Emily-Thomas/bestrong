@@ -255,13 +255,8 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const input: UpdateInBodyScanInput = req.body;
 
-    // If marking as verified, set verified_by
-    if (input.verified && !input.verified_by) {
-      // We'll handle verified_by in the service
-      input.verified_by = req.user.userId;
-    }
-
-    const scan = await inbodyScanService.updateInBodyScan(id, input);
+    // Note: verified_by is handled in the service layer when verified is set to true
+    const scan = await inbodyScanService.updateInBodyScan(id, input, req.user.userId);
 
     if (!scan) {
       res.status(404).json({ success: false, error: 'Scan not found' });
