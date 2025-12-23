@@ -285,12 +285,20 @@ router.post(
       }
 
       // Trigger job processing immediately (fire-and-forget)
-      // This will run in the background and may timeout on Hobby plan (10s limit)
-      // If it times out, the job will remain in 'processing' state and can be retried
-      console.log(`[${requestId}] Triggering job processing for job ${job.id}`);
-      processRecommendationJob(job.id).catch((err) => {
-        console.error(`[${requestId}] Error in background job processing for job ${job.id}:`, err);
-      });
+      // With Pro plan (300s timeout), this should complete successfully
+      // In development, it processes immediately; in production it runs in background
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[${requestId}] [Dev] Triggering immediate job processing for job ${job.id}`);
+        processRecommendationJob(job.id).catch((err) => {
+          console.error(`[${requestId}] Error in dev job processing for job ${job.id}:`, err);
+        });
+      } else {
+        console.log(`[${requestId}] [Prod] Triggering background job processing for job ${job.id}`);
+        // In production, process in background (fire-and-forget)
+        processRecommendationJob(job.id).catch((err) => {
+          console.error(`[${requestId}] Error in background job processing for job ${job.id}:`, err);
+        });
+      }
 
       const duration = Date.now() - startTime;
       console.log(`[${requestId}] Request completed successfully in ${duration}ms`, {
@@ -465,7 +473,6 @@ router.get('/generate/job/:jobId', async (req: Request, res: Response) => {
 });
 
 // Manually trigger job processing (for retries or manual processing)
-// This is useful when jobs timeout on Hobby plan (10s limit)
 router.post('/generate/job/:jobId/process', async (req: Request, res: Response) => {
   try {
     if (!req.user) {

@@ -129,7 +129,11 @@ async function initializeDatabase() {
 }
 
 // Vercel serverless function handler
-// maxDuration: 30 seconds
+// Configure maxDuration for Pro plan (up to 300 seconds / 5 minutes)
+export const config = {
+  maxDuration: 300, // 5 minutes - Pro plan limit
+};
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
