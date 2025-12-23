@@ -5,7 +5,7 @@
   "outputDirectory": "frontend/.next",
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/(?!process-job)(.*)",
       "destination": "/api"
     }
   ]
