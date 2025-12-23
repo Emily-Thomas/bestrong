@@ -62,7 +62,7 @@ If a value is not found, use null. All numbers should be numeric values, not str
     // Step 2: Call OpenAI Vision API
     const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
     const response = await openai.chat.completions.create({
-      model, // Using configurable model (defaults to gpt-5-mini, which supports vision)
+      model,
       messages: [
         {
           role: 'system',
@@ -85,6 +85,7 @@ If a value is not found, use null. All numbers should be numeric values, not str
           ],
         },
       ],
+      response_format: { type: 'json_object' }, // Force JSON response
       max_completion_tokens: 2000,
     });
 
@@ -149,15 +150,17 @@ If a value is not found, use null. All numbers should be numeric values, not str
     // Parse and validate
     const extracted = JSON.parse(jsonString) as ExtractedInBodyData;
 
-    // Validate extracted data
-    if (
-      !extracted.weight_lbs &&
-      !extracted.smm_lbs &&
-      !extracted.body_fat_mass_lbs &&
-      !extracted.bmi &&
-      !extracted.percent_body_fat
-    ) {
-      throw new Error('No valid data extracted from image');
+    // Validate extracted data - check if at least one field has a value (not null/undefined)
+    // Note: 0 values are allowed but unlikely for real body composition data
+    const hasValidData =
+      extracted.weight_lbs != null ||
+      extracted.smm_lbs != null ||
+      extracted.body_fat_mass_lbs != null ||
+      extracted.bmi != null ||
+      extracted.percent_body_fat != null;
+
+    if (!hasValidData) {
+      throw new Error('No valid data extracted from image - all fields are null or undefined');
     }
 
     return extracted;
