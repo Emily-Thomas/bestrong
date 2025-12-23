@@ -34,6 +34,17 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       return;
     }
 
+    // Prevent duplicate processing - if job is already completed or processing, skip
+    if (job.status === 'completed') {
+      console.log(`Job ${jobId} already completed, skipping`);
+      return;
+    }
+
+    if (job.status === 'processing') {
+      console.warn(`Job ${jobId} is already being processed, skipping duplicate`);
+      return;
+    }
+
     // Get questionnaire
     const questionnaire =
       await questionnaireService.getQuestionnaireById(job.questionnaire_id);
@@ -193,6 +204,9 @@ router.post(
         created_by: req.user.userId,
       });
 
+      // Mark as processing immediately to prevent duplicate processing
+      await jobService.updateJobStatus(job.id, 'processing', 'Starting generation...');
+      
       // Start processing in background (don't await)
       processRecommendationJob(job.id).catch((error) => {
         console.error(`Error processing job ${job.id}:`, error);
@@ -264,6 +278,9 @@ router.post(
         created_by: req.user.userId,
       });
 
+      // Mark as processing immediately to prevent duplicate processing
+      await jobService.updateJobStatus(job.id, 'processing', 'Starting generation...');
+      
       // Start processing in background (don't await)
       processRecommendationJob(job.id).catch((error) => {
         console.error(`Error processing job ${job.id}:`, error);

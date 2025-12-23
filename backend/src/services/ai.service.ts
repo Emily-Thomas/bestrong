@@ -181,8 +181,9 @@ function findLastValidPosition(json: string, errorPosition: number): number {
 
 /**
  * Robust JSON parsing with repair and retry logic
+ * Reduced retries to minimize token waste - only repair JSON, don't retry API calls
  */
-function parseJSONWithRepair<T>(content: string, maxRetries = 3, rawResponse?: string): T {
+function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: string): T {
   let cleaned = extractJSON(content);
 
   // Attempt to parse with repair attempts
@@ -745,7 +746,8 @@ function repairJSON(json: string): string {
 }
 
 /**
- * Calls OpenAI with retry logic and robust JSON parsing
+ * Calls OpenAI with minimal retry logic (only for rate limits)
+ * Errors from OpenAI API are not retried to avoid token waste
  */
 async function callOpenAIWithRetry(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
@@ -755,11 +757,20 @@ async function callOpenAIWithRetry(
     maxRetries?: number;
   } = {}
 ): Promise<string> {
-  const maxRetries = options.maxRetries || 3;
-  const model = process.env.OPENAI_MODEL || 'gpt-4o';
+  // Default to 1 retry (only for rate limits) - can be overridden via env var
+  const defaultMaxRetries = parseInt(process.env.OPENAI_MAX_RETRIES || '1', 10);
+  const maxRetries = options.maxRetries ?? defaultMaxRetries;
+  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+  // Calculate approximate input tokens (rough estimate: 4 chars per token)
+  const inputText = messages.map(m => 
+    typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+  ).join(' ');
+  const estimatedInputTokens = Math.ceil(inputText.length / 4);
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
+      const startTime = Date.now();
       const completion = await openai.chat.completions.create({
         model,
         messages,
@@ -768,8 +779,17 @@ async function callOpenAIWithRetry(
         max_tokens: options.maxTokens ?? 8000,
       });
 
+      const duration = Date.now() - startTime;
       const finishReason = completion.choices[0]?.finish_reason;
       const content = completion.choices[0]?.message?.content;
+      
+      // Track token usage
+      const usage = completion.usage;
+      if (usage) {
+        console.log(`[OpenAI] Token usage - Input: ${usage.prompt_tokens}, Output: ${usage.completion_tokens}, Total: ${usage.total_tokens} (${duration}ms)`);
+      } else {
+        console.log(`[OpenAI] Estimated input tokens: ~${estimatedInputTokens} (usage not available)`);
+      }
       
       if (!content) {
         throw new Error('No response content from OpenAI');
@@ -785,25 +805,33 @@ async function callOpenAIWithRetry(
     } catch (error) {
       const isLastAttempt = attempt === maxRetries - 1;
       
+      // Log the error with token context
       if (error instanceof Error) {
-        // If it's a rate limit or temporary error, retry
-        if (
-          error.message.includes('rate limit') ||
-          error.message.includes('timeout') ||
-          error.message.includes('temporary')
-        ) {
-          if (!isLastAttempt) {
-            const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
-            console.warn(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            continue;
-          }
+        console.error(`[OpenAI] API Error (attempt ${attempt + 1}/${maxRetries}):`, {
+          error: error.message,
+          estimatedInputTokens,
+          isLastAttempt,
+        });
+      }
+
+      // Only retry on rate limit errors (not API errors, authentication errors, etc.)
+      if (error instanceof Error) {
+        const isRateLimit = 
+          error.message.toLowerCase().includes('rate limit') ||
+          error.message.toLowerCase().includes('rate_limit') ||
+          (error as any).status === 429; // HTTP 429 Too Many Requests
+        
+        if (isRateLimit && !isLastAttempt) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s...
+          console.warn(`[OpenAI] Rate limit hit. Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
         }
       }
 
-      if (isLastAttempt) {
-        throw error;
-      }
+      // For all other errors (API errors, invalid requests, etc.), fail immediately
+      // Don't retry to avoid wasting tokens
+      throw error;
     }
   }
 
@@ -1280,13 +1308,13 @@ CRITICAL: Respond with ONLY valid JSON, no markdown, no additional text.`;
     {
       maxTokens: 4000,
       temperature: 0.3, // Lower temperature for more consistent JSON
-      maxRetries: 3,
+      maxRetries: 1, // Only retry on rate limits - don't waste tokens on API errors
     }
   );
 
   const parsed = parseJSONWithRepair<Omit<LLMRecommendationResponse, 'workouts'>>(
     responseContent,
-    3,
+    1, // Only 1 attempt - don't waste tokens on repair retries
     responseContent // Pass raw response for error logging
   );
 
@@ -1402,7 +1430,7 @@ CRITICAL:
     {
       maxTokens: 6000, // Reduced to prevent truncation issues
       temperature: 0.3, // Lower temperature for more consistent JSON
-      maxRetries: 3,
+      maxRetries: 1, // Only retry on rate limits - don't waste tokens on API errors
     }
   );
 
@@ -1410,7 +1438,7 @@ CRITICAL:
 
   const parsed = parseJSONWithRepair<{ workouts: LLMWorkoutResponse[] }>(
     responseContent,
-    3,
+    1, // Only 1 attempt - don't waste tokens on repair retries
     responseContent // Pass raw response for error logging
   );
 
@@ -1671,7 +1699,7 @@ CRITICAL:
     {
       maxTokens: 6000,
       temperature: 0.3,
-      maxRetries: 3,
+      maxRetries: 1, // Only retry on rate limits - don't waste tokens on API errors
     }
   );
 
@@ -1679,7 +1707,7 @@ CRITICAL:
 
   const parsed = parseJSONWithRepair<{ workouts: LLMWorkoutResponse[] }>(
     responseContent,
-    3,
+    1, // Only 1 attempt - don't waste tokens on repair retries
     responseContent
   );
 
