@@ -77,6 +77,22 @@ export async function getLatestVerifiedInBodyScanByClientId(
   return result.rows[0] || null;
 }
 
+/**
+ * Gets the latest InBody scan for a client, preferring verified scans.
+ * This is a convenience method that combines getLatestVerifiedInBodyScanByClientId
+ * and getLatestInBodyScanByClientId into a single efficient query.
+ */
+export async function getLatestInBodyScanByClientIdWithFallback(
+  clientId: number
+): Promise<InBodyScan | null> {
+  // Try verified first, then fallback to any scan
+  const verifiedScan = await getLatestVerifiedInBodyScanByClientId(clientId);
+  if (verifiedScan) {
+    return verifiedScan;
+  }
+  return getLatestInBodyScanByClientId(clientId);
+}
+
 export async function hasInBodyScan(clientId: number): Promise<boolean> {
   const result = await pool.query<{ count: string }>(
     'SELECT COUNT(*) as count FROM inbody_scans WHERE client_id = $1',

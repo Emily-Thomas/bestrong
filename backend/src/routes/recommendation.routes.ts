@@ -25,8 +25,9 @@ router.use(authenticateToken);
 /**
  * Background processor for recommendation generation
  * This runs asynchronously and updates the job status
+ * Exported so it can be called from cron jobs
  */
-async function processRecommendationJob(jobId: number): Promise<void> {
+export async function processRecommendationJob(jobId: number): Promise<void> {
   try {
     const job = await jobService.getJobById(jobId);
     if (!job) {
@@ -60,7 +61,7 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       }
     }
 
-    // Get questionnaire
+    // Get questionnaire first (needed for client_id)
     const questionnaire =
       await questionnaireService.getQuestionnaireById(job.questionnaire_id);
 
@@ -69,21 +70,18 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       return;
     }
 
-    // Get client data
-    const client = await clientService.getClientById(questionnaire.client_id);
+    // Parallelize independent database queries
+    const [client, latestScan] = await Promise.all([
+      clientService.getClientById(questionnaire.client_id),
+      inbodyScanService.getLatestInBodyScanByClientIdWithFallback(
+        questionnaire.client_id
+      ),
+    ]);
+
     if (!client) {
       await jobService.failJob(jobId, 'Client not found');
       return;
     }
-
-    // Get latest verified InBody scan for client
-    const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(
-      questionnaire.client_id
-    );
-    // Fallback to latest unverified if no verified scan exists
-    const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(
-      questionnaire.client_id
-    );
 
     // Step 1: Generate recommendation structure
     await jobService.updateJobStatus(
@@ -235,12 +233,16 @@ router.post(
         created_by: req.user.userId,
       });
 
-      // Start processing in background (don't await)
-      // The function will set status to 'processing' when it actually starts
+      // Start processing in background (don't await - return immediately)
+      // Vercel will keep the function alive for maxDuration (300s) as long as
+      // there are pending promises, allowing the job to complete
       processRecommendationJob(job.id).catch((error) => {
         console.error(`Error processing job ${job.id}:`, error);
       });
 
+      // Return immediately with 202 Accepted
+      // The job processing continues in the background
+      // The function will stay alive up to maxDuration (300s) to allow processing
       res.status(202).json({
         success: true,
         data: { job_id: job.id },
@@ -307,12 +309,16 @@ router.post(
         created_by: req.user.userId,
       });
 
-      // Start processing in background (don't await)
-      // The function will set status to 'processing' when it actually starts
+      // Start processing in background (don't await - return immediately)
+      // Vercel will keep the function alive for maxDuration (300s) as long as
+      // there are pending promises, allowing the job to complete
       processRecommendationJob(job.id).catch((error) => {
         console.error(`Error processing job ${job.id}:`, error);
       });
 
+      // Return immediately with 202 Accepted
+      // The job processing continues in the background
+      // The function will stay alive up to maxDuration (300s) to allow processing
       res.status(202).json({
         success: true,
         data: { job_id: job.id },
@@ -487,7 +493,7 @@ router.post(
         return;
       }
 
-      // Get questionnaire
+      // Get questionnaire first (needed for client_id)
       const questionnaire =
         await questionnaireService.getQuestionnaireById(questionnaireId);
 
@@ -499,8 +505,14 @@ router.post(
         return;
       }
 
-      // Get client data
-      const client = await clientService.getClientById(questionnaire.client_id);
+      // Parallelize independent database queries
+      const [client, latestScan] = await Promise.all([
+        clientService.getClientById(questionnaire.client_id),
+        inbodyScanService.getLatestInBodyScanByClientIdWithFallback(
+          questionnaire.client_id
+        ),
+      ]);
+
       if (!client) {
         res.status(404).json({
           success: false,
@@ -508,14 +520,6 @@ router.post(
         });
         return;
       }
-
-      // Get latest InBody scan
-      const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(
-        questionnaire.client_id
-      );
-      const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(
-        questionnaire.client_id
-      );
 
       // Generate AI recommendation with workouts
       const aiAnalysis =
@@ -591,7 +595,7 @@ router.post(
         return;
       }
 
-      // Get latest questionnaire for client
+      // Get latest questionnaire for client first (needed for validation)
       const questionnaire =
         await questionnaireService.getQuestionnaireByClientId(clientId);
 
@@ -603,8 +607,12 @@ router.post(
         return;
       }
 
-      // Get client data
-      const client = await clientService.getClientById(clientId);
+      // Parallelize independent database queries
+      const [client, latestScan] = await Promise.all([
+        clientService.getClientById(clientId),
+        inbodyScanService.getLatestInBodyScanByClientIdWithFallback(clientId),
+      ]);
+
       if (!client) {
         res.status(404).json({
           success: false,
@@ -612,10 +620,6 @@ router.post(
         });
         return;
       }
-
-      // Get latest InBody scan
-      const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(clientId);
-      const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(clientId);
 
       // Generate AI recommendation with workouts
       const aiAnalysis =
@@ -1152,27 +1156,40 @@ async function processWeekGenerationJob(jobId: number): Promise<void> {
       'Collecting performance data...'
     );
 
+    // Get all previous weeks in parallel (1 to targetWeek - 1)
+    const weekNumbers = Array.from(
+      { length: job.week_number - 1 },
+      (_, i) => i + 1
+    );
+    const weekWorkoutPromises = weekNumbers.map((week) =>
+      workoutService.getWorkoutsByWeek(recommendation.id, week)
+    );
+    const allWeekWorkouts = await Promise.all(weekWorkoutPromises);
+
+    // Get all actual workouts in a single batch query
+    const allWorkoutIds = allWeekWorkouts.flat().map((w) => w.id);
+    const allActualWorkouts =
+      await actualWorkoutService.getActualWorkoutsByWorkoutIds(allWorkoutIds);
+
+    // Create a map of workout_id -> actual_workout for efficient lookup
+    const actualWorkoutMap = new Map<number, ActualWorkout>();
+    for (const actualWorkout of allActualWorkouts) {
+      actualWorkoutMap.set(actualWorkout.workout_id, actualWorkout);
+    }
+
+    // Build previousWeeksData array matching the original structure
     const previousWeeksData: {
       week_number: number;
       workouts: Workout[];
       actual_workouts: ActualWorkout[];
     }[] = [];
 
-    // Get all previous weeks (1 to targetWeek - 1)
-    for (let week = 1; week < job.week_number; week++) {
-      const workouts = await workoutService.getWorkoutsByWeek(
-        recommendation.id,
-        week
-      );
-      const actualWorkoutPromises = workouts.map((w) =>
-        actualWorkoutService.getActualWorkoutByWorkoutId(w.id)
-      );
-      const actualWorkoutResults = await Promise.all(actualWorkoutPromises);
-      
-      // Filter out null values with proper type guard
-      const validActualWorkouts = actualWorkoutResults.filter(
-        (aw): aw is ActualWorkout => aw !== null
-      );
+    for (let i = 0; i < weekNumbers.length; i++) {
+      const week = weekNumbers[i];
+      const workouts = allWeekWorkouts[i];
+      const validActualWorkouts = workouts
+        .map((w) => actualWorkoutMap.get(w.id))
+        .filter((aw): aw is ActualWorkout => aw !== null);
 
       previousWeeksData.push({
         week_number: week,
@@ -1201,16 +1218,13 @@ async function processWeekGenerationJob(jobId: number): Promise<void> {
       }
     }
 
-    // Get client data
-    const client = await clientService.getClientById(recommendation.client_id);
-
-    // Get latest InBody scan
-    const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(
-      recommendation.client_id
-    );
-    const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(
-      recommendation.client_id
-    );
+    // Parallelize client and InBody scan queries
+    const [client, latestScan] = await Promise.all([
+      clientService.getClientById(recommendation.client_id),
+      inbodyScanService.getLatestInBodyScanByClientIdWithFallback(
+        recommendation.client_id
+      ),
+    ]);
 
     const workouts = await aiService.generateWeekWorkouts(
       recommendation,

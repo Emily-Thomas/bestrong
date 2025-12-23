@@ -150,3 +150,18 @@ export async function cancelJob(id: number, reason?: string): Promise<void> {
   );
 }
 
+/**
+ * Get all pending jobs (for cron processing)
+ */
+export async function getPendingJobs(): Promise<RecommendationJob[]> {
+  const result = await pool.query<RecommendationJob>(
+    `SELECT * FROM recommendation_jobs 
+     WHERE status = 'pending'
+     ORDER BY created_at ASC
+     LIMIT 10`,
+    []
+  );
+
+  return result.rows;
+}
+

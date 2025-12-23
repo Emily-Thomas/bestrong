@@ -83,6 +83,34 @@ export async function getActualWorkoutById(
   return result.rows[0] || null;
 }
 
+/**
+ * Gets multiple actual workouts by their workout IDs in a single query.
+ * This is more efficient than calling getActualWorkoutByWorkoutId multiple times.
+ */
+export async function getActualWorkoutsByWorkoutIds(
+  workoutIds: number[]
+): Promise<ActualWorkout[]> {
+  if (workoutIds.length === 0) {
+    return [];
+  }
+
+  // Create placeholders for the IN clause
+  const placeholders = workoutIds.map((_, index) => `$${index + 1}`).join(', ');
+  
+  const result = await pool.query<ActualWorkout>(
+    `SELECT * FROM actual_workouts WHERE workout_id IN (${placeholders})`,
+    workoutIds
+  );
+
+  // Parse JSONB actual_performance for each row
+  return result.rows.map((actualWorkout) => {
+    if (typeof actualWorkout.actual_performance === 'string') {
+      actualWorkout.actual_performance = JSON.parse(actualWorkout.actual_performance);
+    }
+    return actualWorkout;
+  });
+}
+
 export async function updateActualWorkout(
   id: number,
   updates: Partial<CreateActualWorkoutInput>

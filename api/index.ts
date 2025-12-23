@@ -130,8 +130,9 @@ async function initializeDatabase() {
 
 // Vercel serverless function handler
 // Configure maxDuration for Pro plan (up to 300 seconds / 5 minutes)
+// This ensures background jobs have enough time to complete
 export const config = {
-  maxDuration: 300, // 5 minutes - Pro plan limit
+  maxDuration: 300, // 5 minutes - Pro plan limit (Enterprise can go up to 900s)
 };
 
 export default async function handler(
