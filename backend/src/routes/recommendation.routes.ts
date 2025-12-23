@@ -233,20 +233,12 @@ router.post(
         created_by: req.user.userId,
       });
 
-      // Start processing in background (don't await - return immediately)
-      // Vercel will keep the function alive for maxDuration (300s) as long as
-      // there are pending promises, allowing the job to complete
-      processRecommendationJob(job.id).catch((error) => {
-        console.error(`Error processing job ${job.id}:`, error);
-      });
-
-      // Return immediately with 202 Accepted
-      // The job processing continues in the background
-      // The function will stay alive up to maxDuration (300s) to allow processing
+      // Job will be processed by cron job (runs every 2 minutes)
+      // No need to process here - just create the job and return
       res.status(202).json({
         success: true,
         data: { job_id: job.id },
-        message: 'Recommendation generation started',
+        message: 'Recommendation generation started. Job will be processed shortly.',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -309,20 +301,12 @@ router.post(
         created_by: req.user.userId,
       });
 
-      // Start processing in background (don't await - return immediately)
-      // Vercel will keep the function alive for maxDuration (300s) as long as
-      // there are pending promises, allowing the job to complete
-      processRecommendationJob(job.id).catch((error) => {
-        console.error(`Error processing job ${job.id}:`, error);
-      });
-
-      // Return immediately with 202 Accepted
-      // The job processing continues in the background
-      // The function will stay alive up to maxDuration (300s) to allow processing
+      // Job will be processed by cron job (runs every 2 minutes)
+      // No need to process here - just create the job and return
       res.status(202).json({
         success: true,
         data: { job_id: job.id },
-        message: 'Recommendation generation started',
+        message: 'Recommendation generation started. Job will be processed shortly.',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -844,15 +828,12 @@ router.post('/:id/generate-week', async (req: Request, res: Response) => {
       req.user.userId
     );
 
-    // Start processing in background (don't await)
-    processWeekGenerationJob(job.id).catch((error) => {
-      console.error(`Error processing week generation job ${job.id}:`, error);
-    });
-
+    // Job will be processed by cron job (runs every 2 minutes)
+    // No need to process here - just create the job and return
     res.status(202).json({
       success: true,
       data: { job_id: job.id },
-      message: 'Week generation started',
+      message: 'Week generation started. Job will be processed shortly.',
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -1112,8 +1093,9 @@ router.get('/:id/week/:weekNumber/status', async (req: Request, res: Response) =
 
 /**
  * Background processor for week generation
+ * Exported so it can be called from cron jobs
  */
-async function processWeekGenerationJob(jobId: number): Promise<void> {
+export async function processWeekGenerationJob(jobId: number): Promise<void> {
   try {
     const job = await weekGenerationJobService.getWeekGenerationJobById(jobId);
     if (!job) {

@@ -134,3 +134,18 @@ export async function failWeekGenerationJob(
   );
 }
 
+/**
+ * Get all pending week generation jobs (for cron processing)
+ */
+export async function getPendingWeekGenerationJobs(): Promise<WeekGenerationJob[]> {
+  const result = await pool.query<WeekGenerationJob>(
+    `SELECT * FROM week_generation_jobs 
+     WHERE status = 'pending'
+     ORDER BY created_at ASC
+     LIMIT 10`,
+    []
+  );
+
+  return result.rows;
+}
+
