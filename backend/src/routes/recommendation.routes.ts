@@ -23,55 +23,57 @@ const router = Router();
 router.use(authenticateToken);
 
 /**
- * Process a single recommendation job
- * This is the main processing function used by both the route handler and background processing
+ * Background processor for recommendation generation
+ * This runs asynchronously and updates the job status
  */
 async function processRecommendationJob(jobId: number): Promise<void> {
-  const startTime = Date.now();
-  const logContext = { jobId, timestamp: new Date().toISOString(), mode: 'fallback' };
-  
-  console.log(`[Job ${jobId}] Starting recommendation generation (fallback mode)`, logContext);
-
   try {
     const job = await jobService.getJobById(jobId);
     if (!job) {
-      const errorMsg = `Job ${jobId} not found`;
-      console.error(`[Job ${jobId}] ${errorMsg}`, logContext);
+      console.error(`Job ${jobId} not found`);
       return;
     }
 
-    const questionnaire = await questionnaireService.getQuestionnaireById(job.questionnaire_id);
+    // Get questionnaire
+    const questionnaire =
+      await questionnaireService.getQuestionnaireById(job.questionnaire_id);
+
     if (!questionnaire) {
-      const errorMsg = `Questionnaire ${job.questionnaire_id} not found`;
-      console.error(`[Job ${jobId}] ${errorMsg}`, logContext);
-      await jobService.failJob(jobId, errorMsg);
+      await jobService.failJob(jobId, 'Questionnaire not found');
       return;
     }
 
+    // Get client data
     const client = await clientService.getClientById(questionnaire.client_id);
     if (!client) {
-      const errorMsg = `Client ${questionnaire.client_id} not found`;
-      console.error(`[Job ${jobId}] ${errorMsg}`, logContext);
-      await jobService.failJob(jobId, errorMsg);
+      await jobService.failJob(jobId, 'Client not found');
       return;
     }
 
+    // Get latest verified InBody scan for client
     const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(
       questionnaire.client_id
     );
+    // Fallback to latest unverified if no verified scan exists
     const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(
       questionnaire.client_id
     );
 
-    await jobService.updateJobStatus(jobId, 'processing', 'Generating plan structure...');
-    const recommendationStructure = await aiService.generateRecommendationStructure(
-      questionnaire,
-      null,
-      latestScan,
-      client
+    // Step 1: Generate recommendation structure
+    await jobService.updateJobStatus(
+      jobId,
+      'processing',
+      'Generating plan structure...'
     );
+    const recommendationStructure =
+      await aiService.generateRecommendationStructure(questionnaire, null, latestScan, client);
 
-    await jobService.updateJobStatus(jobId, 'processing', 'Generating workouts...');
+    // Step 2: Generate workouts
+    await jobService.updateJobStatus(
+      jobId,
+      'processing',
+      'Generating workouts...'
+    );
     const workouts = await aiService.generateWorkouts(
       recommendationStructure,
       questionnaire,
@@ -80,7 +82,12 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       client
     );
 
-    await jobService.updateJobStatus(jobId, 'processing', 'Saving recommendation...');
+    // Step 3: Save to database
+    await jobService.updateJobStatus(
+      jobId,
+      'processing',
+      'Saving recommendation...'
+    );
 
     const recommendationInput: CreateRecommendationInput = {
       client_id: questionnaire.client_id,
@@ -94,8 +101,9 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       inbody_scan_id: latestScan?.id,
     };
 
+    // Convert LLM workout responses to CreateWorkoutInput format
     const workoutInputs: CreateWorkoutInput[] = workouts.map((w) => ({
-      recommendation_id: 0,
+      recommendation_id: 0, // Will be set after recommendation is created
       week_number: w.week_number,
       session_number: w.session_number,
       workout_name: w.workout_name,
@@ -103,35 +111,21 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       workout_reasoning: w.workout_reasoning,
     }));
 
-    const recommendation = await recommendationService.createOrUpdateRecommendationForQuestionnaire(
-      recommendationInput,
-      job.created_by || 0,
-      workoutInputs
-    );
+    const recommendation =
+      await recommendationService.createOrUpdateRecommendationForQuestionnaire(
+        recommendationInput,
+        job.created_by || 0,
+        workoutInputs
+      );
 
+    // Complete the job
     await jobService.completeJob(jobId, recommendation.id);
-    const duration = Date.now() - startTime;
-    console.log(`[Job ${jobId}] ✅ Job completed successfully in ${duration}ms (fallback mode)`, {
-      ...logContext,
-      duration,
-      recommendation_id: recommendation.id,
-    });
+    console.log(`✅ Job ${jobId} completed successfully`);
   } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    console.error(`[Job ${jobId}] ❌ Job failed after ${duration}ms (fallback mode): ${errorMessage}`, {
-      ...logContext,
-      duration,
-      error: errorStack,
-    });
-    
-    try {
-      await jobService.failJob(jobId, errorMessage);
-    } catch (failError) {
-      console.error(`[Job ${jobId}] ❌ Failed to update job status: ${failError instanceof Error ? failError.message : 'Unknown error'}`);
-    }
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ Job ${jobId} failed:`, errorMessage);
+    await jobService.failJob(jobId, errorMessage);
   }
 }
 
@@ -139,18 +133,8 @@ async function processRecommendationJob(jobId: number): Promise<void> {
 router.post(
   '/generate/:questionnaireId/start',
   async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
     try {
-      console.log(`[${requestId}] Starting recommendation generation request`, {
-        questionnaireId: req.params.questionnaireId,
-        userId: req.user?.userId,
-        timestamp: new Date().toISOString(),
-      });
-
       if (!req.user) {
-        console.warn(`[${requestId}] Unauthenticated request`, { questionnaireId: req.params.questionnaireId });
         res.status(401).json({ success: false, error: 'Not authenticated' });
         return;
       }
@@ -158,10 +142,6 @@ router.post(
       const questionnaireId = parseInt(req.params.questionnaireId, 10);
 
       if (Number.isNaN(questionnaireId)) {
-        console.error(`[${requestId}] Invalid questionnaire ID`, {
-          questionnaireId: req.params.questionnaireId,
-          parsed: questionnaireId,
-        });
         res.status(400).json({
           success: false,
           error: 'Invalid questionnaire ID',
@@ -170,141 +150,52 @@ router.post(
       }
 
       // Get questionnaire to get client_id
-      let questionnaire: Awaited<ReturnType<typeof questionnaireService.getQuestionnaireById>>;
-      try {
-        questionnaire = await questionnaireService.getQuestionnaireById(questionnaireId);
-        if (!questionnaire) {
-          console.error(`[${requestId}] Questionnaire not found`, { questionnaireId });
-          res.status(404).json({
-            success: false,
-            error: 'Questionnaire not found',
-          });
-          return;
-        }
-        console.log(`[${requestId}] Questionnaire found`, {
-          questionnaireId,
-          clientId: questionnaire.client_id,
-        });
-      } catch (error) {
-        console.error(`[${requestId}] Error fetching questionnaire: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-          questionnaireId,
-          error: error instanceof Error ? error.stack : error,
-        });
-        res.status(500).json({
+      const questionnaire =
+        await questionnaireService.getQuestionnaireById(questionnaireId);
+
+      if (!questionnaire) {
+        res.status(404).json({
           success: false,
-          error: 'Failed to fetch questionnaire',
+          error: 'Questionnaire not found',
         });
         return;
       }
 
       // Check if client has at least one InBody scan
-      let hasScan = false;
-      try {
-        hasScan = await inbodyScanService.hasInBodyScan(questionnaire.client_id);
-        if (!hasScan) {
-          console.warn(`[${requestId}] Client missing InBody scan`, {
-            questionnaireId,
-            clientId: questionnaire.client_id,
-          });
-          res.status(400).json({
-            success: false,
-            error: 'At least one InBody scan is required before generating recommendations',
-          });
-          return;
-        }
-        console.log(`[${requestId}] Client has InBody scan`, {
-          questionnaireId,
-          clientId: questionnaire.client_id,
-        });
-      } catch (error) {
-        console.error(`[${requestId}] Error checking InBody scan: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-          questionnaireId,
-          clientId: questionnaire.client_id,
-          error: error instanceof Error ? error.stack : error,
-        });
-        res.status(500).json({
+      const hasScan = await inbodyScanService.hasInBodyScan(questionnaire.client_id);
+      if (!hasScan) {
+        res.status(400).json({
           success: false,
-          error: 'Failed to check InBody scan status',
+          error: 'At least one InBody scan is required before generating recommendations',
         });
         return;
       }
 
       // Check if there's already a pending/processing job for this questionnaire
-      let existingJob: Awaited<ReturnType<typeof jobService.getLatestJobByQuestionnaireId>>;
-      try {
-        existingJob = await jobService.getLatestJobByQuestionnaireId(questionnaireId);
-        if (
-          existingJob &&
-          (existingJob.status === 'pending' || existingJob.status === 'processing')
-        ) {
-          console.log(`[${requestId}] Job already in progress`, {
-            questionnaireId,
-            existingJobId: existingJob.id,
-            status: existingJob.status,
-          });
-          res.json({
-            success: true,
-            data: { job_id: existingJob.id },
-            message: 'Job already in progress',
-          });
-          return;
-        }
-      } catch (error) {
-        console.error(`[${requestId}] Error checking existing job: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-          questionnaireId,
-          error: error instanceof Error ? error.stack : error,
-        });
-        // Continue to create new job - don't fail the request
-      }
-
-      // Create new job
-      let job: Awaited<ReturnType<typeof jobService.createJob>>;
-      try {
-        job = await jobService.createJob({
-          questionnaire_id: questionnaireId,
-          client_id: questionnaire.client_id,
-          created_by: req.user.userId,
-        });
-        console.log(`[${requestId}] Job created`, {
-          jobId: job.id,
-          questionnaireId,
-          clientId: questionnaire.client_id,
-          createdBy: req.user.userId,
-        });
-      } catch (error) {
-        console.error(`[${requestId}] Error creating job: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-          questionnaireId,
-          clientId: questionnaire.client_id,
-          error: error instanceof Error ? error.stack : error,
-        });
-        res.status(500).json({
-          success: false,
-          error: 'Failed to create job',
+      const existingJob =
+        await jobService.getLatestJobByQuestionnaireId(questionnaireId);
+      if (
+        existingJob &&
+        (existingJob.status === 'pending' || existingJob.status === 'processing')
+      ) {
+        res.json({
+          success: true,
+          data: { job_id: existingJob.id },
+          message: 'Job already in progress',
         });
         return;
       }
 
-      // Trigger job processing immediately (fire-and-forget)
-      // With Pro plan (300s timeout), this should complete successfully
-      // In development, it processes immediately; in production it runs in background
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[${requestId}] [Dev] Triggering immediate job processing for job ${job.id}`);
-        processRecommendationJob(job.id).catch((err) => {
-          console.error(`[${requestId}] Error in dev job processing for job ${job.id}:`, err);
-        });
-      } else {
-        console.log(`[${requestId}] [Prod] Triggering background job processing for job ${job.id}`);
-        // In production, process in background (fire-and-forget)
-        processRecommendationJob(job.id).catch((err) => {
-          console.error(`[${requestId}] Error in background job processing for job ${job.id}:`, err);
-        });
-      }
+      // Create new job
+      const job = await jobService.createJob({
+        questionnaire_id: questionnaireId,
+        client_id: questionnaire.client_id,
+        created_by: req.user.userId,
+      });
 
-      const duration = Date.now() - startTime;
-      console.log(`[${requestId}] Request completed successfully in ${duration}ms`, {
-        jobId: job.id,
-        questionnaireId,
-        duration,
+      // Start processing in background (don't await)
+      processRecommendationJob(job.id).catch((error) => {
+        console.error(`Error processing job ${job.id}:`, error);
       });
 
       res.status(202).json({
@@ -313,16 +204,7 @@ router.post(
         message: 'Recommendation generation started',
       });
     } catch (error) {
-      const duration = Date.now() - startTime;
       const message = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      
-      console.error(`[${requestId}] Request failed after ${duration}ms: ${message}`, {
-        questionnaireId: req.params.questionnaireId,
-        duration,
-        error: errorStack,
-      });
-      
       res.status(500).json({ success: false, error: message });
     }
   }
@@ -382,16 +264,10 @@ router.post(
         created_by: req.user.userId,
       });
 
-      // Job will be processed by the cron job (runs every minute)
-      // In development, we can trigger it immediately as a fallback
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[Dev] Triggering immediate job processing for job ${job.id}`);
-        processRecommendationJob(job.id).catch((err) => {
-          console.error(`Error in dev job processing for job ${job.id}:`, err);
-        });
-      } else {
-        console.log(`[Prod] Job ${job.id} created, will be processed by cron job`);
-      }
+      // Start processing in background (don't await)
+      processRecommendationJob(job.id).catch((error) => {
+        console.error(`Error processing job ${job.id}:`, error);
+      });
 
       res.status(202).json({
         success: true,
@@ -472,74 +348,6 @@ router.get('/generate/job/:jobId', async (req: Request, res: Response) => {
   }
 });
 
-// Manually trigger job processing (for retries or manual processing)
-router.post('/generate/job/:jobId/process', async (req: Request, res: Response) => {
-  try {
-    if (!req.user) {
-      res.status(401).json({ success: false, error: 'Not authenticated' });
-      return;
-    }
-
-    const jobId = parseInt(req.params.jobId, 10);
-
-    if (Number.isNaN(jobId)) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid job ID',
-      });
-      return;
-    }
-
-    const job = await jobService.getJobById(jobId);
-
-    if (!job) {
-      res.status(404).json({
-        success: false,
-        error: 'Job not found',
-      });
-      return;
-    }
-
-    // Only allow processing of pending or failed jobs
-    // If job is already processing, don't start another process
-    if (job.status === 'processing') {
-      res.status(400).json({
-        success: false,
-        error: 'Job is already being processed',
-        data: job,
-      });
-      return;
-    }
-
-    if (job.status === 'completed') {
-      res.status(400).json({
-        success: false,
-        error: 'Job is already completed',
-        data: job,
-      });
-      return;
-    }
-
-    // Reset failed jobs to pending before processing
-    if (job.status === 'failed') {
-      await jobService.updateJobStatus(jobId, 'pending', 'Retrying...');
-    }
-
-    // Start processing in background (fire-and-forget)
-    processRecommendationJob(jobId).catch((err) => {
-      console.error(`Error processing job ${jobId} (manual trigger):`, err);
-    });
-
-    res.status(202).json({
-      success: true,
-      message: 'Job processing started',
-      data: { job_id: jobId },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ success: false, error: message });
-  }
-});
 
 // Legacy blocking endpoint (kept for backward compatibility, but deprecated)
 router.post(
