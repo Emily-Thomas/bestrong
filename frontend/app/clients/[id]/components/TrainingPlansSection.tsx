@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -36,12 +36,15 @@ export function TrainingPlansSection({
 }: TrainingPlansSectionProps) {
   const router = useRouter();
   const [generating, setGenerating] = useState(false);
+  const [currentJobId, setCurrentJobId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState<string>('');
   const [completed, setCompleted] = useState(false);
   const [completedRecommendationId, setCompletedRecommendationId] = useState<number | null>(null);
+  const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState('');
   const [hasInBodyScan, setHasInBodyScan] = useState<boolean | null>(null);
   const [checkingScan, setCheckingScan] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
 
   // Poll for job status
   const pollJobStatus = useCallback(async (jobId: number) => {
@@ -64,6 +67,7 @@ export function TrainingPlansSection({
       // Check if job is complete
       if (job.status === 'completed' && job.recommendation_id) {
         setGenerating(false);
+        setCurrentJobId(null);
         setCompleted(true);
         setCompletedRecommendationId(job.recommendation_id);
         // Reload recommendation
@@ -74,6 +78,12 @@ export function TrainingPlansSection({
       } else if (job.status === 'failed') {
         setError(job.error_message || 'Generation failed');
         setGenerating(false);
+        setCurrentJobId(null);
+      } else if (job.status === 'cancelled') {
+        setGenerating(false);
+        setCurrentJobId(null);
+        setCancelled(true);
+        setCurrentStep('Cancelled');
       } else if (job.status === 'pending' || job.status === 'processing') {
         // Continue polling (every 15 seconds)
         setTimeout(() => pollJobStatus(jobId), 15000);
@@ -95,11 +105,15 @@ export function TrainingPlansSection({
         if (job.status === 'pending' || job.status === 'processing') {
           // Resume polling
           setGenerating(true);
+          setCurrentJobId(job.id);
           if (job.current_step) {
             setCurrentStep(job.current_step);
           }
           // Start polling
           setTimeout(() => pollJobStatus(job.id), 1000);
+        } else if (job.status === 'cancelled') {
+          setCancelled(true);
+          setCurrentStep('Cancelled');
         } else if (job.status === 'completed' && job.recommendation_id) {
           // Show completion banner if recommendation doesn't exist yet
           const recResponse = await recommendationsApi.getByQuestionnaireId(questionnaireId);
@@ -155,6 +169,7 @@ export function TrainingPlansSection({
 
     setGenerating(true);
     setError('');
+    setCancelled(false);
     setCurrentStep('Starting generation...');
 
     try {
@@ -169,12 +184,36 @@ export function TrainingPlansSection({
       }
 
       const jobId = startResponse.data.job_id;
+      setCurrentJobId(jobId);
 
       // Start polling
       setTimeout(() => pollJobStatus(jobId), 1000);
     } catch (err) {
       setError('Failed to start generation');
       setGenerating(false);
+      setCurrentJobId(null);
+    }
+  };
+
+  const handleCancelJob = async () => {
+    if (!currentJobId) return;
+
+    setCancelling(true);
+    try {
+      const response = await recommendationsApi.cancelJob(currentJobId, 'Cancelled by user');
+      
+      if (response.success && response.data) {
+        setGenerating(false);
+        setCurrentJobId(null);
+        setCancelled(true);
+        setCurrentStep('Cancelled');
+      } else {
+        setError(response.error || 'Failed to cancel job');
+      }
+    } catch (err) {
+      setError('Failed to cancel job');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -254,17 +293,68 @@ export function TrainingPlansSection({
           <Alert className="mb-6 border-primary/50 bg-primary/5">
             <Loader2 className="h-4 w-4 animate-spin" />
             <AlertDescription className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Generating training plan...</span>
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Generating training plan...</span>
+                  </div>
+                  {currentStep && (
+                    <span className="text-sm text-muted-foreground">
+                      {currentStep}
+                    </span>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    This may take 30-60 seconds. You can navigate away and return later.
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCancelJob}
+                  disabled={cancelling}
+                  className="ml-4"
+                >
+                  {cancelling ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    <>
+                      <X className="mr-2 h-3 w-3" />
+                      Cancel
+                    </>
+                  )}
+                </Button>
               </div>
-              {currentStep && (
-                <span className="text-sm text-muted-foreground">
-                  {currentStep}
-                </span>
-              )}
-              <span className="text-sm text-muted-foreground">
-                This may take 30-60 seconds. You can navigate away and return later.
-              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Cancelled banner */}
+        {cancelled && (
+          <Alert className="mb-6 border-yellow-500/50 bg-yellow-500/5">
+            <AlertDescription className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2">
+                  <span className="font-medium text-yellow-700 dark:text-yellow-400">
+                    Generation cancelled
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    The training plan generation was cancelled. You can start a new generation when ready.
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setCancelled(false);
+                    setCurrentStep('');
+                  }}
+                >
+                  Dismiss
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}

@@ -34,15 +34,30 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       return;
     }
 
-    // Prevent duplicate processing - if job is already completed or processing, skip
+    // Prevent duplicate processing - if job is already completed or cancelled, skip
     if (job.status === 'completed') {
       console.log(`Job ${jobId} already completed, skipping`);
       return;
     }
 
-    if (job.status === 'processing') {
-      console.warn(`Job ${jobId} is already being processed, skipping duplicate`);
+    if (job.status === 'cancelled') {
+      console.log(`Job ${jobId} was cancelled, skipping`);
       return;
+    }
+
+    // If already processing, check if it's been stuck (processing for more than 5 minutes)
+    // This allows retry of stuck jobs
+    if (job.status === 'processing') {
+      const processingTime = job.updated_at ? Date.now() - new Date(job.updated_at).getTime() : 0;
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      if (processingTime < fiveMinutes) {
+        console.warn(`Job ${jobId} is already being processed (${Math.round(processingTime / 1000)}s ago), skipping duplicate`);
+        return;
+      } else {
+        console.warn(`Job ${jobId} appears stuck (processing for ${Math.round(processingTime / 1000)}s), retrying...`);
+        // Continue processing - will update status below
+      }
     }
 
     // Get questionnaire
@@ -76,6 +91,14 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       'processing',
       'Generating plan structure...'
     );
+    
+    // Check if cancelled before expensive AI call
+    const checkJob = await jobService.getJobById(jobId);
+    if (checkJob?.status === 'cancelled') {
+      console.log(`Job ${jobId} was cancelled before generating structure`);
+      return;
+    }
+    
     const recommendationStructure =
       await aiService.generateRecommendationStructure(questionnaire, null, latestScan, client);
 
@@ -85,6 +108,14 @@ async function processRecommendationJob(jobId: number): Promise<void> {
       'processing',
       'Generating workouts...'
     );
+    
+    // Check if cancelled before expensive AI call
+    const checkJob2 = await jobService.getJobById(jobId);
+    if (checkJob2?.status === 'cancelled') {
+      console.log(`Job ${jobId} was cancelled before generating workouts`);
+      return;
+    }
+    
     const workouts = await aiService.generateWorkouts(
       recommendationStructure,
       questionnaire,
@@ -204,10 +235,8 @@ router.post(
         created_by: req.user.userId,
       });
 
-      // Mark as processing immediately to prevent duplicate processing
-      await jobService.updateJobStatus(job.id, 'processing', 'Starting generation...');
-      
       // Start processing in background (don't await)
+      // The function will set status to 'processing' when it actually starts
       processRecommendationJob(job.id).catch((error) => {
         console.error(`Error processing job ${job.id}:`, error);
       });
@@ -278,10 +307,8 @@ router.post(
         created_by: req.user.userId,
       });
 
-      // Mark as processing immediately to prevent duplicate processing
-      await jobService.updateJobStatus(job.id, 'processing', 'Starting generation...');
-      
       // Start processing in background (don't await)
+      // The function will set status to 'processing' when it actually starts
       processRecommendationJob(job.id).catch((error) => {
         console.error(`Error processing job ${job.id}:`, error);
       });
@@ -358,6 +385,80 @@ router.get('/generate/job/:jobId', async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: job,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Cancel a recommendation generation job (MUST come after GET /generate/job/:jobId)
+router.post('/generate/job/:jobId/cancel', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    const jobId = parseInt(req.params.jobId, 10);
+
+    if (Number.isNaN(jobId)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid job ID',
+      });
+      return;
+    }
+
+    const job = await jobService.getJobById(jobId);
+
+    if (!job) {
+      res.status(404).json({
+        success: false,
+        error: 'Job not found',
+      });
+      return;
+    }
+
+    // Can only cancel pending or processing jobs
+    if (job.status === 'completed') {
+      res.status(400).json({
+        success: false,
+        error: 'Cannot cancel a completed job',
+      });
+      return;
+    }
+
+    if (job.status === 'cancelled') {
+      res.json({
+        success: true,
+        message: 'Job is already cancelled',
+        data: job,
+      });
+      return;
+    }
+
+    if (job.status === 'failed') {
+      res.status(400).json({
+        success: false,
+        error: 'Cannot cancel a failed job',
+      });
+      return;
+    }
+
+    // Optional cancellation reason from request body
+    const reason = req.body?.reason || 'Cancelled by user';
+
+    // Cancel the job
+    await jobService.cancelJob(jobId, reason);
+
+    // Get updated job
+    const updatedJob = await jobService.getJobById(jobId);
+
+    res.json({
+      success: true,
+      message: 'Job cancelled successfully',
+      data: updatedJob,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

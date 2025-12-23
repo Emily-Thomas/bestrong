@@ -257,6 +257,8 @@ export const recommendationsApi = {
     apiClient.get<RecommendationJob>(`/recommendations/generate/job/${jobId}`),
   getLatestJobByQuestionnaireId: (questionnaireId: number) =>
     apiClient.get<RecommendationJob>(`/recommendations/generate/questionnaire/${questionnaireId}/job`),
+  cancelJob: (jobId: number, reason?: string) =>
+    apiClient.post<RecommendationJob>(`/recommendations/generate/job/${jobId}/cancel`, { reason }),
   
   // Legacy blocking generation (deprecated, kept for backward compatibility)
   generateFromQuestionnaire: (questionnaireId: number) =>
@@ -549,7 +551,7 @@ export interface RecommendationJob {
   questionnaire_id: number;
   client_id: number;
   created_by?: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   current_step?: string;
   recommendation_id?: number;
   error_message?: string;

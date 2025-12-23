@@ -5,7 +5,7 @@ export interface RecommendationJob {
   questionnaire_id: number;
   client_id: number;
   created_by?: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   current_step?: string;
   recommendation_id?: number;
   error_message?: string;
@@ -90,7 +90,7 @@ export async function updateJobStatus(
     }
   }
 
-  if (status === 'completed' || status === 'failed') {
+  if (status === 'completed' || status === 'failed' || status === 'cancelled') {
     updates.push('completed_at = NOW()');
   }
 
@@ -132,6 +132,21 @@ export async function failJob(id: number, errorMessage: string): Promise<void> {
          updated_at = NOW()
      WHERE id = $1`,
     [id, errorMessage]
+  );
+}
+
+/**
+ * Cancel a job (user-initiated cancellation)
+ */
+export async function cancelJob(id: number, reason?: string): Promise<void> {
+  await pool.query(
+    `UPDATE recommendation_jobs 
+     SET status = 'cancelled',
+         error_message = $2,
+         completed_at = NOW(),
+         updated_at = NOW()
+     WHERE id = $1`,
+    [id, reason || 'Cancelled by user']
   );
 }
 
