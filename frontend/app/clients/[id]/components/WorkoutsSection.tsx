@@ -62,6 +62,7 @@ export function WorkoutsSection({
   const [generatingWeek, setGeneratingWeek] = useState(false);
   const [generationJob, setGenerationJob] = useState<WeekGenerationJob | null>(null);
   const [generationError, setGenerationError] = useState('');
+  const [startingWorkout, setStartingWorkout] = useState<number | null>(null);
 
   const loadWorkouts = useCallback(async () => {
     if (!recommendation) {
@@ -221,15 +222,23 @@ export function WorkoutsSection({
   };
 
   const handleStartWorkout = async (workoutId: number) => {
+    setStartingWorkout(workoutId);
+    setError('');
     try {
       const response = await workoutsApi.start(workoutId);
       if (response.success) {
         await loadWorkouts();
         onWorkoutUpdate?.();
         router.push(`/clients/${clientId}/workouts/${workoutId}/execute`);
+      } else {
+        setError(response.error || 'Failed to start workout');
       }
     } catch (err) {
-      setError('Failed to start workout');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start workout';
+      setError(errorMessage);
+      console.error('Error starting workout:', err);
+    } finally {
+      setStartingWorkout(null);
     }
   };
 
@@ -348,9 +357,19 @@ export function WorkoutsSection({
                 <Button
                   size="sm"
                   onClick={() => handleStartWorkout(workout.id)}
+                  disabled={startingWorkout === workout.id}
                 >
-                  <Play className="mr-2 h-4 w-4" />
-                  Start
+                  {startingWorkout === workout.id ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Starting...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="mr-2 h-4 w-4" />
+                      Start
+                    </>
+                  )}
                 </Button>
                 <div className="flex gap-1">
                   <Button
