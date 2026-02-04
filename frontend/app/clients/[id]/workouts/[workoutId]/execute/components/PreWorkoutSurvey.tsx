@@ -70,7 +70,7 @@ export function PreWorkoutSurvey({
     injuries === 'significant';
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={() => {}} modal={true}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">Pre-Workout Check-In</DialogTitle>

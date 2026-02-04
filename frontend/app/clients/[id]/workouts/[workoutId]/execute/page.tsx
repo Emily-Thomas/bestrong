@@ -128,9 +128,13 @@ export default function WorkoutExecutionPage() {
           setSessionNotes(w.actual_workout.session_notes || '');
           setTrainerObservations(w.actual_workout.trainer_observations || '');
           setWorkoutRating(w.actual_workout.workout_rating);
-          // Don't show survey if workout already exists
-        } else {
-          // Show survey for new workouts
+        }
+
+        // Show survey for workouts that aren't completed or skipped (for testing)
+        // This allows trainers to see the survey even if they've started recording
+        const shouldShowSurvey = w.status !== 'completed' && w.status !== 'skipped';
+        if (shouldShowSurvey && !surveyResponse) {
+          // Only show if we haven't already completed a survey
           setShowSurvey(true);
         }
       } else {
@@ -141,7 +145,7 @@ export default function WorkoutExecutionPage() {
     } finally {
       setLoading(false);
     }
-  }, [workoutId, clientId]);
+  }, [workoutId, clientId, surveyResponse]);
 
   useEffect(() => {
     if (workoutId) {
@@ -158,7 +162,7 @@ export default function WorkoutExecutionPage() {
     setActualPerformance({ ...actualPerformance, exercises: newExercises });
   };
 
-  const handleSave = async (complete: boolean) => {
+  const handleSave = async () => {
     if (!workout) return;
 
     // Validation
@@ -191,6 +195,11 @@ export default function WorkoutExecutionPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSurveyComplete = (responses: PreWorkoutSurveyResponse) => {
+    setSurveyResponse(responses);
+    setShowSurvey(false);
   };
 
   const getExerciseStatus = (exercise: ActualExercisePerformance) => {
@@ -257,6 +266,13 @@ export default function WorkoutExecutionPage() {
           </Button>
         }
       >
+        {/* Pre-Workout Survey Modal */}
+        <PreWorkoutSurvey
+          open={showSurvey}
+          onComplete={handleSurveyComplete}
+          clientName={clientName}
+        />
+
         <div className="max-w-4xl mx-auto space-y-6 pb-8">
           {error && (
             <Alert variant="destructive">
@@ -474,7 +490,7 @@ export default function WorkoutExecutionPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => handleSave(true)}
+              onClick={() => handleSave()}
               disabled={saving}
               className="h-12 text-base flex-1"
             >
