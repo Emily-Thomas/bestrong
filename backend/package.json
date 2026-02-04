@@ -15,6 +15,8 @@
     "migrate:all": "tsx scripts/add-all-missing-columns.ts",
     "seed:admins": "tsx scripts/seed-admins.ts",
     "check:db": "tsx scripts/check-db-connection.ts",
+    "process-jobs": "tsx scripts/process-jobs.ts",
+    "process-jobs:watch": "tsx scripts/process-jobs.ts --watch",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "format": "biome format --write .",

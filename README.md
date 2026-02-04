@@ -114,7 +114,36 @@ cd frontend && npm run dev
 cd backend && npm run dev
 ```
 
-### 4. Building for Production
+### 4. Processing Background Jobs (Local Development)
+
+In production, background jobs (recommendation generation, week generation) are processed automatically by Vercel cron jobs. For local development, you need to manually process these jobs.
+
+**Option 1: Run once (process all pending jobs and exit)**
+```bash
+# From root directory
+npm run process-jobs
+
+# Or from backend directory
+cd backend && npm run process-jobs
+```
+
+**Option 2: Watch mode (continuously check for jobs every 10 seconds)**
+```bash
+# From root directory
+npm run process-jobs:watch
+
+# Or from backend directory
+cd backend && npm run process-jobs:watch
+```
+
+This is useful when:
+- Testing training plan generation for new clients
+- Testing week generation workflows
+- Debugging job processing issues
+
+**Note:** In production, jobs are automatically processed by Vercel cron jobs every 2 minutes. You don't need to run this script in production.
+
+### 5. Building for Production
 
 ```bash
 npm run build
@@ -194,6 +223,8 @@ The project includes `vercel.json` at the root level configured for:
 ### Root Level
 - `npm run dev` - Run both frontend and backend in development mode
 - `npm run build` - Build both frontend and backend for production
+- `npm run process-jobs` - Process pending background jobs once (local development)
+- `npm run process-jobs:watch` - Continuously process jobs every 10 seconds (local development)
 - `npm run lint` - Lint both projects
 - `npm run lint:fix` - Fix linting issues in both projects
 - `npm run format` - Format code in both projects
@@ -211,6 +242,8 @@ The project includes `vercel.json` at the root level configured for:
 - `npm run dev` - Start development server with hot reload
 - `npm run build` - Compile TypeScript to JavaScript
 - `npm run start` - Start production server
+- `npm run process-jobs` - Process pending background jobs once (local development)
+- `npm run process-jobs:watch` - Continuously process jobs every 10 seconds (local development)
 - `npm run check` - Run Biome checks
 - `npm run check:fix` - Auto-fix Biome issues
 - `npm run lint` - Lint code
