@@ -14,6 +14,7 @@ export async function createActualWorkout(
     overall_rir,
     client_energy_level,
     trainer_observations,
+    workout_rating,
     started_at,
     completed_at,
   } = input;
@@ -22,9 +23,9 @@ export async function createActualWorkout(
     `INSERT INTO actual_workouts (
       workout_id, completed_by, actual_performance,
       session_notes, overall_rir, client_energy_level,
-      trainer_observations, started_at, completed_at
+      trainer_observations, workout_rating, started_at, completed_at
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *`,
     [
       workout_id,
@@ -34,6 +35,7 @@ export async function createActualWorkout(
       overall_rir || null,
       client_energy_level || null,
       trainer_observations || null,
+      workout_rating || null,
       started_at ? new Date(started_at) : null,
       new Date(completed_at),
     ]
@@ -90,25 +92,41 @@ export async function getActualWorkoutById(
 export async function getActualWorkoutsByWorkoutIds(
   workoutIds: number[]
 ): Promise<ActualWorkout[]> {
-  if (workoutIds.length === 0) {
+  if (!workoutIds || workoutIds.length === 0) {
+    return [];
+  }
+
+  // Filter out any invalid IDs
+  const validWorkoutIds = workoutIds.filter((id): id is number => 
+    typeof id === 'number' && !Number.isNaN(id) && id > 0
+  );
+
+  if (validWorkoutIds.length === 0) {
     return [];
   }
 
   // Create placeholders for the IN clause
-  const placeholders = workoutIds.map((_, index) => `$${index + 1}`).join(', ');
+  const placeholders = validWorkoutIds.map((_, index) => `$${index + 1}`).join(', ');
   
   const result = await pool.query<ActualWorkout>(
     `SELECT * FROM actual_workouts WHERE workout_id IN (${placeholders})`,
-    workoutIds
+    validWorkoutIds
   );
 
-  // Parse JSONB actual_performance for each row
-  return result.rows.map((actualWorkout) => {
-    if (typeof actualWorkout.actual_performance === 'string') {
-      actualWorkout.actual_performance = JSON.parse(actualWorkout.actual_performance);
-    }
-    return actualWorkout;
-  });
+  // Parse JSONB actual_performance for each row and filter out any invalid rows
+  return result.rows
+    .filter((row): row is ActualWorkout => row !== null && row !== undefined && row.workout_id !== undefined)
+    .map((actualWorkout) => {
+      if (typeof actualWorkout.actual_performance === 'string') {
+        try {
+          actualWorkout.actual_performance = JSON.parse(actualWorkout.actual_performance);
+        } catch (e) {
+          console.error('Error parsing actual_performance JSON:', e);
+          // Keep the string value if parsing fails
+        }
+      }
+      return actualWorkout;
+    });
 }
 
 export async function updateActualWorkout(
@@ -142,6 +160,11 @@ export async function updateActualWorkout(
   if (updates.trainer_observations !== undefined) {
     updateFields.push(`trainer_observations = $${paramCount}`);
     values.push(updates.trainer_observations || null);
+    paramCount++;
+  }
+  if (updates.workout_rating !== undefined) {
+    updateFields.push(`workout_rating = $${paramCount}`);
+    values.push(updates.workout_rating || null);
     paramCount++;
   }
   if (updates.started_at !== undefined) {

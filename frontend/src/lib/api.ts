@@ -448,14 +448,25 @@ export interface Workout {
   actual_workout?: ActualWorkout;
 }
 
+export interface ExerciseRound {
+  round_number: number;
+  reps?: number | string;
+  weight?: string;
+  rir?: number;
+  notes?: string;
+}
+
 export interface ActualExercisePerformance {
   exercise_name: string;
   sets_completed?: number;
-  reps_completed?: number | string;
-  weight_used?: string;
+  reps_completed?: number | string; // For backward compatibility
+  weight_used?: string; // For backward compatibility
   rir?: number;
   rounds_completed?: number;
-  notes?: string;
+  rounds?: ExerciseRound[]; // Per-round data (weight, reps, etc. for each round)
+  exercise_rating?: 'happy' | 'meh' | 'sad'; // Per-exercise feedback
+  exercise_notes?: string; // What went right/wrong for this exercise
+  notes?: string; // Exercise-specific notes (deprecated, use exercise_notes)
   rest_taken_seconds?: number;
 }
 
@@ -476,6 +487,7 @@ export interface ActualWorkout {
   overall_rir?: number;
   client_energy_level?: number;
   trainer_observations?: string;
+  workout_rating?: 'happy' | 'meh' | 'sad'; // Overall workout feedback
   started_at?: string;
   completed_at: string;
   created_at: string;
@@ -489,6 +501,7 @@ export interface CreateActualWorkoutInput {
   overall_rir?: number;
   client_energy_level?: number;
   trainer_observations?: string;
+  workout_rating?: 'happy' | 'meh' | 'sad';
   started_at?: string;
   completed_at: string;
 }

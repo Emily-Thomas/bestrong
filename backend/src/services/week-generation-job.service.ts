@@ -3,19 +3,41 @@ import type { WeekGenerationJob, CreateWeekGenerationJobInput } from '../types';
 
 /**
  * Create a new week generation job
+ * Uses INSERT ... ON CONFLICT to handle duplicate key errors gracefully
+ * If a job already exists, it will be reset to pending status
  */
 export async function createWeekGenerationJob(
   input: CreateWeekGenerationJobInput,
   createdBy?: number
 ): Promise<WeekGenerationJob> {
-  const result = await pool.query<WeekGenerationJob>(
-    `INSERT INTO week_generation_jobs (recommendation_id, week_number, created_by, status)
-     VALUES ($1, $2, $3, 'pending')
-     RETURNING *`,
-    [input.recommendation_id, input.week_number, createdBy || null]
-  );
+  try {
+    const result = await pool.query<WeekGenerationJob>(
+      `INSERT INTO week_generation_jobs (recommendation_id, week_number, created_by, status)
+       VALUES ($1, $2, $3, 'pending')
+       ON CONFLICT (recommendation_id, week_number) 
+       DO UPDATE SET 
+         status = 'pending',
+         current_step = NULL,
+         error_message = NULL,
+         started_at = NULL,
+         completed_at = NULL,
+         created_by = COALESCE(EXCLUDED.created_by, week_generation_jobs.created_by),
+         updated_at = NOW()
+       RETURNING *`,
+      [input.recommendation_id, input.week_number, createdBy || null]
+    );
 
-  return result.rows[0];
+    if (result.rows.length === 0) {
+      throw new Error('Failed to create or update week generation job');
+    }
+
+    return result.rows[0];
+  } catch (error) {
+    // Log the error for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Error in createWeekGenerationJob for recommendation ${input.recommendation_id}, week ${input.week_number}:`, errorMessage);
+    throw error;
+  }
 }
 
 /**
@@ -149,3 +171,30 @@ export async function getPendingWeekGenerationJobs(): Promise<WeekGenerationJob[
   return result.rows;
 }
 
+/**
+ * Reset a week generation job to pending status (for retrying failed jobs or regenerating)
+ */
+export async function resetWeekGenerationJobToPending(
+  id: number,
+  createdBy?: number
+): Promise<WeekGenerationJob> {
+  const result = await pool.query<WeekGenerationJob>(
+    `UPDATE week_generation_jobs 
+     SET status = 'pending',
+         current_step = NULL,
+         error_message = NULL,
+         started_at = NULL,
+         completed_at = NULL,
+         created_by = COALESCE($2, created_by),
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING *`,
+    [id, createdBy || null]
+  );
+
+  if (result.rows.length === 0) {
+    throw new Error(`Week generation job ${id} not found`);
+  }
+
+  return result.rows[0];
+}

@@ -1534,6 +1534,11 @@ export async function generateWeekWorkouts(
         if (actualWorkout) {
           performanceHistoryText += `- Overall RIR: ${actualWorkout.overall_rir || 'N/A'}/5\n`;
           performanceHistoryText += `- Client Energy Level: ${actualWorkout.client_energy_level || 'N/A'}/10\n`;
+          if (actualWorkout.workout_rating) {
+            const ratingEmoji = actualWorkout.workout_rating === 'happy' ? '😊' : 
+                               actualWorkout.workout_rating === 'meh' ? '😐' : '😞';
+            performanceHistoryText += `- Overall Workout Rating: ${ratingEmoji} (${actualWorkout.workout_rating})\n`;
+          }
           
           if (actualWorkout.actual_performance.exercises.length > 0) {
             performanceHistoryText += `- Exercise Performance:\n`;
@@ -1543,9 +1548,27 @@ export async function generateWeekWorkouts(
               if (ex.reps_completed) performanceHistoryText += `${ex.reps_completed} reps, `;
               if (ex.weight_used) performanceHistoryText += `${ex.weight_used}, `;
               if (ex.rir !== undefined) performanceHistoryText += `RIR ${ex.rir}`;
+              if (ex.exercise_rating) {
+                const ratingEmoji = ex.exercise_rating === 'happy' ? '😊' : 
+                                   ex.exercise_rating === 'meh' ? '😐' : '😞';
+                performanceHistoryText += `, Rating: ${ratingEmoji} (${ex.exercise_rating})`;
+              }
               performanceHistoryText += '\n';
-              if (ex.notes) {
+              if (ex.exercise_notes) {
+                performanceHistoryText += `    Notes: ${ex.exercise_notes}\n`;
+              } else if (ex.notes) {
                 performanceHistoryText += `    Notes: ${ex.notes}\n`;
+              }
+              // Include per-round data if available
+              if (ex.rounds && ex.rounds.length > 0) {
+                performanceHistoryText += `    Round Details:\n`;
+                ex.rounds.forEach((round) => {
+                  performanceHistoryText += `      Round ${round.round_number}: `;
+                  if (round.reps) performanceHistoryText += `${round.reps} reps, `;
+                  if (round.weight) performanceHistoryText += `${round.weight}, `;
+                  if (round.rir !== undefined) performanceHistoryText += `RIR ${round.rir}`;
+                  performanceHistoryText += '\n';
+                });
               }
             });
           }

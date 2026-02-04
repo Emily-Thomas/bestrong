@@ -41,4 +41,3 @@ coverage/
 # Local file uploads (development only)
 uploads/
 **/uploads/
-

@@ -262,14 +262,25 @@ export interface JWTPayload {
 }
 
 // Actual Workout Types
+export interface ExerciseRound {
+  round_number: number;
+  reps?: number | string;
+  weight?: string; // Weight used for this specific round
+  rir?: number;
+  notes?: string;
+}
+
 export interface ActualExercisePerformance {
   exercise_name: string; // Matches proposed exercise name
   sets_completed?: number;
-  reps_completed?: number | string; // Actual reps (may be range like "8-10")
-  weight_used?: string; // Actual weight/load used
+  reps_completed?: number | string; // Actual reps (may be range like "8-10") - for backward compatibility
+  weight_used?: string; // Actual weight/load used - for backward compatibility
   rir?: number; // Actual RIR (Reps in Reserve, 0-5 scale: 0=failure, 1-5=reps remaining)
   rounds_completed?: number; // For circuit/round-based exercises
-  notes?: string; // Exercise-specific notes
+  rounds?: ExerciseRound[]; // Per-round data (weight, reps, etc. for each round)
+  exercise_rating?: 'happy' | 'meh' | 'sad'; // Per-exercise feedback
+  exercise_notes?: string; // What went right/wrong for this exercise
+  notes?: string; // Exercise-specific notes (deprecated, use exercise_notes)
   rest_taken_seconds?: number; // Actual rest time
 }
 
@@ -290,6 +301,7 @@ export interface ActualWorkout {
   overall_rir?: number; // Overall session RIR (Reps in Reserve, 0-5 scale: 0=failure, 1-5=reps remaining)
   client_energy_level?: number; // 1-10 scale
   trainer_observations?: string;
+  workout_rating?: 'happy' | 'meh' | 'sad'; // Overall workout feedback
   started_at?: Date;
   completed_at: Date;
   created_at: Date;
@@ -303,6 +315,7 @@ export interface CreateActualWorkoutInput {
   overall_rir?: number;
   client_energy_level?: number;
   trainer_observations?: string;
+  workout_rating?: 'happy' | 'meh' | 'sad';
   started_at?: string;
   completed_at: string;
 }

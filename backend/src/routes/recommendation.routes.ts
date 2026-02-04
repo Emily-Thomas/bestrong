@@ -792,41 +792,110 @@ router.post('/:id/generate-week', async (req: Request, res: Response) => {
       return;
     }
 
-    // Check if week is already generated
-    const existingWorkouts = await workoutService.getWorkoutsByWeek(id, week_number);
-    if (existingWorkouts.length > 0) {
-      res.status(400).json({
-        success: false,
-        error: `Week ${week_number} workouts already exist`,
-      });
-      return;
-    }
-
-    // Check if there's already a pending/processing job for this week
+    // Check if there's already a job for this week
     const existingJob = await weekGenerationJobService.getWeekGenerationJobByRecommendationAndWeek(
       id,
       week_number
     );
-    if (
-      existingJob &&
-      (existingJob.status === 'pending' || existingJob.status === 'processing')
-    ) {
-      res.json({
-        success: true,
-        data: { job_id: existingJob.id },
-        message: 'Week generation already in progress',
+
+    if (existingJob) {
+      // If job is pending or processing, return existing job
+      if (existingJob.status === 'pending' || existingJob.status === 'processing') {
+        res.json({
+          success: true,
+          data: { job_id: existingJob.id },
+          message: 'Week generation already in progress',
+        });
+        return;
+      }
+
+      // If job is completed, allow regeneration by deleting workouts and resetting job
+      if (existingJob.status === 'completed') {
+        const existingWorkouts = await workoutService.getWorkoutsByWeek(id, week_number);
+        if (existingWorkouts.length > 0) {
+          // Delete existing workouts to allow regeneration
+          await workoutService.deleteWorkoutsByWeek(id, week_number);
+        }
+        // Reset job to pending to allow regeneration
+        const resetJob = await weekGenerationJobService.resetWeekGenerationJobToPending(
+          existingJob.id,
+          req.user.userId
+        );
+        res.status(202).json({
+          success: true,
+          data: { job_id: resetJob.id },
+          message: 'Week generation restarted. Existing workouts deleted. Job will be processed shortly.',
+        });
+        return;
+      }
+
+      // If job is failed, reset it to pending to allow retry
+      if (existingJob.status === 'failed') {
+        const resetJob = await weekGenerationJobService.resetWeekGenerationJobToPending(
+          existingJob.id,
+          req.user.userId
+        );
+        res.status(202).json({
+          success: true,
+          data: { job_id: resetJob.id },
+          message: 'Week generation restarted. Job will be processed shortly.',
+        });
+        return;
+      }
+    }
+
+    // Check if week is already generated (workouts exist but no job record)
+    const existingWorkouts = await workoutService.getWorkoutsByWeek(id, week_number);
+    if (existingWorkouts.length > 0 && !existingJob) {
+      res.status(400).json({
+        success: false,
+        error: `Week ${week_number} workouts already exist. Delete existing workouts first to regenerate.`,
       });
       return;
     }
 
-    // Create new job
-    const job = await weekGenerationJobService.createWeekGenerationJob(
-      {
-        recommendation_id: id,
-        week_number,
-      },
-      req.user.userId
-    );
+    // Create new job (or update existing if conflict)
+    // The createWeekGenerationJob function uses INSERT ... ON CONFLICT to handle duplicates
+    let job: Awaited<ReturnType<typeof weekGenerationJobService.createWeekGenerationJob>>;
+    try {
+      job = await weekGenerationJobService.createWeekGenerationJob(
+        {
+          recommendation_id: id,
+          week_number,
+        },
+        req.user.userId
+      );
+      
+      // If we got here and there was an existing job, it means the ON CONFLICT updated it
+      // Check if workouts need to be deleted for regeneration
+      if (existingJob && existingJob.status === 'completed') {
+        const workouts = await workoutService.getWorkoutsByWeek(id, week_number);
+        if (workouts.length > 0) {
+          await workoutService.deleteWorkoutsByWeek(id, week_number);
+        }
+      }
+    } catch (error) {
+      // Handle any remaining duplicate key errors (shouldn't happen with ON CONFLICT, but just in case)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('unique constraint') || errorMessage.includes('duplicate key')) {
+        // Job was created/updated by another request, fetch it
+        const raceConditionJob = await weekGenerationJobService.getWeekGenerationJobByRecommendationAndWeek(
+          id,
+          week_number
+        );
+        if (raceConditionJob) {
+          res.json({
+            success: true,
+            data: { job_id: raceConditionJob.id },
+            message: 'Week generation already in progress',
+          });
+          return;
+        }
+      }
+      // Log the error for debugging
+      console.error('Error creating week generation job:', error);
+      throw error; // Re-throw if it's a different error
+    }
 
     // Job will be processed by cron job (runs every 2 minutes)
     // No need to process here - just create the job and return
@@ -1097,11 +1166,14 @@ router.get('/:id/week/:weekNumber/status', async (req: Request, res: Response) =
  */
 export async function processWeekGenerationJob(jobId: number): Promise<void> {
   try {
+    console.log(`🔄 Starting to process week generation job ${jobId}`);
     const job = await weekGenerationJobService.getWeekGenerationJobById(jobId);
     if (!job) {
-      console.error(`Week generation job ${jobId} not found`);
+      console.error(`❌ Week generation job ${jobId} not found`);
       return;
     }
+    
+    console.log(`📋 Job ${jobId} status: ${job.status}, week: ${job.week_number}, recommendation: ${job.recommendation_id}`);
 
     // Get recommendation
     const recommendation = await recommendationService.getRecommendationById(
@@ -1149,14 +1221,26 @@ export async function processWeekGenerationJob(jobId: number): Promise<void> {
     const allWeekWorkouts = await Promise.all(weekWorkoutPromises);
 
     // Get all actual workouts in a single batch query
-    const allWorkoutIds = allWeekWorkouts.flat().map((w) => w.id);
+    // Flatten the array and filter out any undefined/null workouts
+    const allWorkoutIds = allWeekWorkouts
+      .flat()
+      .filter((w): w is Workout => w !== null && w !== undefined && w.id !== undefined)
+      .map((w) => w.id);
+    
     const allActualWorkouts =
-      await actualWorkoutService.getActualWorkoutsByWorkoutIds(allWorkoutIds);
+      allWorkoutIds.length > 0
+        ? await actualWorkoutService.getActualWorkoutsByWorkoutIds(allWorkoutIds)
+        : [];
 
     // Create a map of workout_id -> actual_workout for efficient lookup
     const actualWorkoutMap = new Map<number, ActualWorkout>();
-    for (const actualWorkout of allActualWorkouts) {
-      actualWorkoutMap.set(actualWorkout.workout_id, actualWorkout);
+    if (allActualWorkouts && Array.isArray(allActualWorkouts)) {
+      for (const actualWorkout of allActualWorkouts) {
+        // Safety check: ensure actualWorkout exists and has workout_id
+        if (actualWorkout && typeof actualWorkout === 'object' && 'workout_id' in actualWorkout && actualWorkout.workout_id !== undefined && actualWorkout.workout_id !== null) {
+          actualWorkoutMap.set(actualWorkout.workout_id, actualWorkout);
+        }
+      }
     }
 
     // Build previousWeeksData array matching the original structure
@@ -1249,11 +1333,59 @@ export async function processWeekGenerationJob(jobId: number): Promise<void> {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     console.error(`❌ Week generation job ${jobId} failed:`, errorMessage);
+    if (errorStack) {
+      console.error(`Stack trace:`, errorStack);
+    }
     await weekGenerationJobService.failWeekGenerationJob(jobId, errorMessage);
   }
 }
 
+
+// Manually trigger processing of a week generation job (for debugging/stuck jobs)
+router.post('/:id/generate-week/job/:jobId/process', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    const jobId = parseInt(req.params.jobId, 10);
+
+    if (Number.isNaN(jobId)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid job ID',
+      });
+      return;
+    }
+
+    const job = await weekGenerationJobService.getWeekGenerationJobById(jobId);
+
+    if (!job) {
+      res.status(404).json({
+        success: false,
+        error: 'Job not found',
+      });
+      return;
+    }
+
+    // Process the job (don't await - let it run in background)
+    processWeekGenerationJob(jobId).catch((error) => {
+      console.error(`Error manually processing week generation job ${jobId}:`, error);
+    });
+
+    res.json({
+      success: true,
+      message: 'Week generation job processing started',
+      data: { job_id: jobId },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
 
 // Get all week generation jobs for a recommendation
 router.get('/:id/week-jobs', async (req: Request, res: Response) => {

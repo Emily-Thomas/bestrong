@@ -164,4 +164,3 @@ export async function getPendingJobs(): Promise<RecommendationJob[]> {
 
   return result.rows;
 }
-

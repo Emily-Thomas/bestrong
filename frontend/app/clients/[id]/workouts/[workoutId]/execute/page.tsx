@@ -1,13 +1,12 @@
 'use client';
 
-import { ArrowLeft, Loader2, Save, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -16,11 +15,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Slider } from '@/components/ui/slider';
-import { Textarea } from '@/components/ui/textarea';
 import {
   type ActualExercisePerformance,
   type ActualWorkoutPerformance,
@@ -28,6 +24,8 @@ import {
   type Workout,
   workoutsApi,
 } from '@/lib/api';
+import { ExerciseInputModal } from './components/ExerciseInputModal';
+import { WorkoutRatingSection } from './components/WorkoutRatingSection';
 
 export default function WorkoutExecutionPage() {
   const params = useParams();
@@ -43,9 +41,9 @@ export default function WorkoutExecutionPage() {
     exercises: [],
   });
   const [sessionNotes, setSessionNotes] = useState('');
-  const [overallRIR, setOverallRIR] = useState<number>(2);
-  const [clientEnergyLevel, setClientEnergyLevel] = useState<number>(5);
   const [trainerObservations, setTrainerObservations] = useState('');
+  const [workoutRating, setWorkoutRating] = useState<'happy' | 'meh' | 'sad' | undefined>();
+  const [openExerciseIndex, setOpenExerciseIndex] = useState<number | null>(null);
 
   const loadWorkout = useCallback(async () => {
     setLoading(true);
@@ -58,14 +56,13 @@ export default function WorkoutExecutionPage() {
         setWorkout(w);
 
         // Initialize actual performance with proposed exercises
+        // Only set exercise_name - don't pre-populate actual performance data
         if (w.workout_data.exercises) {
           const exercises: ActualExercisePerformance[] = w.workout_data.exercises.map(
             (ex) => ({
               exercise_name: ex.name,
-              sets_completed: ex.sets,
-              reps_completed: typeof ex.reps === 'number' ? ex.reps : ex.reps || '',
-              weight_used: ex.weight || '',
-              rir: ex.rir,
+              // Don't pre-populate reps_completed, weight_used, etc.
+              // These should only be set when trainer actually records data
             })
           );
           setActualPerformance({ exercises });
@@ -75,9 +72,8 @@ export default function WorkoutExecutionPage() {
         if (w.actual_workout) {
           setActualPerformance(w.actual_workout.actual_performance);
           setSessionNotes(w.actual_workout.session_notes || '');
-          setOverallRIR(w.actual_workout.overall_rir || 2);
-          setClientEnergyLevel(w.actual_workout.client_energy_level || 5);
           setTrainerObservations(w.actual_workout.trainer_observations || '');
+          setWorkoutRating(w.actual_workout.workout_rating);
         }
       } else {
         setError(response.error || 'Failed to load workout');
@@ -104,30 +100,12 @@ export default function WorkoutExecutionPage() {
     setActualPerformance({ ...actualPerformance, exercises: newExercises });
   };
 
-  const removeExercise = (index: number) => {
-    const newExercises = actualPerformance.exercises.filter((_, i) => i !== index);
-    setActualPerformance({ ...actualPerformance, exercises: newExercises });
-  };
-
   const handleSave = async (complete: boolean) => {
     if (!workout) return;
 
     // Validation
     if (actualPerformance.exercises.length === 0) {
       setError('Please record performance for at least one exercise');
-      return;
-    }
-
-    // Validate that exercise names match
-    const exerciseNames = workout.workout_data.exercises.map((e) => e.name);
-    const actualExerciseNames = actualPerformance.exercises.map((e) => e.exercise_name);
-    const missingExercises = exerciseNames.filter(
-      (name) => !actualExerciseNames.includes(name)
-    );
-    if (missingExercises.length > 0) {
-      setError(
-        `Missing performance data for: ${missingExercises.join(', ')}. Please record data for all exercises or remove exercises you didn't do.`
-      );
       return;
     }
 
@@ -138,35 +116,45 @@ export default function WorkoutExecutionPage() {
       workout_id: workout.id,
       actual_performance: actualPerformance,
       session_notes: sessionNotes,
-      overall_rir: overallRIR,
-      client_energy_level: clientEnergyLevel,
       trainer_observations: trainerObservations,
+      workout_rating: workoutRating,
       completed_at: new Date().toISOString(),
     };
 
     try {
-      if (complete) {
-        const response = await workoutsApi.complete(workout.id, input);
-        if (response.success) {
-          router.push(`/clients/${clientId}`);
-        } else {
-          setError(response.error || 'Failed to complete workout');
-        }
+      const response = await workoutsApi.complete(workout.id, input);
+      if (response.success) {
+        router.push(`/clients/${clientId}`);
       } else {
-        // For draft, we'd need a separate endpoint or just update the workout status
-        // For now, we'll just complete it
-        const response = await workoutsApi.complete(workout.id, input);
-        if (response.success) {
-          router.push(`/clients/${clientId}`);
-        } else {
-          setError(response.error || 'Failed to save workout');
-        }
+        setError(response.error || 'Failed to save workout');
       }
     } catch (err) {
       setError('Failed to save workout');
     } finally {
       setSaving(false);
     }
+  };
+
+  const getExerciseStatus = (exercise: ActualExercisePerformance) => {
+    // Check if user has actually entered meaningful data
+    // Empty strings don't count as data
+    const hasReps = exercise.reps_completed && String(exercise.reps_completed).trim() !== '';
+    const hasWeight = exercise.weight_used && String(exercise.weight_used).trim() !== '';
+    const hasRounds = exercise.rounds && exercise.rounds.length > 0 && 
+      exercise.rounds.some(r => 
+        (r.reps && String(r.reps).trim() !== '') || 
+        (r.weight && String(r.weight).trim() !== '')
+      );
+    const hasRating = exercise.exercise_rating !== undefined;
+    const hasNotes = exercise.exercise_notes && exercise.exercise_notes.trim() !== '';
+    
+    // Exercise is only completed if user has entered at least one piece of actual data
+    const hasData = hasReps || hasWeight || hasRounds || hasRating || hasNotes;
+    
+    if (hasData) {
+      return 'completed';
+    }
+    return 'pending';
   };
 
   if (loading) {
@@ -201,36 +189,36 @@ export default function WorkoutExecutionPage() {
     <ProtectedRoute>
       <AppShell
         title={workout.workout_name || `Week ${workout.week_number}, Session ${workout.session_number}`}
-        description="Record actual workout performance"
+        description="Record workout performance"
         backAction={
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/clients/${clientId}`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Client
+              Back
             </Link>
           </Button>
         }
       >
-        <div className="space-y-6">
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        <div className="max-w-4xl mx-auto space-y-6 pb-8">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-          {/* Proposed Workout Plan */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Proposed Workout Plan</CardTitle>
+          {/* Proposed Workout Plan - Compact */}
+          <Card className="border-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl">Workout Plan</CardTitle>
               <CardDescription>
                 Week {workout.week_number} • Session {workout.session_number}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               {workout.workout_data.warmup && workout.workout_data.warmup.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-2">Warmup</h4>
+                  <h4 className="font-semibold mb-2 text-sm">Warmup</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                     {workout.workout_data.warmup.map((ex, idx) => (
                       <li key={idx}>{ex.name}</li>
@@ -239,31 +227,9 @@ export default function WorkoutExecutionPage() {
                 </div>
               )}
 
-              <div>
-                <h4 className="font-semibold mb-2">Exercises</h4>
-                <div className="space-y-3">
-                  {workout.workout_data.exercises.map((ex, idx) => (
-                    <div key={idx} className="p-3 border rounded-lg">
-                      <div className="font-medium">{ex.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {ex.sets && <span>{ex.sets} sets</span>}
-                        {ex.reps && <span> • {ex.reps} reps</span>}
-                        {ex.weight && <span> • {ex.weight}</span>}
-                        {ex.rir !== undefined && <span> • RIR {ex.rir}</span>}
-                      </div>
-                      {ex.notes && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {ex.notes}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {workout.workout_data.cooldown && workout.workout_data.cooldown.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-2">Cooldown</h4>
+                  <h4 className="font-semibold mb-2 text-sm">Cooldown</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                     {workout.workout_data.cooldown.map((ex, idx) => (
                       <li key={idx}>{ex.name}</li>
@@ -274,207 +240,155 @@ export default function WorkoutExecutionPage() {
             </CardContent>
           </Card>
 
-          {/* Actual Performance Input */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Actual Performance</CardTitle>
-              <CardDescription>Record what the client actually did</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Exercise Performance */}
-              <div>
-                <h4 className="font-semibold mb-4">Exercise Performance</h4>
-                <div className="space-y-4">
-                  {actualPerformance.exercises.map((ex, idx) => (
-                    <Card key={idx}>
-                      <CardContent className="p-4 space-y-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="font-medium">{ex.exercise_name}</div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removeExercise(idx)}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor={`sets-${idx}`}>Sets Completed</Label>
-                            <Input
-                              id={`sets-${idx}`}
-                              type="number"
-                              min="0"
-                              value={ex.sets_completed || ''}
-                              onChange={(e) =>
-                                updateExercisePerformance(idx, {
-                                  sets_completed: e.target.value
-                                    ? parseInt(e.target.value, 10)
-                                    : undefined,
-                                })
-                              }
-                            />
+          {/* Exercise List - Clickable Cards */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Exercises</h2>
+              <Badge variant="outline" className="text-sm">
+                {actualPerformance.exercises.filter(ex => getExerciseStatus(ex) === 'completed').length} / {actualPerformance.exercises.length} completed
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {actualPerformance.exercises.map((exercise, idx) => {
+                const proposedExercise = workout.workout_data.exercises[idx];
+                const status = getExerciseStatus(exercise);
+                const isOpen = openExerciseIndex === idx;
+
+                return (
+                  <div key={idx}>
+                    <Card 
+                      className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
+                        status === 'completed' 
+                          ? 'border-green-500 bg-green-50/50 dark:bg-green-950/20' 
+                          : 'border-border hover:border-primary'
+                      }`}
+                      onClick={() => setOpenExerciseIndex(idx)}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="flex-shrink-0">
+                              {status === 'completed' ? (
+                                <CheckCircle2 className="h-6 w-6 text-green-600" />
+                              ) : (
+                                <Circle className="h-6 w-6 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-xl font-semibold mb-2">
+                                {exercise.exercise_name}
+                              </h3>
+                              {proposedExercise && (
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  {proposedExercise.sets && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {proposedExercise.sets} sets
+                                    </Badge>
+                                  )}
+                                  {proposedExercise.reps && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {proposedExercise.reps} reps
+                                    </Badge>
+                                  )}
+                                  {proposedExercise.weight && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {proposedExercise.weight}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                              {status === 'completed' && (
+                                <div className="text-sm text-muted-foreground space-y-1">
+                                  {exercise.reps_completed && (
+                                    <div>Reps: {exercise.reps_completed}</div>
+                                  )}
+                                  {exercise.weight_used && (
+                                    <div>Weight: {exercise.weight_used}</div>
+                                  )}
+                                  {exercise.rounds && exercise.rounds.length > 0 && (
+                                    <div>{exercise.rounds.length} round(s) tracked</div>
+                                  )}
+                                  {exercise.exercise_rating && (
+                                    <div className="capitalize">Rating: {exercise.exercise_rating}</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`reps-${idx}`}>Reps Completed</Label>
-                            <Input
-                              id={`reps-${idx}`}
-                              value={ex.reps_completed || ''}
-                              onChange={(e) =>
-                                updateExercisePerformance(idx, {
-                                  reps_completed: e.target.value,
-                                })
-                              }
-                              placeholder="e.g., 8-10 or 8"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`weight-${idx}`}>Weight/Load Used</Label>
-                            <Input
-                              id={`weight-${idx}`}
-                              value={ex.weight_used || ''}
-                              onChange={(e) =>
-                                updateExercisePerformance(idx, {
-                                  weight_used: e.target.value,
-                                })
-                              }
-                              placeholder="e.g., 185 lbs or RIR 2"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`rir-${idx}`}>
-                              RIR (0-5): {ex.rir !== undefined ? ex.rir : 2}
-                            </Label>
-                            <Slider
-                              id={`rir-${idx}`}
-                              min={0}
-                              max={5}
-                              step={1}
-                              value={[ex.rir !== undefined ? ex.rir : 2]}
-                              onValueChange={([value]) =>
-                                updateExercisePerformance(idx, { rir: value })
-                              }
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <Label htmlFor={`notes-${idx}`}>Exercise Notes</Label>
-                            <Textarea
-                              id={`notes-${idx}`}
-                              value={ex.notes || ''}
-                              onChange={(e) =>
-                                updateExercisePerformance(idx, {
-                                  notes: e.target.value,
-                                })
-                              }
-                              placeholder="Any notes about this exercise..."
-                              rows={2}
-                            />
+                          <div className="flex-shrink-0 ml-4">
+                            <Button variant="outline" size="lg" className="h-12 px-6">
+                              {status === 'completed' ? 'Edit' : 'Record'}
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
-              </div>
 
-              <Separator />
+                    {/* Exercise Input Modal */}
+                    <ExerciseInputModal
+                      exercise={exercise}
+                      proposedExercise={proposedExercise}
+                      open={isOpen}
+                      onOpenChange={(open) => {
+                        if (!open) {
+                          setOpenExerciseIndex(null);
+                        } else {
+                          setOpenExerciseIndex(idx);
+                        }
+                      }}
+                      onUpdate={(updates) => updateExercisePerformance(idx, updates)}
+                      exerciseIndex={idx}
+                      totalExercises={actualPerformance.exercises.length}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-              {/* Session-Level Inputs */}
-              <div className="space-y-4">
-                <h4 className="font-semibold">Session Summary</h4>
+          <Separator className="my-8" />
 
-                <div className="space-y-2">
-                  <Label>Overall Session RIR (0-5): {overallRIR}</Label>
-                  <Slider
-                    min={0}
-                    max={5}
-                    step={1}
-                    value={[overallRIR]}
-                    onValueChange={([value]) => setOverallRIR(value)}
-                  />
-                </div>
+          {/* Overall Workout Feedback */}
+          <WorkoutRatingSection
+            workoutRating={workoutRating}
+            trainerObservations={trainerObservations}
+            sessionNotes={sessionNotes}
+            onRatingChange={setWorkoutRating}
+            onObservationsChange={setTrainerObservations}
+            onSessionNotesChange={setSessionNotes}
+          />
 
-                <div className="space-y-2">
-                  <Label>Client Energy Level (1-10): {clientEnergyLevel}</Label>
-                  <Slider
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={[clientEnergyLevel]}
-                    onValueChange={([value]) => setClientEnergyLevel(value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="session-notes">Session Notes</Label>
-                  <Textarea
-                    id="session-notes"
-                    value={sessionNotes}
-                    onChange={(e) => setSessionNotes(e.target.value)}
-                    placeholder="Overall session notes..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="trainer-observations">Trainer Observations</Label>
-                  <Textarea
-                    id="trainer-observations"
-                    value={trainerObservations}
-                    onChange={(e) => setTrainerObservations(e.target.value)}
-                    placeholder="What did you observe? How did the client perform? Any concerns or highlights?"
-                    rows={4}
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => router.push(`/clients/${clientId}`)}
-                  disabled={saving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => handleSave(false)}
-                  disabled={saving}
-                  variant="outline"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Draft
-                    </>
-                  )}
-                </Button>
-                <Button onClick={() => handleSave(true)} disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Completing...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save & Complete
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Action Buttons - Tablet Optimized */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/clients/${clientId}`)}
+              disabled={saving}
+              className="h-12 text-base"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleSave(true)}
+              disabled={saving}
+              className="h-12 text-base flex-1"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-5 w-5" />
+                  Save & Complete Workout
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </AppShell>
     </ProtectedRoute>
   );
 }
-

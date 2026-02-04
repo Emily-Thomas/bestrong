@@ -124,6 +124,17 @@ export async function deleteWorkoutsByRecommendationId(
   return (result.rowCount ?? 0) > 0;
 }
 
+export async function deleteWorkoutsByWeek(
+  recommendationId: number,
+  weekNumber: number
+): Promise<boolean> {
+  const result = await pool.query(
+    'DELETE FROM workouts WHERE recommendation_id = $1 AND week_number = $2',
+    [recommendationId, weekNumber]
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function updateWorkout(
   id: number,
   input: UpdateWorkoutInput
