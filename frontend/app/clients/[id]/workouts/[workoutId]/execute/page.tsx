@@ -29,6 +29,48 @@ import { ExerciseInputModal } from './components/ExerciseInputModal';
 import { WorkoutRatingSection } from './components/WorkoutRatingSection';
 import { PreWorkoutSurvey, type PreWorkoutSurveyResponse } from './components/PreWorkoutSurvey';
 
+// Helper function to determine concern level from survey response
+function getConcernLevel(response: PreWorkoutSurveyResponse): 'high' | 'medium' | 'low' | 'none' {
+  // High concern: very sore, very tired, not feeling it, or significant injuries
+  if (
+    response.recovery === 'very_sore' ||
+    response.rest === 'very_tired' ||
+    response.mood === 'not_feeling_it' ||
+    response.injuries === 'significant'
+  ) {
+    return 'high';
+  }
+
+  // Medium concern: still sore, tired, or minor injuries
+  if (
+    response.recovery === 'still_sore' ||
+    response.rest === 'tired' ||
+    response.injuries === 'minor'
+  ) {
+    return 'medium';
+  }
+
+  // Low concern: mostly recovered but not fully, or adequate rest
+  if (
+    response.recovery === 'mostly_recovered' ||
+    response.rest === 'adequate_rest' ||
+    response.mood === 'neutral'
+  ) {
+    return 'low';
+  }
+
+  // No concern: fully recovered, well rested, excited/ready
+  return 'none';
+}
+
+// Helper function to format response values for display
+function formatResponseValue(value: string): string {
+  return value
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export default function WorkoutExecutionPage() {
   const params = useParams();
   const router = useRouter();

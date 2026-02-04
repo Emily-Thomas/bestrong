@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import type { JWTPayload } from '../types/index.js';
 
 // Extend Express Request to include user
