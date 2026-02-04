@@ -7,6 +7,7 @@ import clientRoutes from '../backend/src/routes/client.routes';
 import inbodyScanRoutes from '../backend/src/routes/inbody-scan.routes';
 import questionnaireRoutes from '../backend/src/routes/questionnaire.routes';
 import recommendationRoutes from '../backend/src/routes/recommendation.routes';
+import workoutRoutes from '../backend/src/routes/workout.routes';
 
 // Create Express app
 const app = express();
@@ -110,6 +111,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/inbody-scans', inbodyScanRoutes);
 app.use('/api/questionnaires', questionnaireRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/workouts', workoutRoutes);
 
 // Initialize database on first request (only once)
 let dbInitialized = false;
