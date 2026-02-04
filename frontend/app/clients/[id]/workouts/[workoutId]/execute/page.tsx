@@ -23,9 +23,11 @@ import {
   type CreateActualWorkoutInput,
   type Workout,
   workoutsApi,
+  clientsApi,
 } from '@/lib/api';
 import { ExerciseInputModal } from './components/ExerciseInputModal';
 import { WorkoutRatingSection } from './components/WorkoutRatingSection';
+import { PreWorkoutSurvey, type PreWorkoutSurveyResponse } from './components/PreWorkoutSurvey';
 
 export default function WorkoutExecutionPage() {
   const params = useParams();
@@ -44,12 +46,22 @@ export default function WorkoutExecutionPage() {
   const [trainerObservations, setTrainerObservations] = useState('');
   const [workoutRating, setWorkoutRating] = useState<'happy' | 'meh' | 'sad' | undefined>();
   const [openExerciseIndex, setOpenExerciseIndex] = useState<number | null>(null);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [surveyResponse, setSurveyResponse] = useState<PreWorkoutSurveyResponse | null>(null);
+  const [clientName, setClientName] = useState<string>('');
 
   const loadWorkout = useCallback(async () => {
     setLoading(true);
     setError('');
 
     try {
+      // Load client data for survey
+      const clientResponse = await clientsApi.getById(clientId);
+      if (clientResponse.success && clientResponse.data) {
+        const client = clientResponse.data;
+        setClientName(`${client.first_name} ${client.last_name}`);
+      }
+
       const response = await workoutsApi.getById(workoutId);
       if (response.success && response.data) {
         const w = response.data;
@@ -74,6 +86,10 @@ export default function WorkoutExecutionPage() {
           setSessionNotes(w.actual_workout.session_notes || '');
           setTrainerObservations(w.actual_workout.trainer_observations || '');
           setWorkoutRating(w.actual_workout.workout_rating);
+          // Don't show survey if workout already exists
+        } else {
+          // Show survey for new workouts
+          setShowSurvey(true);
         }
       } else {
         setError(response.error || 'Failed to load workout');
@@ -83,7 +99,7 @@ export default function WorkoutExecutionPage() {
     } finally {
       setLoading(false);
     }
-  }, [workoutId]);
+  }, [workoutId, clientId]);
 
   useEffect(() => {
     if (workoutId) {
@@ -205,6 +221,52 @@ export default function WorkoutExecutionPage() {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+          )}
+
+          {/* Pre-Workout Survey Summary */}
+          {surveyResponse && (
+            <Card className="border-2 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Pre-Workout Assessment</CardTitle>
+                  <Badge 
+                    variant={
+                      getConcernLevel(surveyResponse) === 'high' ? 'destructive' :
+                      getConcernLevel(surveyResponse) === 'medium' ? 'default' :
+                      getConcernLevel(surveyResponse) === 'low' ? 'secondary' : 'outline'
+                    }
+                  >
+                    {getConcernLevel(surveyResponse) === 'high' ? 'High Concern' :
+                     getConcernLevel(surveyResponse) === 'medium' ? 'Moderate Concern' :
+                     getConcernLevel(surveyResponse) === 'low' ? 'Low Concern' : 'All Good'}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div><strong>Recovery:</strong> {formatResponseValue(surveyResponse.recovery)}</div>
+                <div><strong>Rest:</strong> {formatResponseValue(surveyResponse.rest)}</div>
+                <div><strong>Mood:</strong> {formatResponseValue(surveyResponse.mood)}</div>
+                <div><strong>Injuries:</strong> {formatResponseValue(surveyResponse.injuries)}</div>
+                {surveyResponse.injuryDetails && (
+                  <div className="pt-2 border-t">
+                    <strong>Injury Details:</strong> {surveyResponse.injuryDetails}
+                  </div>
+                )}
+                {surveyResponse.notes && (
+                  <div className="pt-2 border-t">
+                    <strong>Notes:</strong> {surveyResponse.notes}
+                  </div>
+                )}
+                {(getConcernLevel(surveyResponse) === 'medium' || getConcernLevel(surveyResponse) === 'high') && (
+                  <Alert variant="destructive" className="mt-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Consider modifying today's workout based on the client's current state. You may want to reduce intensity, volume, or change exercises.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* Proposed Workout Plan - Compact */}
