@@ -17,9 +17,14 @@ Gym Management Application
 bestrong/
 ├── frontend/          # Next.js frontend application
 ├── backend/           # Express backend API
+├── docs/              # Specifications, architecture, and runbooks
 ├── .husky/           # Git hooks
 └── vercel.json       # Vercel deployment configuration
 ```
+
+## Documentation
+
+Specs, analysis, and deployment notes are in [`docs/`](./docs/). See [`docs/README.md`](./docs/README.md) for an index.
 
 ## Prerequisites
 
