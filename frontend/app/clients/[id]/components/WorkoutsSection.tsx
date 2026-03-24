@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, CheckCircle2, Clock, Play, Loader2, Sparkles, Edit, X, SkipForward, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Play, Loader2, Edit, X, SkipForward } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -29,7 +29,6 @@ import {
 import {
   type Recommendation,
   type Workout,
-  type WeekGenerationJob,
   recommendationsApi,
   workoutsApi,
 } from '@/lib/api';
@@ -59,9 +58,6 @@ export function WorkoutsSection({
     scheduled_workouts?: number;
     is_complete: boolean;
   } | null>(null);
-  const [generatingWeek, setGeneratingWeek] = useState(false);
-  const [generationJob, setGenerationJob] = useState<WeekGenerationJob | null>(null);
-  const [generationError, setGenerationError] = useState('');
   const [startingWorkout, setStartingWorkout] = useState<number | null>(null);
 
   const loadWorkouts = useCallback(async () => {
@@ -101,125 +97,9 @@ export function WorkoutsSection({
     }
   }, [recommendation]);
 
-  // Poll for week generation job status
-  const pollWeekGenerationJob = useCallback(
-    async (jobId: number) => {
-      if (!recommendation) return;
-
-      try {
-        const response = await recommendationsApi.getWeekGenerationJob(
-          recommendation.id,
-          jobId
-        );
-
-        if (response.success && response.data) {
-          const job = response.data;
-          setGenerationJob(job);
-
-          if (job.status === 'completed') {
-            setGeneratingWeek(false);
-            setGenerationJob(null);
-            // Reload workouts to show new week
-            await loadWorkouts();
-            onWorkoutUpdate?.();
-          } else if (job.status === 'failed') {
-            setGeneratingWeek(false);
-            setGenerationError(job.error_message || 'Week generation failed');
-          } else if (job.status === 'pending' || job.status === 'processing') {
-            // Continue polling (every 15 seconds)
-            setTimeout(() => pollWeekGenerationJob(jobId), 15000);
-          }
-        }
-      } catch (err) {
-        setGenerationError('Failed to check generation status');
-        setGeneratingWeek(false);
-      }
-    },
-    [recommendation, loadWorkouts, onWorkoutUpdate]
-  );
-
-  // Check for existing week generation jobs
-  const checkForExistingWeekJob = useCallback(async () => {
-    if (!recommendation) return;
-
-    try {
-      const jobsResponse = await recommendationsApi.getWeekGenerationJobs(
-        recommendation.id
-      );
-      if (jobsResponse.success && jobsResponse.data) {
-        const activeJob = jobsResponse.data.find(
-          (job) =>
-            job.status === 'pending' || job.status === 'processing'
-        );
-        if (activeJob) {
-          setGeneratingWeek(true);
-          setGenerationJob(activeJob);
-          setTimeout(() => pollWeekGenerationJob(activeJob.id), 1000);
-        }
-      }
-    } catch (err) {
-      // Job might not exist, which is fine
-    }
-  }, [recommendation, pollWeekGenerationJob]);
-
   useEffect(() => {
     loadWorkouts();
-    checkForExistingWeekJob();
-  }, [loadWorkouts, checkForExistingWeekJob]);
-
-  // Refresh when recommendation changes (e.g., after activation)
-  useEffect(() => {
-    if (recommendation) {
-      loadWorkouts();
-    }
-  }, [recommendation?.id, recommendation?.current_week]);
-
-  const handleGenerateNextWeek = async () => {
-    if (!recommendation) return;
-
-    // Re-check week status before generating
-    const currentWeekNum = recommendation.current_week || 1;
-    const weekStatusResponse = await recommendationsApi.getWeekStatus(
-      recommendation.id,
-      currentWeekNum
-    );
-    
-    if (!weekStatusResponse.success || !weekStatusResponse.data) {
-      setGenerationError('Failed to verify week completion status');
-      return;
-    }
-
-    const latestWeekStatus = weekStatusResponse.data;
-    if (!latestWeekStatus.is_complete) {
-      setGenerationError(
-        `Week ${currentWeekNum} is not complete. ${latestWeekStatus.completed_workouts} of ${latestWeekStatus.total_workouts} workouts completed (${latestWeekStatus.skipped_workouts || 0} skipped).`
-      );
-      setWeekStatus(latestWeekStatus);
-      return;
-    }
-
-    const nextWeek = currentWeekNum + 1;
-    setGeneratingWeek(true);
-    setGenerationError('');
-
-    try {
-      const response = await recommendationsApi.generateWeek(
-        recommendation.id,
-        nextWeek
-      );
-      if (response.success && response.data) {
-        const jobId = response.data.job_id;
-        // Start polling
-        setTimeout(() => pollWeekGenerationJob(jobId), 1000);
-      } else {
-        setGenerationError(response.error || 'Failed to start week generation');
-        setGeneratingWeek(false);
-      }
-    } catch (err) {
-      setGenerationError('Failed to start week generation');
-      setGeneratingWeek(false);
-    }
-  };
+  }, [loadWorkouts]);
 
   const handleStartWorkout = async (workoutId: number) => {
     setStartingWorkout(workoutId);
@@ -337,8 +217,8 @@ export function WorkoutsSection({
             </p>
             {workout.workout_data.focus_areas && (
               <div className="flex flex-wrap gap-1 mb-2">
-                {workout.workout_data.focus_areas.map((area, idx) => (
-                  <Badge key={idx} variant="outline" className="text-xs">
+                {workout.workout_data.focus_areas.map((area) => (
+                  <Badge key={area} variant="outline" className="text-xs">
                     {area}
                   </Badge>
                 ))}
@@ -400,8 +280,7 @@ export function WorkoutsSection({
                         <AlertDialogTitle>Skip Workout</AlertDialogTitle>
                         <AlertDialogDescription>
                           Are you sure you want to skip this workout? Skipped workouts
-                          count toward week completion and can be used to generate the
-                          next week.
+                          count toward week completion.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -568,28 +447,6 @@ export function WorkoutsSection({
           </Alert>
         )}
 
-        {generationError && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="font-semibold mb-1">Error generating week:</div>
-              <div>{generationError}</div>
-              {weekStatus && (
-                <div className="mt-2 text-sm">
-                  Current status: {weekStatus.completed_workouts} completed,{' '}
-                  {weekStatus.skipped_workouts || 0} skipped,{' '}
-                  {weekStatus.total_workouts} total
-                </div>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
         {successMessage && (
           <Alert className="mb-6 border-green-500/50 bg-green-500/5">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -599,89 +456,12 @@ export function WorkoutsSection({
           </Alert>
         )}
 
-        {/* Week generation progress */}
-        {generatingWeek && generationJob && (
-          <Alert className="mb-6 border-primary/50 bg-primary/5">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <AlertDescription className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  Generating Week {generationJob.week_number} workouts...
-                </span>
-              </div>
-              {generationJob.current_step && (
-                <span className="text-sm text-muted-foreground">
-                  {generationJob.current_step}
-                </span>
-              )}
-              <span className="text-sm text-muted-foreground">
-                This may take 30-60 seconds. You can navigate away and return later.
-              </span>
-            </AlertDescription>
-          </Alert>
+        {weekStatus && weekStatus.total_workouts > 0 && (
+          <p className="text-sm text-muted-foreground mb-4">
+            Track sessions you add from the training plan. AI does not generate additional
+            weeks automatically.
+          </p>
         )}
-
-        {/* Week completion banner with generate next week button */}
-        {weekStatus &&
-          !generatingWeek &&
-          recommendation &&
-          (recommendation.current_week || 1) < 6 && (
-            <Alert
-              className={`mb-6 ${
-                weekStatus.is_complete
-                  ? 'border-green-500/50 bg-green-500/5'
-                  : 'border-yellow-500/50 bg-yellow-500/5'
-              }`}
-            >
-              <AlertDescription className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`font-medium ${
-                      weekStatus.is_complete
-                        ? 'text-green-700 dark:text-green-400'
-                        : 'text-yellow-700 dark:text-yellow-400'
-                    }`}
-                  >
-                    {weekStatus.is_complete
-                      ? `Week ${currentWeek} complete! Ready to generate Week ${
-                          (recommendation.current_week || 1) + 1
-                        }.`
-                      : `Week ${currentWeek} progress: ${weekStatus.completed_workouts} of ${weekStatus.total_workouts} workouts completed (${weekStatus.skipped_workouts || 0} skipped). Complete all workouts (or skip them) to generate the next week.`}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={loadWorkouts}
-                    disabled={loading}
-                  >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
-                  {weekStatus.is_complete && (
-                    <Button
-                      size="sm"
-                      onClick={handleGenerateNextWeek}
-                      disabled={generatingWeek}
-                    >
-                      {generatingWeek ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Generate Week {(recommendation.current_week || 1) + 1}
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">

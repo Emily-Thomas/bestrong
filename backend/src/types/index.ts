@@ -127,6 +127,46 @@ export interface StructuredQuestionnaireData {
   section5_motivation_driver?: number;
   section5_sustainability_confidence?: number;
   section5_success_vision?: string;
+
+  /** v2 intake (also in notes JSON) — optional fields */
+  schema_version?: 2;
+  parq_chest_pain?: boolean;
+  parq_resting_bp?: boolean;
+  parq_dizziness?: boolean;
+  parq_bone_joint?: boolean;
+  parq_heart_meds?: boolean;
+  parq_other_reason?: boolean;
+  /** PAR-Q style: any other reason not to exercise */
+  parq_extra?: boolean;
+  parq_health_note?: string;
+  work_pattern?: string;
+  walking_frequency?: string;
+  other_sports_text?: string;
+  training_background?: string;
+  motivation_adherence?: string;
+  motivation_barriers?: string;
+  has_pain_or_injury?: boolean;
+  injury_region?: string;
+  injury_timeline?: string;
+  injury_aggravates?: string;
+  injury_helps?: string;
+  injury_red_flags?: boolean;
+  injury_cleared?: string;
+  injury_notes?: string;
+  meals_per_day?: string;
+  protein_level?: string;
+  vegetables_frequency?: string;
+  alcohol_frequency?: string;
+  nutrition_notes?: string;
+  sleep_quality_bucket?: string;
+  stress_level_bucket?: string;
+  goal_categories?: string[];
+  primary_goal_label?: string;
+  goal_timeline?: string;
+  success_definition?: string;
+  available_days_per_week?: number;
+  preferred_session_length?: number | string;
+  readiness_confidence?: number;
 }
 
 // Recommendation Types
@@ -139,7 +179,7 @@ export interface Recommendation {
   sessions_per_week: number;
   session_length_minutes: number;
   training_style: string;
-  plan_structure: Record<string, unknown>;
+  plan_structure: Record<string, unknown> | PlanGuidanceStructure;
   ai_reasoning?: string;
   status: 'draft' | 'approved' | 'active' | 'completed';
   is_edited: boolean;
@@ -148,6 +188,8 @@ export interface Recommendation {
   completed_at?: Date;
   created_at: Date;
   updated_at: Date;
+  trainer_id?: number | null;
+  comparison_batch_id?: string | null;
 }
 
 export interface CreateRecommendationInput {
@@ -157,21 +199,121 @@ export interface CreateRecommendationInput {
   sessions_per_week: number;
   session_length_minutes: number;
   training_style: string;
-  plan_structure: Record<string, unknown>;
+  plan_structure: Record<string, unknown> | PlanGuidanceStructure;
   ai_reasoning?: string;
   inbody_scan_id?: number;
+  trainer_id?: number | null;
+  comparison_batch_id?: string | null;
 }
 
 export interface UpdateRecommendationInput {
   sessions_per_week?: number;
   session_length_minutes?: number;
   training_style?: string;
-  plan_structure?: Record<string, unknown>;
+  plan_structure?: Record<string, unknown> | PlanGuidanceStructure;
   status?: 'draft' | 'approved' | 'active' | 'completed';
   current_week?: number;
+  trainer_id?: number | null;
+  comparison_batch_id?: string | null;
 }
 
+/** Coach persona (trainer) for AI style */
+export interface TrainerPersonaPillar {
+  name: string;
+  summary: string;
+}
+
+export interface TrainerPersonaStructured {
+  coaching_headline: string;
+  coaching_narrative: string;
+  programming_pillars?: TrainerPersonaPillar[];
+  progression_philosophy?: string;
+  intensity_and_effort_model?: string;
+  prehab_and_systems_integration?: string;
+  client_archetype_summary?: string;
+  ideal_client_needs?: string[];
+  programming_anti_patterns?: string[];
+  ai_prompt_injection?: string;
+}
+
+export interface Trainer {
+  id: number;
+  created_by: number;
+  first_name: string;
+  last_name: string;
+  email?: string | null;
+  title: string;
+  image_url?: string | null;
+  raw_trainer_definition: string;
+  raw_client_needs: string;
+  structured_persona?: TrainerPersonaStructured | null;
+  persona_generated_at?: Date | null;
+  persona_raw_content_hash?: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export type TrainerWithPersonaMeta = Trainer & { persona_stale?: boolean };
+
+export interface TrainerCoachMatchOption {
+  id: number;
+  display_name: string;
+  title: string;
+  program_summary: string;
+}
+
+export interface RecommendedCoachMatch {
+  trainer_id: number;
+  coach_name: string;
+  reasoning: string;
+}
+
+export interface PlanGuidanceWeeklyDay {
+  day: string;
+  session_label: string;
+  focus_theme: string;
+}
+
+/** Stored in recommendation.plan_structure */
+export interface PlanGuidanceStructure {
+  archetype: string;
+  description: string;
+  phase_1_weeks: number;
+  training_methods: string[];
+  weekly_repeating_schedule: PlanGuidanceWeeklyDay[];
+  progression_guidelines: string;
+  intensity_load_progression: string;
+  periodization_approach?: string;
+}
+
+export interface PeerCoachDirectionPreview {
+  trainer_id: number;
+  coach_name: string;
+  direction_summary: string;
+  differs_from_recommended?: string;
+}
+
+export interface CreateTrainerInput {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  title: string;
+  image_url?: string;
+  raw_trainer_definition: string;
+  raw_client_needs: string;
+}
+
+export interface UpdateTrainerInput extends Partial<CreateTrainerInput> {}
+
 // Workout Types
+export interface ExerciseLibraryMetadataSnapshot {
+  primary_muscle_group?: string | null;
+  secondary_muscle_groups?: string[] | null;
+  movement_pattern?: string | null;
+  equipment?: string | null;
+  category?: string | null;
+}
+
 export interface Exercise {
   name: string;
   sets?: number;
@@ -181,6 +323,51 @@ export interface Exercise {
   notes?: string;
   tempo?: string; // e.g., "2-0-1-0" for tempo training
   rir?: number; // Reps in Reserve (0-5 scale: 0=failure, 1-5=reps remaining)
+  /** True when no exercise-library match by name */
+  is_custom?: boolean;
+  library_exercise_id?: number;
+  library_exercise_name?: string;
+  library_metadata?: ExerciseLibraryMetadataSnapshot;
+}
+
+export interface ExerciseLibraryExercise {
+  id: number;
+  name: string;
+  primary_muscle_group?: string | null;
+  secondary_muscle_groups?: string[] | null;
+  movement_pattern?: string | null;
+  equipment?: string | null;
+  category?: string | null;
+  default_sets?: number | null;
+  default_reps?: string | null;
+  default_load?: string | null;
+  default_rest_seconds?: number | null;
+  default_tempo?: string | null;
+  notes?: string | null;
+  status: string;
+  created_by?: number | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CreateExerciseLibraryExerciseInput {
+  name: string;
+  primary_muscle_group?: string;
+  secondary_muscle_groups?: string[];
+  movement_pattern?: string;
+  equipment?: string;
+  category?: string;
+  default_sets?: number;
+  default_reps?: string | number;
+  default_load?: string;
+  default_rest_seconds?: number;
+  default_tempo?: string;
+  notes?: string;
+}
+
+export interface UpdateExerciseLibraryExerciseInput
+  extends Partial<CreateExerciseLibraryExerciseInput> {
+  status?: string;
 }
 
 export interface WorkoutData {
@@ -233,15 +420,7 @@ export interface LLMRecommendationResponse {
   sessions_per_week: number;
   session_length_minutes: number;
   training_style: string;
-  plan_structure: {
-    archetype: string;
-    description: string;
-    weeks: number;
-    training_methods: string[];
-    weekly_structure: Record<string, string>;
-    progression_strategy?: string;
-    periodization_approach?: string;
-  };
+  plan_structure: PlanGuidanceStructure | Record<string, unknown>;
   ai_reasoning: string;
   workouts: LLMWorkoutResponse[];
 }

@@ -14,11 +14,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   type Questionnaire,
   type Recommendation,
+  type Trainer,
   recommendationsApi,
   inbodyScansApi,
+  trainersApi,
 } from '@/lib/api';
 
 interface TrainingPlansSectionProps {
@@ -39,96 +43,153 @@ export function TrainingPlansSection({
   const [currentJobId, setCurrentJobId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState<string>('');
   const [completed, setCompleted] = useState(false);
-  const [completedRecommendationId, setCompletedRecommendationId] = useState<number | null>(null);
+  const [completedRecommendationId, setCompletedRecommendationId] = useState<number | null>(
+    null
+  );
   const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState('');
   const [hasInBodyScan, setHasInBodyScan] = useState<boolean | null>(null);
   const [checkingScan, setCheckingScan] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [genMode, setGenMode] = useState<'plan' | 'comparison' | null>(null);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [trainersLoading, setTrainersLoading] = useState(false);
+  const [compareTrainerIds, setCompareTrainerIds] = useState<number[]>([]);
+  const [completedComparisonBatchId, setCompletedComparisonBatchId] = useState<string | null>(
+    null
+  );
 
-  // Poll for job status
-  const pollJobStatus = useCallback(async (jobId: number) => {
-    try {
-      const statusResponse = await recommendationsApi.getJobStatus(jobId);
+  const trainerReadyForComparison = (t: Trainer) =>
+    Boolean(t.structured_persona?.ai_prompt_injection?.trim());
 
-      if (!statusResponse.success || !statusResponse.data) {
-        setError('Failed to check generation status');
-        setGenerating(false);
-        return;
+  const eligibleTrainers = trainers.filter(trainerReadyForComparison);
+
+  const toggleCompareTrainer = (id: number) => {
+    setCompareTrainerIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  useEffect(() => {
+    const loadTrainers = async () => {
+      setTrainersLoading(true);
+      const res = await trainersApi.getAll();
+      if (res.success && res.data) {
+        setTrainers(res.data);
       }
+      setTrainersLoading(false);
+    };
+    void loadTrainers();
+  }, []);
 
-      const job = statusResponse.data;
+  const pollJobStatus = useCallback(
+    async (jobId: number) => {
+      try {
+        const statusResponse = await recommendationsApi.getJobStatus(jobId);
 
-      // Update current step
-      if (job.current_step) {
-        setCurrentStep(job.current_step);
-      }
-
-      // Check if job is complete
-      if (job.status === 'completed' && job.recommendation_id) {
-        setGenerating(false);
-        setCurrentJobId(null);
-        setCompleted(true);
-        setCompletedRecommendationId(job.recommendation_id);
-        // Reload recommendation
-        const recResponse = await recommendationsApi.getById(job.recommendation_id);
-        if (recResponse.success && recResponse.data) {
-          onRecommendationUpdate(recResponse.data);
+        if (!statusResponse.success || !statusResponse.data) {
+          setError('Failed to check generation status');
+          setGenerating(false);
+          setGenMode(null);
+          return;
         }
-      } else if (job.status === 'failed') {
-        setError(job.error_message || 'Generation failed');
-        setGenerating(false);
-        setCurrentJobId(null);
-      } else if (job.status === 'cancelled') {
-        setGenerating(false);
-        setCurrentJobId(null);
-        setCancelled(true);
-        setCurrentStep('Cancelled');
-      } else if (job.status === 'pending' || job.status === 'processing') {
-        // Continue polling (every 15 seconds)
-        setTimeout(() => pollJobStatus(jobId), 15000);
-      }
-    } catch (error) {
-      setError('Failed to check generation status');
-      setGenerating(false);
-    }
-  }, [onRecommendationUpdate]);
 
-  // Check for existing jobs and resume polling if needed
-  const checkForExistingJob = useCallback(async (questionnaireId: number) => {
-    try {
-      const jobResponse = await recommendationsApi.getLatestJobByQuestionnaireId(questionnaireId);
-      
-      if (jobResponse.success && jobResponse.data) {
-        const job = jobResponse.data;
-        
-        if (job.status === 'pending' || job.status === 'processing') {
-          // Resume polling
-          setGenerating(true);
-          setCurrentJobId(job.id);
-          if (job.current_step) {
-            setCurrentStep(job.current_step);
-          }
-          // Start polling
-          setTimeout(() => pollJobStatus(job.id), 1000);
-        } else if (job.status === 'cancelled') {
-          setCancelled(true);
-          setCurrentStep('Cancelled');
-        } else if (job.status === 'completed' && job.recommendation_id) {
-          // Show completion banner if recommendation doesn't exist yet
-          const recResponse = await recommendationsApi.getByQuestionnaireId(questionnaireId);
-          if (!recResponse.success || !recResponse.data) {
+        const job = statusResponse.data;
+
+        if (job.current_step) {
+          setCurrentStep(job.current_step);
+        }
+
+        if (job.status === 'completed' && job.recommendation_id) {
+          const batchId = job.metadata?.comparison_batch_id;
+          if (job.metadata?.mode === 'trainer_comparison' && batchId) {
+            setGenerating(false);
+            setCurrentJobId(null);
+            setGenMode(null);
+            setCompletedComparisonBatchId(batchId);
+            setCompleted(true);
+            setCompletedRecommendationId(null);
+          } else {
+            setGenerating(false);
+            setCurrentJobId(null);
+            setGenMode(null);
             setCompleted(true);
             setCompletedRecommendationId(job.recommendation_id);
+            const recResponse = await recommendationsApi.getById(job.recommendation_id);
+            if (recResponse.success && recResponse.data) {
+              onRecommendationUpdate(recResponse.data);
+            }
+          }
+        } else if (job.status === 'failed') {
+          setError(job.error_message || 'Generation failed');
+          setGenerating(false);
+          setCurrentJobId(null);
+          setGenMode(null);
+        } else if (job.status === 'cancelled') {
+          setGenerating(false);
+          setCurrentJobId(null);
+          setGenMode(null);
+          setCancelled(true);
+          setCurrentStep('Cancelled');
+        } else if (job.status === 'pending' || job.status === 'processing') {
+          setTimeout(() => pollJobStatus(jobId), 15000);
+        }
+      } catch {
+        setError('Failed to check generation status');
+        setGenerating(false);
+        setGenMode(null);
+      }
+    },
+    [onRecommendationUpdate]
+  );
+
+  const checkForExistingJob = useCallback(
+    async (questionnaireId: number) => {
+      try {
+        const jobResponse =
+          await recommendationsApi.getLatestJobByQuestionnaireId(questionnaireId);
+
+        if (jobResponse.success && jobResponse.data) {
+          const job = jobResponse.data;
+
+          if (job.status === 'pending' || job.status === 'processing') {
+            setGenerating(true);
+            setGenMode(
+              job.metadata?.mode === 'trainer_comparison' ? 'comparison' : 'plan'
+            );
+            setCurrentJobId(job.id);
+            if (job.current_step) {
+              setCurrentStep(job.current_step);
+            }
+            setTimeout(() => pollJobStatus(job.id), 1000);
+          } else if (job.status === 'cancelled') {
+            setCancelled(true);
+            setCurrentStep('Cancelled');
+          } else if (job.status === 'completed' && job.recommendation_id) {
+            if (
+              job.metadata?.mode === 'trainer_comparison' &&
+              job.metadata.comparison_batch_id
+            ) {
+              setCompleted(true);
+              setCompletedComparisonBatchId(job.metadata.comparison_batch_id);
+              setCompletedRecommendationId(null);
+            } else {
+              const recResponse =
+                await recommendationsApi.getByQuestionnaireId(questionnaireId);
+              if (!recResponse.success || !recResponse.data) {
+                setCompleted(true);
+                setCompletedRecommendationId(job.recommendation_id);
+              }
+            }
           }
         }
+      } catch {
+        // Job might not exist
       }
-    } catch (error) {
-      // Job might not exist, which is fine
-    }
-  }, [pollJobStatus]);
+    },
+    [pollJobStatus]
+  );
 
-  // Check for InBody scan requirement
   useEffect(() => {
     const checkInBodyScan = async () => {
       try {
@@ -136,8 +197,8 @@ export function TrainingPlansSection({
         if (response.success && response.data) {
           setHasInBodyScan(response.data.has_scan);
         }
-      } catch (err) {
-        console.error('Error checking InBody scan:', err);
+      } catch {
+        // ignore
       } finally {
         setCheckingScan(false);
       }
@@ -148,7 +209,6 @@ export function TrainingPlansSection({
     }
   }, [clientId]);
 
-  // Check for existing jobs when questionnaire is loaded
   useEffect(() => {
     if (questionnaire?.id) {
       checkForExistingJob(questionnaire.id);
@@ -161,36 +221,81 @@ export function TrainingPlansSection({
       return;
     }
 
-    // Check InBody scan requirement
     if (hasInBodyScan === false) {
       setError('Please upload at least one InBody scan before generating recommendations.');
       return;
     }
 
     setGenerating(true);
+    setGenMode('plan');
     setError('');
     setCancelled(false);
     setCurrentStep('Starting generation...');
 
     try {
-      // Start the async job
       const startResponse =
         await recommendationsApi.startGenerationFromQuestionnaire(questionnaire.id);
 
       if (!startResponse.success || !startResponse.data) {
         setError(startResponse.error || 'Failed to start generation');
         setGenerating(false);
+        setGenMode(null);
         return;
       }
 
       const jobId = startResponse.data.job_id;
       setCurrentJobId(jobId);
 
-      // Start polling
       setTimeout(() => pollJobStatus(jobId), 1000);
-    } catch (err) {
+    } catch {
       setError('Failed to start generation');
       setGenerating(false);
+      setGenMode(null);
+      setCurrentJobId(null);
+    }
+  };
+
+  const handleCompareGeneration = async () => {
+    if (!questionnaire) {
+      router.push(`/clients/${clientId}/questionnaire`);
+      return;
+    }
+    if (hasInBodyScan === false) {
+      setError('Please upload at least one InBody scan before generating comparisons.');
+      return;
+    }
+    if (compareTrainerIds.length < 2) {
+      setError('Select at least two coaches to compare.');
+      return;
+    }
+
+    setGenerating(true);
+    setGenMode('comparison');
+    setError('');
+    setCancelled(false);
+    setCurrentStep('Starting coach comparison...');
+
+    try {
+      const sortedIds = [...compareTrainerIds].sort((a, b) => a - b);
+      const startResponse = await recommendationsApi.startComparisonFromQuestionnaire(
+        questionnaire.id,
+        sortedIds
+      );
+
+      if (!startResponse.success || !startResponse.data) {
+        setError(startResponse.error || 'Failed to start comparison');
+        setGenerating(false);
+        setGenMode(null);
+        return;
+      }
+
+      const jobId = startResponse.data.job_id;
+      setCurrentJobId(jobId);
+      setTimeout(() => pollJobStatus(jobId), 1000);
+    } catch {
+      setError('Failed to start comparison');
+      setGenerating(false);
+      setGenMode(null);
       setCurrentJobId(null);
     }
   };
@@ -201,16 +306,17 @@ export function TrainingPlansSection({
     setCancelling(true);
     try {
       const response = await recommendationsApi.cancelJob(currentJobId, 'Cancelled by user');
-      
+
       if (response.success && response.data) {
         setGenerating(false);
         setCurrentJobId(null);
+        setGenMode(null);
         setCancelled(true);
         setCurrentStep('Cancelled');
       } else {
         setError(response.error || 'Failed to cancel job');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to cancel job');
     } finally {
       setCancelling(false);
@@ -237,10 +343,10 @@ export function TrainingPlansSection({
                 : undefined
             }
           >
-            {generating ? (
+            {generating && genMode === 'plan' ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
+                Generating…
               </>
             ) : (
               <>
@@ -258,6 +364,84 @@ export function TrainingPlansSection({
           </Alert>
         )}
 
+        {questionnaire && (
+          <div className="mb-6 rounded-lg border border-border/60 bg-muted/20 p-4 space-y-3">
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-medium">Compare coaching styles</p>
+              <p className="text-xs text-muted-foreground">
+                Generate side-by-side draft plans steered by different trainer personas. Each
+                coach needs a generated persona (Trainers).
+              </p>
+            </div>
+            {trainersLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading trainers…
+              </div>
+            ) : eligibleTrainers.length < 2 ? (
+              <p className="text-sm text-muted-foreground">
+                Add at least two trainers with generated personas in{' '}
+                <Link href="/trainers" className="underline underline-offset-2">
+                  Trainers
+                </Link>{' '}
+                to use comparison.
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {eligibleTrainers.map((t) => {
+                    const cid = `compare-trainer-${t.id}`;
+                    return (
+                      <div
+                        key={t.id}
+                        className="flex cursor-pointer items-center gap-2 text-sm"
+                      >
+                        <Checkbox
+                          id={cid}
+                          checked={compareTrainerIds.includes(t.id)}
+                          onCheckedChange={() => toggleCompareTrainer(t.id)}
+                          disabled={
+                            generating || checkingScan || hasInBodyScan === false
+                          }
+                        />
+                        <Label htmlFor={cid} className="cursor-pointer font-normal">
+                          {t.first_name} {t.last_name}
+                          {t.title ? (
+                            <span className="text-muted-foreground"> · {t.title}</span>
+                          ) : null}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={
+                    generating ||
+                    checkingScan ||
+                    hasInBodyScan === false ||
+                    compareTrainerIds.length < 2
+                  }
+                  onClick={handleCompareGeneration}
+                >
+                  {generating && genMode === 'comparison' ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Comparing…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Compare selected coaches
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
         {!checkingScan && hasInBodyScan === false && (
           <Alert className="mb-6">
             <AlertDescription>
@@ -269,7 +453,6 @@ export function TrainingPlansSection({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    // Scroll to InBody scans section
                     const element = document.getElementById('inbody-scans-section');
                     element?.scrollIntoView({ behavior: 'smooth' });
                   }}
@@ -288,7 +471,6 @@ export function TrainingPlansSection({
           </Alert>
         )}
 
-        {/* Non-intrusive loading banner */}
         {generating && (
           <Alert className="mb-6 border-primary/50 bg-primary/5">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -296,15 +478,19 @@ export function TrainingPlansSection({
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-2 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">Generating training plan...</span>
+                    <span className="font-medium">
+                      {genMode === 'comparison'
+                        ? 'Generating coach comparison…'
+                        : 'Generating training plan…'}
+                    </span>
                   </div>
                   {currentStep && (
-                    <span className="text-sm text-muted-foreground">
-                      {currentStep}
-                    </span>
+                    <span className="text-sm text-muted-foreground">{currentStep}</span>
                   )}
                   <span className="text-sm text-muted-foreground">
-                    This may take 30-60 seconds. You can navigate away and return later.
+                    {genMode === 'comparison'
+                      ? 'This may take a few minutes. You can navigate away and return later.'
+                      : 'This may take 30-60 seconds. You can navigate away and return later.'}
                   </span>
                 </div>
                 <Button
@@ -317,7 +503,7 @@ export function TrainingPlansSection({
                   {cancelling ? (
                     <>
                       <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      Cancelling...
+                      Cancelling…
                     </>
                   ) : (
                     <>
@@ -331,7 +517,6 @@ export function TrainingPlansSection({
           </Alert>
         )}
 
-        {/* Cancelled banner */}
         {cancelled && (
           <Alert className="mb-6 border-yellow-500/50 bg-yellow-500/5">
             <AlertDescription className="flex flex-col gap-2">
@@ -341,7 +526,8 @@ export function TrainingPlansSection({
                     Generation cancelled
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    The training plan generation was cancelled. You can start a new generation when ready.
+                    The training plan generation was cancelled. You can start a new generation
+                    when ready.
                   </span>
                 </div>
                 <Button
@@ -359,7 +545,6 @@ export function TrainingPlansSection({
           </Alert>
         )}
 
-        {/* Completion banner */}
         {completed && completedRecommendationId && (
           <Alert className="mb-6 border-green-500/50 bg-green-500/5">
             <AlertDescription className="flex flex-col gap-2">
@@ -383,10 +568,50 @@ export function TrainingPlansSection({
                 <Button
                   size="sm"
                   onClick={() => {
-                    router.push(`/clients/${clientId}/recommendations/${completedRecommendationId}`);
+                    router.push(
+                      `/clients/${clientId}/recommendations/${completedRecommendationId}`
+                    );
                   }}
                 >
                   View Plan
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {completed && completedComparisonBatchId && (
+          <Alert className="mb-6 border-green-500/50 bg-green-500/5">
+            <AlertDescription className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-green-700 dark:text-green-400">
+                  Coach comparison ready
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Review draft plans side by side for the coaches you selected.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setCompleted(false);
+                    setCompletedComparisonBatchId(null);
+                    setCurrentStep('');
+                  }}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    router.push(
+                      `/clients/${clientId}/compare/${completedComparisonBatchId}`
+                    );
+                  }}
+                >
+                  View comparison
                 </Button>
               </div>
             </AlertDescription>
@@ -403,36 +628,35 @@ export function TrainingPlansSection({
         ) : (
           <Link
             href={generating ? '#' : `/clients/${clientId}/recommendations/${recommendation.id}`}
-            className={generating ? 'pointer-events-none opacity-50 cursor-not-allowed' : ''}
+            className={
+              generating ? 'pointer-events-none opacity-50 cursor-not-allowed' : ''
+            }
             onClick={(e) => {
               if (generating) {
                 e.preventDefault();
               }
             }}
           >
-              <Card className="transition-colors cursor-pointer hover:bg-muted">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-1">
-                        {recommendation.client_type}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {recommendation.sessions_per_week} sessions/week •{' '}
-                        {recommendation.session_length_minutes} min/session
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {recommendation.training_style}
-                      </p>
-                    </div>
-                    <Badge>{recommendation.status}</Badge>
+            <Card className="transition-colors cursor-pointer hover:bg-muted">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold mb-1">{recommendation.client_type}</h3>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {recommendation.sessions_per_week} sessions/week •{' '}
+                      {recommendation.session_length_minutes} min/session
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {recommendation.training_style}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                  <Badge>{recommendation.status}</Badge>
+                </div>
+              </CardContent>
+            </Card>
           </Link>
         )}
       </CardContent>
     </Card>
   );
 }
-

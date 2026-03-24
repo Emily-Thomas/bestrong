@@ -1,9 +1,11 @@
 'use client';
 
 import {
+  Dumbbell,
   LayoutGrid,
   LogOut,
   Sparkles,
+  UserSquare2,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -23,6 +25,8 @@ interface AppShellProps {
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
   { href: '/clients', label: 'Clients', icon: Users },
+  { href: '/trainers', label: 'Trainers', icon: UserSquare2 },
+  { href: '/exercise-library', label: 'Exercise library', icon: Dumbbell },
 ];
 
 export function AppShell({ title, description, action, backAction, children }: AppShellProps) {

@@ -9,7 +9,34 @@ import type {
   ActualWorkout,
   InBodyScan,
   Client,
+  TrainerPersonaStructured,
+  RecommendedCoachMatch,
+  PeerCoachDirectionPreview,
+  TrainerCoachMatchOption,
 } from '../types';
+import {
+  formatQuestionnaireForPrompt,
+  parseQuestionnaireData,
+  GOALS_VS_INJURIES_INSTRUCTION,
+} from './questionnaire-prompt.service';
+import * as exerciseLibraryService from './exercise-library.service';
+import { enrichAIWorkoutsWithLibrary } from './workout-library-integration.service';
+
+export { parseQuestionnaireData, formatQuestionnaireForPrompt } from './questionnaire-prompt.service';
+
+async function enrichLlmWorkoutsWithExerciseLibrary(
+  workouts: LLMWorkoutResponse[]
+): Promise<LLMWorkoutResponse[]> {
+  try {
+    const lib = await exerciseLibraryService.getExercises({ status: 'active' });
+    if (!lib.length) {
+      return workouts;
+    }
+    return enrichAIWorkoutsWithLibrary(workouts, lib);
+  } catch {
+    return workouts;
+  }
+}
 
 /**
  * Extracts JSON object from text, handling markdown and extra content
@@ -180,11 +207,77 @@ function findLastValidPosition(json: string, errorPosition: number): number {
 }
 
 /**
+ * LLMs sometimes emit invalid \\u escapes (incomplete hex). Sanitize so JSON.parse can succeed.
+ */
+function sanitizeJsonUnicodeEscapes(json: string): string {
+  let out = '';
+  for (let i = 0; i < json.length; i++) {
+    const c = json[i];
+    if (c === '\\' && json[i + 1] === 'u') {
+      const hex = json.slice(i + 2, i + 6);
+      if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+        out += json.slice(i, i + 6);
+        i += 5;
+        continue;
+      }
+      out += '\\\\u';
+      i += 1;
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
+export interface GenerateRecommendationStructureOptions {
+  coachMatchOptions?: TrainerCoachMatchOption[];
+  /** Comparison jobs: no roster match or peer previews */
+  skipCoachRecommendation?: boolean;
+}
+
+type RawGuidanceResponse = Omit<LLMRecommendationResponse, 'workouts'> & {
+  recommended_coach?: RecommendedCoachMatch;
+};
+
+function normalizeGuidanceForStorage(
+  raw: RawGuidanceResponse
+): Omit<LLMRecommendationResponse, 'workouts'> {
+  const ps: Record<string, unknown> =
+    typeof raw.plan_structure === 'object' && raw.plan_structure !== null
+      ? { ...(raw.plan_structure as Record<string, unknown>) }
+      : {};
+
+  const rc =
+    raw.recommended_coach ??
+    (ps.recommended_coach as RecommendedCoachMatch | undefined);
+
+  if (rc) {
+    ps.recommended_coach = rc;
+  }
+
+  const { recommended_coach: _omit, ...rest } = raw;
+  return {
+    ...rest,
+    plan_structure: ps,
+  };
+}
+
+export function mergePlanWithPeerCoachPreviews(
+  planStructure: Record<string, unknown>,
+  peerPreviews: PeerCoachDirectionPreview[]
+): Record<string, unknown> {
+  if (!peerPreviews.length) {
+    return planStructure;
+  }
+  return { ...planStructure, other_coaches_preview: peerPreviews };
+}
+
+/**
  * Robust JSON parsing with repair and retry logic
  * Reduced retries to minimize token waste - only repair JSON, don't retry API calls
  */
 function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: string): T {
-  let cleaned = extractJSON(content);
+  let cleaned = sanitizeJsonUnicodeEscapes(extractJSON(content));
 
   // Attempt to parse with repair attempts
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -242,7 +335,7 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
             repaired = repairJSON(repaired);
             
             try {
-              const parsed = JSON.parse(repaired) as T;
+              const parsed = JSON.parse(sanitizeJsonUnicodeEscapes(repaired)) as T;
               console.warn(`⚠️  JSON was truncated at position ${errorPos}, parsed up to position ${lastValidPos}`);
               return parsed;
             } catch {
@@ -291,7 +384,7 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
           if (lastCompleteBrace !== -1) {
             repaired = cleaned.substring(firstBrace, lastCompleteBrace + 1);
             try {
-              const parsed = JSON.parse(repaired) as T;
+              const parsed = JSON.parse(sanitizeJsonUnicodeEscapes(repaired)) as T;
               console.warn(`⚠️  Extracted complete JSON object (truncated from ${cleaned.length} to ${repaired.length} chars)`);
               return parsed;
             } catch {
@@ -303,7 +396,7 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
         // Strategy 3: Aggressive repair
         repaired = repairJSON(cleaned);
         try {
-          return JSON.parse(repaired) as T;
+          return JSON.parse(sanitizeJsonUnicodeEscapes(repaired)) as T;
         } catch (finalError) {
           // Log detailed error information for debugging
           const start = Math.max(0, errorPos - 500);
@@ -957,95 +1050,6 @@ const CLIENT_ARCHETYPES = {
 } as const;
 
 /**
- * Parses questionnaire data - supports both old and new formats
- */
-function parseQuestionnaireData(
-  questionnaire: Questionnaire
-): StructuredQuestionnaireData | null {
-  // Try to parse new structured format from notes field
-  if (questionnaire.notes) {
-    try {
-      const parsed = JSON.parse(questionnaire.notes);
-      // Check if it looks like structured data
-      if (parsed.section1_energy_level !== undefined) {
-        return parsed as StructuredQuestionnaireData;
-      }
-    } catch (error) {
-      // Not JSON or not structured format, continue
-      console.error('Failed to parse questionnaire notes:', error);
-    }
-  }
-
-  // Return null to indicate old format
-  return null;
-}
-
-/**
- * Formats questionnaire data for LLM prompt
- */
-function formatQuestionnaireForPrompt(
-  questionnaire: Questionnaire,
-  structuredData: StructuredQuestionnaireData | null
-): string {
-  let prompt = '## Client Questionnaire Data\n\n';
-
-  if (structuredData) {
-    // New structured format
-    prompt += '### Section 1 - Starting Point\n';
-    prompt += `- Energy Level: ${structuredData.section1_energy_level || 'N/A'}/10\n`;
-    prompt += `- Exercise Consistency: ${structuredData.section1_exercise_consistency || 'N/A'}/10\n`;
-    prompt += `- Strength Confidence: ${structuredData.section1_strength_confidence || 'N/A'}/10\n`;
-    if (structuredData.section1_limiting_factors) {
-      prompt += `- Limiting Factors: ${structuredData.section1_limiting_factors}\n`;
-    }
-
-    prompt += '\n### Section 2 - Motivation & Mindset\n';
-    prompt += `- Motivation: ${structuredData.section2_motivation || 'N/A'}/10\n`;
-    prompt += `- Discipline: ${structuredData.section2_discipline || 'N/A'}/10\n`;
-    prompt += `- Support Level: ${structuredData.section2_support_level || 'N/A'}/10\n`;
-    if (structuredData.section2_what_keeps_going) {
-      prompt += `- What Keeps Going: ${structuredData.section2_what_keeps_going}\n`;
-    }
-
-    prompt += '\n### Section 3 - Body & Movement\n';
-    prompt += `- Pain Limitations: ${structuredData.section3_pain_limitations || 'N/A'}/10\n`;
-    prompt += `- Mobility Confidence: ${structuredData.section3_mobility_confidence || 'N/A'}/10\n`;
-    prompt += `- Strength Comparison: ${structuredData.section3_strength_comparison || 'N/A'}/10\n`;
-
-    prompt += '\n### Section 4 - Nutrition & Recovery\n';
-    prompt += `- Nutrition Alignment: ${structuredData.section4_nutrition_alignment || 'N/A'}/10\n`;
-    prompt += `- Meal Consistency: ${structuredData.section4_meal_consistency || 'N/A'}/10\n`;
-    prompt += `- Sleep Quality: ${structuredData.section4_sleep_quality || 'N/A'}/10\n`;
-    prompt += `- Stress Level: ${structuredData.section4_stress_level || 'N/A'}/10\n`;
-
-    prompt += '\n### Section 5 - Identity & Self-Perception\n';
-    prompt += `- Body Connection: ${structuredData.section5_body_connection || 'N/A'}/10\n`;
-    prompt += `- Appearance Satisfaction: ${structuredData.section5_appearance_satisfaction || 'N/A'}/10\n`;
-    prompt += `- Motivation Driver: ${structuredData.section5_motivation_driver || 'N/A'}/10\n`;
-    prompt += `- Sustainability Confidence: ${structuredData.section5_sustainability_confidence || 'N/A'}/10\n`;
-    if (structuredData.section5_success_vision) {
-      prompt += `- Success Vision: ${structuredData.section5_success_vision}\n`;
-    }
-  } else {
-    // Old format
-    prompt += `- Primary Goal: ${questionnaire.primary_goal || 'N/A'}\n`;
-    prompt += `- Experience Level: ${questionnaire.experience_level || 'N/A'}\n`;
-    prompt += `- Available Days Per Week: ${questionnaire.available_days_per_week || 'N/A'}\n`;
-    prompt += `- Preferred Session Length: ${questionnaire.preferred_session_length || 'N/A'} minutes\n`;
-    prompt += `- Activity Level: ${questionnaire.activity_level || 'N/A'}\n`;
-    prompt += `- Stress Level: ${questionnaire.stress_level || 'N/A'}\n`;
-    if (questionnaire.injury_history) {
-      prompt += `- Injury History: ${questionnaire.injury_history}\n`;
-    }
-    if (questionnaire.medical_conditions) {
-      prompt += `- Medical Conditions: ${questionnaire.medical_conditions}\n`;
-    }
-  }
-
-  return prompt;
-}
-
-/**
  * Formats client information for inclusion in LLM prompt
  */
 function formatClientInfoForPrompt(client: Client | null): string {
@@ -1188,15 +1192,103 @@ The client's latest InBody scan shows:`;
   return text;
 }
 
+function coachPersonaBlock(injection?: string): string {
+  const t = injection?.trim();
+  if (!t) return '';
+  return `## Coach persona (apply this coaching style and bias throughout)\n\n${t}\n\n`;
+}
+
+export async function generatePeerCoachDirectionPreviews(
+  questionnaire: Questionnaire,
+  structuredData: StructuredQuestionnaireData | null,
+  inbodyScan: InBodyScan | null,
+  client: Client | null,
+  recommended: RecommendedCoachMatch,
+  peerOptions: TrainerCoachMatchOption[]
+): Promise<PeerCoachDirectionPreview[]> {
+  if (!peerOptions.length) {
+    return [];
+  }
+
+  const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const inbodyText = formatInBodyScanForPrompt(inbodyScan);
+  const clientInfoText = formatClientInfoForPrompt(client);
+
+  const roster = peerOptions
+    .map(
+      (o) =>
+        `- id: ${o.id}\n  name: ${o.display_name}\n  title: ${o.title}\n  summary: ${o.program_summary}`
+    )
+    .join('\n');
+
+  const prompt = `You summarize how OTHER coaches on the roster would steer this same client at a high level (themes, focus, intensity philosophy — not exercise lists).
+
+## Recommended coach (already chosen)
+- ${recommended.coach_name} (trainer_id ${recommended.trainer_id})
+- Reasoning: ${recommended.reasoning}
+
+## Other coaches (write a short direction summary for EACH)
+${roster}
+
+## Client context
+${clientInfoText ? `${clientInfoText}\n\n` : ''}## Questionnaire
+${questionnaireText}
+${inbodyText ? `\n${inbodyText}\n` : ''}
+
+Respond with JSON only:
+{
+  "previews": [
+    {
+      "trainer_id": <number>,
+      "coach_name": "<full name>",
+      "direction_summary": "2-4 sentences: how this coach would steer programming for this client",
+      "differs_from_recommended": "one short sentence on how this differs from the recommended coach"
+    }
+  ]
+}
+
+Include one object per coach listed under "Other coaches". Use the exact trainer_id values from the roster.`;
+
+  const responseContent = await callOpenAIWithRetry(
+    [
+      {
+        role: 'system',
+        content:
+          'You respond with ONLY valid JSON. No markdown. Keep summaries concise.',
+      },
+      { role: 'user', content: prompt },
+    ],
+    { maxTokens: 2500, maxRetries: 1 }
+  );
+
+  const parsed = parseJSONWithRepair<{ previews: PeerCoachDirectionPreview[] }>(
+    responseContent,
+    1,
+    responseContent
+  );
+
+  if (!parsed.previews || !Array.isArray(parsed.previews)) {
+    return [];
+  }
+
+  return parsed.previews.filter(
+    (p) =>
+      typeof p.trainer_id === 'number' &&
+      typeof p.coach_name === 'string' &&
+      typeof p.direction_summary === 'string'
+  );
+}
 
 /**
- * Generates the recommendation structure (without workouts) using OpenAI
+ * Generates planning-direction structure (no workouts) using OpenAI
  */
 export async function generateRecommendationStructure(
   questionnaire: Questionnaire,
   structuredData: StructuredQuestionnaireData | null,
   inbodyScan: InBodyScan | null = null,
-  client: Client | null = null
+  client: Client | null = null,
+  trainerPersonaInjection?: string | null,
+  options?: GenerateRecommendationStructureOptions
 ): Promise<Omit<LLMRecommendationResponse, 'workouts'>> {
   const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
   const inbodyText = formatInBodyScanForPrompt(inbodyScan);
@@ -1212,68 +1304,92 @@ export async function generateRecommendationStructure(
     )
     .join('\n');
 
-  const prompt = `You are an expert personal trainer creating a comprehensive 6-week training program for a client.
+  const coachRosterSection =
+    options?.skipCoachRecommendation || !options?.coachMatchOptions?.length
+      ? ''
+      : `## Coach roster (recommended match)
+Pick the ONE best-matching coach from this list by \`id\`. Use questionnaire + InBody + goals.
 
-## Available Client Personas
+${options.coachMatchOptions
+  .map(
+    (o) =>
+      `- id: ${o.id}\n  name: ${o.display_name}\n  title: ${o.title}\n  summary: ${o.program_summary}`
+  )
+  .join('\n\n')}
+
+`;
+
+  const recommendedCoachJson = options?.skipCoachRecommendation
+    ? ''
+    : options?.coachMatchOptions?.length
+      ? `,
+  "recommended_coach": {
+    "trainer_id": <number from roster>,
+    "coach_name": "<from roster>",
+    "reasoning": "<why this coach fits this client>"
+  }`
+      : '';
+
+  const prompt = `You are an expert personal trainer producing **planning direction only** for a coach to implement later.
+
+Do NOT output exercise lists, session prescriptions, or week-by-week workout plans. Themes, volume, intensity philosophy, and scheduling patterns only.
+
+## Available client personas
 
 ${personasText}
 
-${clientInfoText ? `${clientInfoText}\n\n` : ''}## Client Questionnaire
+${clientInfoText ? `${clientInfoText}\n\n` : ''}## Client questionnaire
 
 ${questionnaireText}
 ${inbodyText ? `\n${inbodyText}\n` : ''}
-## Instructions
+${coachPersonaBlock(trainerPersonaInjection ?? undefined)}${coachRosterSection}## Instructions
 
-1. **Select the ONE client persona** that best matches this client based on their questionnaire responses, body composition, and age. Provide clear reasoning for your selection.
+1. Select the ONE client persona that best matches this client. Explain why (${GOALS_VS_INJURIES_INSTRUCTION}).
 
-2. **Design the training plan** considering:
-   - The selected persona's training methods
-   - The client's specific responses (energy, motivation, limitations, etc.)
-   - The client's age and age-appropriate training considerations
-   - The client's current body composition (muscle mass, body fat %, segment analysis)
-   - Realistic progression over 6 weeks
-   - Sustainability and adherence
+2. Set **sessions_per_week** to 1, 2, or 3 only.
 
-3. **Determine training parameters**:
-   - Sessions per week (the options are 1-3)
-   - Session length in minutes (the options are 30min or 45min)
-   - Training style description
-   - 6-week plan structure with progression strategy
+3. Set **session_length_minutes** to **30** or **45** only (pick what fits the client).
 
-## Output Format
+4. **plan_structure** describes the **first phase** of training (not a full multi-week prescription of workouts):
+   - **phase_1_weeks**: length of this initial phase in weeks (typically 1–4).
+   - **weekly_repeating_schedule**: one row per training day in a typical week (day label, session label, focus theme). Repeat the same weekly pattern across phase_1_weeks unless you explain otherwise in progression_guidelines.
+   - **progression_guidelines** and **intensity_load_progression**: how load and effort progress over the phase (RPE/RIR, volume landmarks, deload hints) without naming specific exercises.
 
-You must respond with a valid JSON object matching this exact structure:
+5. **training_style** summarizes the approach in plain language.
+
+## Output format
+
+Respond with a single JSON object. Shape:
 
 {
   "client_type": "The [Persona Name]",
-  "client_type_reasoning": "Detailed explanation of why this persona was selected...",
-  "sessions_per_week": 3,
-  "session_length_minutes": 60,
-  "training_style": "Description of the training approach...",
+  "client_type_reasoning": "...",
+  "sessions_per_week": 2,
+  "session_length_minutes": 45,
+  "training_style": "...",
   "plan_structure": {
     "archetype": "The [Persona Name]",
-    "description": "Brief description",
-    "weeks": 6,
-    "training_methods": ["Method 1", "Method 2", "Method 3"],
-    "weekly_structure": {
-      "week1_2": "Description of weeks 1-2 focus",
-      "week3_4": "Description of weeks 3-4 focus",
-      "week5_6": "Description of weeks 5-6 focus"
-    },
-    "progression_strategy": "How the program progresses",
-    "periodization_approach": "Type of periodization used"
+    "description": "short summary of the training direction",
+    "phase_1_weeks": 2,
+    "training_methods": ["..."],
+    "weekly_repeating_schedule": [
+      { "day": "Monday", "session_label": "...", "focus_theme": "..." }
+    ],
+    "progression_guidelines": "...",
+    "intensity_load_progression": "...",
+    "periodization_approach": "optional"
   },
-  "ai_reasoning": "Comprehensive reasoning for the entire program design..."
+  "ai_reasoning": "overall reasoning for this planning direction"${recommendedCoachJson}
 }
 
-CRITICAL: Respond with ONLY valid JSON, no markdown, no additional text.`;
+CRITICAL: Respond with ONLY valid JSON. No markdown fences or extra text.`;
 
   const responseContent = await callOpenAIWithRetry(
     [
       {
         role: 'system',
         content:
-          'You are an expert personal trainer. You MUST respond with ONLY valid JSON. No markdown code blocks, no explanations, no additional text before or after the JSON. All string values must have properly escaped quotes (use \\" for quotes inside strings). Ensure all JSON brackets and braces are properly closed.',
+          'You are an expert personal trainer. Respond with ONLY valid JSON. No markdown. Escape quotes inside strings. Close all brackets.',
       },
       {
         role: 'user',
@@ -1282,22 +1398,51 @@ CRITICAL: Respond with ONLY valid JSON, no markdown, no additional text.`;
     ],
     {
       maxTokens: 4000,
-      maxRetries: 1, // Only retry on rate limits - don't waste tokens on API errors
+      maxRetries: 1,
     }
   );
 
-  const parsed = parseJSONWithRepair<Omit<LLMRecommendationResponse, 'workouts'>>(
+  const parsed = parseJSONWithRepair<RawGuidanceResponse>(
     responseContent,
-    1, // Only 1 attempt - don't waste tokens on repair retries
-    responseContent // Pass raw response for error logging
+    1,
+    responseContent
   );
 
-  // Validate structure
   if (!parsed.client_type || typeof parsed.sessions_per_week !== 'number') {
     throw new Error('Invalid recommendation structure from OpenAI');
   }
 
-  return parsed;
+  let result = normalizeGuidanceForStorage(parsed);
+
+  if (
+    !options?.skipCoachRecommendation &&
+    options?.coachMatchOptions?.length
+  ) {
+    const rc = (result.plan_structure as Record<string, unknown>)
+      ?.recommended_coach as RecommendedCoachMatch | undefined;
+    if (rc && typeof rc.trainer_id === 'number') {
+      const peers = options.coachMatchOptions.filter((o) => o.id !== rc.trainer_id);
+      if (peers.length) {
+        const previews = await generatePeerCoachDirectionPreviews(
+          questionnaire,
+          structuredData,
+          inbodyScan,
+          client,
+          rc,
+          peers
+        );
+        result = {
+          ...result,
+          plan_structure: mergePlanWithPeerCoachPreviews(
+            result.plan_structure as Record<string, unknown>,
+            previews
+          ),
+        };
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -1309,7 +1454,8 @@ export async function generateWorkouts(
   questionnaire: Questionnaire,
   structuredData: StructuredQuestionnaireData | null,
   inbodyScan: InBodyScan | null = null,
-  client: Client | null = null
+  client: Client | null = null,
+  trainerPersonaInjection?: string
 ): Promise<LLMWorkoutResponse[]> {
   const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
   const inbodyText = formatInBodyScanForPrompt(inbodyScan);
@@ -1329,7 +1475,9 @@ ${clientInfoText ? `${clientInfoText}\n\n` : ''}## Client Questionnaire
 
 ${questionnaireText}
 ${inbodyText ? `\n${inbodyText}\n` : ''}
-## Instructions
+${coachPersonaBlock(trainerPersonaInjection)}## Instructions
+
+${GOALS_VS_INJURIES_INSTRUCTION}
 
 Generate ONLY WEEK 1 workouts (${week1Workouts} total sessions for week 1). Each workout should include:
 - Specific exercises with sets, reps, weight/load guidance, rest periods
@@ -1407,8 +1555,6 @@ CRITICAL:
     }
   );
 
-  console.log(`Received workout response (${responseContent.length} characters)`);
-
   const parsed = parseJSONWithRepair<{ workouts: LLMWorkoutResponse[] }>(
     responseContent,
     1, // Only 1 attempt - don't waste tokens on repair retries
@@ -1421,29 +1567,26 @@ CRITICAL:
 
   // Validate we got the right number of workouts for week 1
   if (parsed.workouts.length !== week1Workouts) {
-    console.warn(`⚠️  Expected ${week1Workouts} workouts for week 1, got ${parsed.workouts.length}`);
+    // tolerate count mismatch from the model
   }
 
-  // Validate all workouts are for week 1
-  const invalidWeeks = parsed.workouts.filter(w => w.week_number !== 1);
+  const invalidWeeks = parsed.workouts.filter((w) => w.week_number !== 1);
   if (invalidWeeks.length > 0) {
-    console.warn(`⚠️  Found ${invalidWeeks.length} workouts not for week 1, filtering them out`);
-    parsed.workouts = parsed.workouts.filter(w => w.week_number === 1);
+    parsed.workouts = parsed.workouts.filter((w) => w.week_number === 1);
   }
 
-  console.log(`✅ Generated ${parsed.workouts.length} workouts for Week 1`);
-
-  return parsed.workouts;
+  return enrichLlmWorkoutsWithExerciseLibrary(parsed.workouts);
 }
 
 /**
- * Generates a recommendation using OpenAI with structured output
- * Uses a two-step approach: first generate structure, then workouts
+ * Full recommendation: planning-direction structure plus Week 1 workouts.
  */
 export async function generateRecommendationWithAI(
   questionnaire: Questionnaire,
   inbodyScan: InBodyScan | null = null,
-  client: Client | null = null
+  client: Client | null = null,
+  structureOptions?: GenerateRecommendationStructureOptions,
+  trainerPersonaInjection?: string | null
 ): Promise<LLMRecommendationResponse> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
@@ -1454,22 +1597,29 @@ export async function generateRecommendationWithAI(
   const structuredData = parseQuestionnaireData(questionnaire);
 
   try {
-    console.log('Step 1: Generating recommendation structure...');
-    // Step 1: Generate the recommendation structure (without workouts)
-    const recommendation = await generateRecommendationStructure(questionnaire, structuredData, inbodyScan, client);
+    const recommendation = await generateRecommendationStructure(
+      questionnaire,
+      structuredData,
+      inbodyScan,
+      client,
+      trainerPersonaInjection ?? undefined,
+      structureOptions
+    );
 
-    console.log(`Step 2: Generating Week 1 workouts (${recommendation.sessions_per_week} sessions)...`);
-    // Step 2: Generate workouts for Week 1 only (to keep token usage manageable)
-    const workouts = await generateWorkouts(recommendation, questionnaire, structuredData, inbodyScan, client);
-
-    console.log(`✅ Successfully generated recommendation with ${workouts.length} Week 1 workouts`);
+    const workouts = await generateWorkouts(
+      recommendation,
+      questionnaire,
+      structuredData,
+      inbodyScan,
+      client,
+      trainerPersonaInjection ?? undefined
+    );
 
     return {
       ...recommendation,
       workouts,
     };
   } catch (error) {
-    console.error('Error generating AI recommendation:', error);
     if (error instanceof Error) {
       throw new Error(`Failed to generate AI recommendation: ${error.message}`);
     }
@@ -1502,7 +1652,8 @@ export async function generateWeekWorkouts(
   structuredData: StructuredQuestionnaireData | null,
   targetWeek: number,
   inbodyScan: InBodyScan | null = null,
-  client: Client | null = null
+  client: Client | null = null,
+  trainerPersonaInjection?: string
 ): Promise<LLMWorkoutResponse[]> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
@@ -1604,7 +1755,7 @@ ${clientInfoText ? `${clientInfoText}\n\n` : ''}## Client Questionnaire
 
 ${questionnaireText}
 ${inbodyText ? `\n${inbodyText}\n` : ''}
-## Instructions
+${coachPersonaBlock(trainerPersonaInjection)}## Instructions
 
 Generate workouts for WEEK ${targetWeek} ONLY (${sessionsPerWeek} total sessions). These workouts should:
 
@@ -1630,6 +1781,8 @@ Generate workouts for WEEK ${targetWeek} ONLY (${sessionsPerWeek} total sessions
    - Warmup and cooldown exercises when appropriate
    - Notes on form, tempo, or RIR when relevant
    - Brief reasoning for exercise selection and progression
+
+5. ${GOALS_VS_INJURIES_INSTRUCTION}
 
 **CRITICAL: Generate ONLY Week ${targetWeek} workouts**
 - Generate workouts for WEEK ${targetWeek} ONLY, sessions 1-${sessionsPerWeek}
@@ -1724,5 +1877,63 @@ CRITICAL:
 
   console.log(`✅ Generated ${parsed.workouts.length} workouts for Week ${targetWeek}`);
 
-  return parsed.workouts;
+  return enrichLlmWorkoutsWithExerciseLibrary(parsed.workouts);
+}
+
+function assertTrainerPersonaShape(data: unknown): asserts data is TrainerPersonaStructured {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid trainer persona JSON');
+  }
+  const o = data as Record<string, unknown>;
+  if (typeof o.coaching_headline !== 'string' || typeof o.coaching_narrative !== 'string') {
+    throw new Error('Invalid trainer persona: missing required text fields');
+  }
+}
+
+/**
+ * Builds structured JSON persona from free-form trainer + client-need notes (for prompts).
+ */
+export async function generateTrainerStructuredPersona(
+  rawTrainerDefinition: string,
+  rawClientNeeds: string
+): Promise<TrainerPersonaStructured> {
+  const prompt = `Synthesize a structured coaching persona as a single JSON object.
+
+Required keys:
+- coaching_headline (string)
+- coaching_narrative (string)
+- programming_pillars (array of { "name": string, "summary": string })
+- progression_philosophy (string)
+- intensity_and_effort_model (string)
+- prehab_and_systems_integration (string)
+- client_archetype_summary (string)
+- ideal_client_needs (string array, short bullets)
+- programming_anti_patterns (string array)
+- ai_prompt_injection (one paragraph for downstream LLM program generation; concise, imperative)
+
+### Trainer definition
+${rawTrainerDefinition}
+
+### Typical client needs
+${rawClientNeeds}`;
+
+  const content = await callOpenAIWithRetry(
+    [
+      {
+        role: 'system',
+        content:
+          'You are an expert coach. Respond with ONLY valid JSON. No markdown, no preamble.',
+      },
+      { role: 'user', content: prompt },
+    ],
+    { maxTokens: 4000, maxRetries: 1 }
+  );
+
+  const parsed = parseJSONWithRepair<TrainerPersonaStructured>(
+    content,
+    1,
+    content
+  );
+  assertTrainerPersonaShape(parsed);
+  return parsed;
 }

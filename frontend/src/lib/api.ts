@@ -249,6 +249,15 @@ export const recommendationsApi = {
     apiClient.post<{ job_id: number }>(
       `/recommendations/generate/${questionnaireId}/start`
     ),
+  /** Multi-coach comparison: generates one draft plan per trainer (requires personas). */
+  startComparisonFromQuestionnaire: (
+    questionnaireId: number,
+    trainerIds: number[]
+  ) =>
+    apiClient.post<{ job_id: number; comparison_batch_id: string }>(
+      `/recommendations/generate/${questionnaireId}/compare`,
+      { trainer_ids: trainerIds }
+    ),
   startGenerationFromClient: (clientId: number) =>
     apiClient.post<{ job_id: number }>(
       `/recommendations/generate/client/${clientId}/start`
@@ -312,6 +321,83 @@ export const recommendationsApi = {
     ),
   getWeekGenerationJobs: (id: number) =>
     apiClient.get<WeekGenerationJob[]>(`/recommendations/${id}/week-jobs`),
+
+  getComparisonBatch: (batchId: string) =>
+    apiClient.get<{ plans: { recommendation: Recommendation; trainer: Trainer | null }[] }>(
+      `/recommendations/comparison-batch/${encodeURIComponent(batchId)}`
+    ),
+
+  selectComparisonPlan: (batchId: string, recommendationId: number) =>
+    apiClient.post<Recommendation>(
+      `/recommendations/comparison-batch/${encodeURIComponent(batchId)}/select`,
+      { recommendation_id: recommendationId }
+    ),
+};
+
+// Trainers API (coach personas)
+export const trainersApi = {
+  getAll: () => apiClient.get<Trainer[]>('/trainers'),
+  getById: (id: number) => apiClient.get<Trainer>(`/trainers/${id}`),
+  create: (data: CreateTrainerInput) =>
+    apiClient.post<Trainer>('/trainers', data),
+  update: (id: number, data: UpdateTrainerInput) =>
+    apiClient.put<Trainer>(`/trainers/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/trainers/${id}`),
+  generatePersona: (id: number) =>
+    apiClient.post<Trainer>(`/trainers/${id}/generate-persona`),
+};
+
+export interface ExerciseLibraryExercise {
+  id: number;
+  name: string;
+  primary_muscle_group?: string | null;
+  secondary_muscle_groups?: string[] | null;
+  movement_pattern?: string | null;
+  equipment?: string | null;
+  category?: string | null;
+  default_sets?: number | null;
+  default_reps?: string | null;
+  default_load?: string | null;
+  default_rest_seconds?: number | null;
+  default_tempo?: string | null;
+  notes?: string | null;
+  status: string;
+  created_by?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateExerciseLibraryExerciseInput {
+  name: string;
+  primary_muscle_group?: string;
+  secondary_muscle_groups?: string[];
+  movement_pattern?: string;
+  equipment?: string;
+  category?: string;
+  default_sets?: number;
+  default_reps?: string | number;
+  default_load?: string;
+  default_rest_seconds?: number;
+  default_tempo?: string;
+  notes?: string;
+}
+
+export const exerciseLibraryApi = {
+  getAll: (params?: { search?: string; status?: 'active' | 'archived' | 'all' }) => {
+    const q = new URLSearchParams();
+    if (params?.search) q.set('search', params.search);
+    if (params?.status) q.set('status', params.status);
+    const suffix = q.toString() ? `?${q}` : '';
+    return apiClient.get<ExerciseLibraryExercise[]>(`/exercise-library${suffix}`);
+  },
+  getById: (id: number) =>
+    apiClient.get<ExerciseLibraryExercise>(`/exercise-library/${id}`),
+  create: (data: CreateExerciseLibraryExerciseInput) =>
+    apiClient.post<ExerciseLibraryExercise>('/exercise-library', data),
+  update: (id: number, data: Partial<CreateExerciseLibraryExerciseInput>) =>
+    apiClient.put<ExerciseLibraryExercise>(`/exercise-library/${id}`, data),
+  archive: (id: number) =>
+    apiClient.post<ExerciseLibraryExercise>(`/exercise-library/${id}/archive`),
 };
 
 // InBody Scans API
@@ -369,6 +455,55 @@ export interface CreateClientInput {
   phone?: string;
   date_of_birth?: string;
 }
+
+export interface TrainerPersonaPillar {
+  name: string;
+  summary: string;
+}
+
+/** Structured persona returned from the backend / AI pipeline */
+export interface TrainerPersonaStructured {
+  coaching_headline: string;
+  coaching_narrative: string;
+  programming_pillars?: TrainerPersonaPillar[];
+  progression_philosophy?: string;
+  intensity_and_effort_model?: string;
+  prehab_and_systems_integration?: string;
+  client_archetype_summary?: string;
+  ideal_client_needs?: string[];
+  programming_anti_patterns?: string[];
+  ai_prompt_injection?: string;
+}
+
+export interface Trainer {
+  id: number;
+  created_by?: number;
+  first_name: string;
+  last_name: string;
+  email?: string | null;
+  title: string;
+  image_url?: string | null;
+  raw_trainer_definition: string;
+  raw_client_needs: string;
+  structured_persona?: TrainerPersonaStructured | null;
+  persona_generated_at?: string | null;
+  persona_raw_content_hash?: string | null;
+  persona_stale?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateTrainerInput {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  title: string;
+  image_url?: string;
+  raw_trainer_definition: string;
+  raw_client_needs: string;
+}
+
+export interface UpdateTrainerInput extends Partial<CreateTrainerInput> {}
 
 export interface Questionnaire {
   id: number;
@@ -532,6 +667,8 @@ export interface Recommendation {
   completed_at?: string;
   created_at: string;
   updated_at: string;
+  trainer_id?: number | null;
+  comparison_batch_id?: string | null;
   workouts?: Workout[]; // Optional, included when fetching recommendation
 }
 
@@ -568,6 +705,12 @@ export interface RecommendationJob {
   current_step?: string;
   recommendation_id?: number;
   error_message?: string;
+  metadata?: {
+    mode?: string;
+    trainer_ids?: number[];
+    comparison_batch_id?: string;
+    recommendation_ids?: number[];
+  } | null;
   created_at: string;
   started_at?: string;
   completed_at?: string;

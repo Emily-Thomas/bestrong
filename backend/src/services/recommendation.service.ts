@@ -3,9 +3,11 @@ import type {
   Client,
   CreateRecommendationInput,
   Recommendation,
+  Trainer,
   UpdateRecommendationInput,
   CreateWorkoutInput,
 } from '../types';
+import * as trainerService from './trainer.service';
 import * as workoutService from './workout.service';
 
 export async function createRecommendation(
@@ -22,15 +24,18 @@ export async function createRecommendation(
     plan_structure,
     ai_reasoning,
     inbody_scan_id,
+    trainer_id,
+    comparison_batch_id,
   } = input;
 
   const result = await pool.query<Recommendation>(
     `INSERT INTO recommendations (
       client_id, questionnaire_id, created_by, client_type,
       sessions_per_week, session_length_minutes, training_style,
-      plan_structure, ai_reasoning, status, inbody_scan_id
+      plan_structure, ai_reasoning, status, inbody_scan_id,
+      trainer_id, comparison_batch_id
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *`,
     [
       client_id,
@@ -44,6 +49,8 @@ export async function createRecommendation(
       ai_reasoning || null,
       'draft',
       inbody_scan_id || null,
+      trainer_id ?? null,
+      comparison_batch_id ?? null,
     ]
   );
 
@@ -204,29 +211,25 @@ export async function createOrUpdateRecommendationForQuestionnaire(
   workouts?: CreateWorkoutInput[]
 ): Promise<Recommendation> {
   if (!input.questionnaire_id) {
-    // If no questionnaire_id, just create a new one
     const recommendation = await createRecommendation(input, createdBy);
-    
-    // Create workouts if provided
-    if (workouts && workouts.length > 0) {
+
+    if (workouts !== undefined && workouts.length > 0) {
       const workoutsWithRecId = workouts.map((w) => ({
         ...w,
         recommendation_id: recommendation.id,
       }));
       await workoutService.createWorkouts(workoutsWithRecId);
     }
-    
+
     return recommendation;
   }
 
-  // Check if recommendation exists for this questionnaire
   const existing = await getRecommendationByQuestionnaireId(
     input.questionnaire_id
   );
 
   if (existing) {
-    // Delete existing workouts if we're regenerating
-    if (workouts && workouts.length > 0) {
+    if (workouts !== undefined) {
       await workoutService.deleteWorkoutsByRecommendationId(existing.id);
     }
 
@@ -265,8 +268,7 @@ export async function createOrUpdateRecommendationForQuestionnaire(
       rec.plan_structure = JSON.parse(rec.plan_structure);
     }
 
-    // Create workouts if provided
-    if (workouts && workouts.length > 0) {
+    if (workouts !== undefined && workouts.length > 0) {
       const workoutsWithRecId = workouts.map((w) => ({
         ...w,
         recommendation_id: rec.id,
@@ -276,18 +278,16 @@ export async function createOrUpdateRecommendationForQuestionnaire(
 
     return rec;
   } else {
-    // Create new recommendation
     const recommendation = await createRecommendation(input, createdBy);
-    
-    // Create workouts if provided
-    if (workouts && workouts.length > 0) {
+
+    if (workouts !== undefined && workouts.length > 0) {
       const workoutsWithRecId = workouts.map((w) => ({
         ...w,
         recommendation_id: recommendation.id,
       }));
       await workoutService.createWorkouts(workoutsWithRecId);
     }
-    
+
     return recommendation;
   }
 }
@@ -360,4 +360,72 @@ export async function activateClientAndRecommendation(
   } finally {
     client.release();
   }
+}
+
+export interface ComparisonPlanRow {
+  recommendation: Recommendation;
+  trainer: Trainer | null;
+}
+
+export async function listComparisonBatch(
+  batchId: string,
+  adminId: number
+): Promise<ComparisonPlanRow[]> {
+  const result = await pool.query<Recommendation>(
+    `SELECT * FROM recommendations
+     WHERE comparison_batch_id = $1::uuid AND created_by = $2
+     ORDER BY id ASC`,
+    [batchId, adminId]
+  );
+  const rows: ComparisonPlanRow[] = [];
+  for (const rec of result.rows) {
+    if (typeof rec.plan_structure === 'string') {
+      rec.plan_structure = JSON.parse(rec.plan_structure);
+    }
+    let trainer: Trainer | null = null;
+    if (rec.trainer_id) {
+      trainer = await trainerService.getTrainerById(rec.trainer_id, adminId);
+    }
+    rows.push({ recommendation: rec, trainer });
+  }
+  return rows;
+}
+
+export async function selectComparisonPlan(
+  batchId: string,
+  recommendationId: number,
+  adminId: number
+): Promise<Recommendation | null> {
+  const candidates = await pool.query<{ id: number }>(
+    `SELECT id FROM recommendations
+     WHERE comparison_batch_id = $1::uuid AND created_by = $2`,
+    [batchId, adminId]
+  );
+  const ids = new Set(candidates.rows.map((r) => r.id));
+  if (!ids.has(recommendationId)) {
+    return null;
+  }
+
+  const conn = await pool.connect();
+  try {
+    await conn.query('BEGIN');
+    await conn.query(
+      `UPDATE recommendations SET status = 'draft', updated_at = NOW()
+       WHERE comparison_batch_id = $1::uuid AND created_by = $2 AND id <> $3`,
+      [batchId, adminId, recommendationId]
+    );
+    await conn.query(
+      `UPDATE recommendations SET status = 'approved', comparison_batch_id = NULL, updated_at = NOW()
+       WHERE id = $1 AND created_by = $2`,
+      [recommendationId, adminId]
+    );
+    await conn.query('COMMIT');
+  } catch (e) {
+    await conn.query('ROLLBACK');
+    throw e;
+  } finally {
+    conn.release();
+  }
+
+  return getRecommendationById(recommendationId);
 }

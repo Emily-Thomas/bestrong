@@ -5,9 +5,11 @@ import path from 'node:path';
 import { runMigrations, testConnection } from './db/migrations';
 import authRoutes from './routes/auth.routes';
 import clientRoutes from './routes/client.routes';
+import exerciseLibraryRoutes from './routes/exercise-library.routes';
 import inbodyScanRoutes from './routes/inbody-scan.routes';
 import questionnaireRoutes from './routes/questionnaire.routes';
 import recommendationRoutes from './routes/recommendation.routes';
+import trainerRoutes from './routes/trainer.routes';
 import workoutRoutes from './routes/workout.routes';
 import * as fileStorageService from './services/file-storage.service';
 
@@ -69,6 +71,9 @@ app.use('/api/auth', authRoutes);
 // Client routes
 app.use('/api/clients', clientRoutes);
 
+// Exercise library (canonical exercise definitions)
+app.use('/api/exercise-library', exerciseLibraryRoutes);
+
 // InBody scan routes
 app.use('/api/inbody-scans', inbodyScanRoutes);
 
@@ -77,6 +82,9 @@ app.use('/api/questionnaires', questionnaireRoutes);
 
 // Recommendation routes
 app.use('/api/recommendations', recommendationRoutes);
+
+// Trainer personas
+app.use('/api/trainers', trainerRoutes);
 
 // Workout routes
 app.use('/api/workouts', workoutRoutes);

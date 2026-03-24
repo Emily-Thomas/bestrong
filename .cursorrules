@@ -2,6 +2,12 @@
 
 This file guides the AI assistant on how to structure and organize code in this codebase.
 
+## Git safety (critical)
+
+- **Do not** run `git restore`, `git checkout --`, `git reset --hard`, or any command that discards working-tree or staged changes **unless the user explicitly requests to discard or reset** and names that intent clearly.
+- **Do not** run `git clean` (or delete untracked files) without explicit user confirmation.
+- Uncommitted work is **not** recoverable from git history; if the user needs a checkpoint, suggest a **commit** or **stash** instead of reverting.
+
 ## Component Architecture
 
 ### Page Component Structure

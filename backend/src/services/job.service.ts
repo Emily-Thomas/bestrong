@@ -9,6 +9,8 @@ export interface RecommendationJob {
   current_step?: string;
   recommendation_id?: number;
   error_message?: string;
+  /** Set for multi-coach comparison jobs (see `processRecommendationJob`) */
+  metadata?: Record<string, unknown> | null;
   created_at: Date;
   started_at?: Date;
   completed_at?: Date;
@@ -19,6 +21,7 @@ export interface CreateJobInput {
   questionnaire_id: number;
   client_id: number;
   created_by: number;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -28,13 +31,31 @@ export async function createJob(
   input: CreateJobInput
 ): Promise<RecommendationJob> {
   const result = await pool.query<RecommendationJob>(
-    `INSERT INTO recommendation_jobs (questionnaire_id, client_id, created_by, status)
-     VALUES ($1, $2, $3, 'pending')
+    `INSERT INTO recommendation_jobs (questionnaire_id, client_id, created_by, status, metadata)
+     VALUES ($1, $2, $3, 'pending', $4::jsonb)
      RETURNING *`,
-    [input.questionnaire_id, input.client_id, input.created_by]
+    [
+      input.questionnaire_id,
+      input.client_id,
+      input.created_by,
+      input.metadata ? JSON.stringify(input.metadata) : null,
+    ]
   );
 
   return result.rows[0];
+}
+
+export async function mergeJobMetadata(
+  jobId: number,
+  patch: Record<string, unknown>
+): Promise<void> {
+  await pool.query(
+    `UPDATE recommendation_jobs
+     SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [jobId, JSON.stringify(patch)]
+  );
 }
 
 /**

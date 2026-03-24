@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { type Request, type Response, Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import * as aiService from '../services/ai.service';
@@ -5,22 +6,163 @@ import * as clientService from '../services/client.service';
 import * as inbodyScanService from '../services/inbody-scan.service';
 import * as questionnaireService from '../services/questionnaire.service';
 import * as recommendationService from '../services/recommendation.service';
+import * as trainerService from '../services/trainer.service';
 import * as workoutService from '../services/workout.service';
-import * as actualWorkoutService from '../services/actual-workout.service';
 import * as jobService from '../services/job.service';
 import * as weekGenerationJobService from '../services/week-generation-job.service';
 import type {
+  Client,
   CreateRecommendationInput,
-  UpdateRecommendationInput,
   CreateWorkoutInput,
-  ActualWorkout,
-  Workout,
+  InBodyScan,
+  LLMWorkoutResponse,
+  Questionnaire,
+  UpdateRecommendationInput,
 } from '../types';
 
 const router = Router();
 
 // All routes require authentication
 router.use(authenticateToken);
+
+function mapLlmWorkoutsToInputs(
+  workouts: LLMWorkoutResponse[],
+  recommendationId: number
+): CreateWorkoutInput[] {
+  return workouts.map((w) => ({
+    recommendation_id: recommendationId,
+    week_number: w.week_number,
+    session_number: w.session_number,
+    workout_name: w.workout_name,
+    workout_data: w.workout_data,
+    workout_reasoning: w.workout_reasoning,
+  }));
+}
+
+/** Optional `trainer_id` in JSON body; validates access and persona. */
+async function resolveTrainerInjectionForGeneration(
+  body: unknown,
+  adminId: number
+): Promise<{ trainerId?: number; injection?: string }> {
+  if (!body || typeof body !== 'object') {
+    return {};
+  }
+  const raw = (body as { trainer_id?: unknown }).trainer_id;
+  if (raw === undefined || raw === null || raw === '') {
+    return {};
+  }
+  const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+  if (Number.isNaN(n) || n <= 0) {
+    throw new Error('Invalid trainer_id');
+  }
+  const injection = await trainerService.getCoachPromptInjectionForPlan(n, adminId);
+  return { trainerId: n, injection };
+}
+
+interface TrainerComparisonJobMeta {
+  mode: 'trainer_comparison';
+  trainer_ids: number[];
+  comparison_batch_id: string;
+}
+
+async function processTrainerComparisonJob(
+  jobId: number,
+  job: jobService.RecommendationJob,
+  questionnaire: Questionnaire,
+  client: Client,
+  latestScan: InBodyScan | null,
+  meta: TrainerComparisonJobMeta
+): Promise<void> {
+  const batchId = meta.comparison_batch_id || randomUUID();
+  const createdBy = job.created_by!;
+  const recommendationIds: number[] = [];
+  const structuredData = aiService.parseQuestionnaireData(questionnaire);
+  const total = meta.trainer_ids.length;
+
+  for (let i = 0; i < total; i++) {
+    const trainerId = meta.trainer_ids[i];
+    await jobService.updateJobStatus(
+      jobId,
+      'processing',
+      `Generating coach ${i + 1} of ${total}…`
+    );
+    const check = await jobService.getJobById(jobId);
+    if (check?.status === 'cancelled') {
+      return;
+    }
+
+    const injection = await trainerService.getCoachPromptInjectionForPlan(
+      trainerId,
+      createdBy
+    );
+
+    const structure = await aiService.generateRecommendationStructure(
+      questionnaire,
+      structuredData,
+      latestScan,
+      client,
+      injection,
+      { skipCoachRecommendation: true }
+    );
+
+    await jobService.updateJobStatus(
+      jobId,
+      'processing',
+      `Generating workouts for coach ${i + 1} of ${total}…`
+    );
+    const checkW = await jobService.getJobById(jobId);
+    if (checkW?.status === 'cancelled') {
+      return;
+    }
+
+    const llmWorkouts = await aiService.generateWorkouts(
+      structure,
+      questionnaire,
+      structuredData,
+      latestScan,
+      client,
+      injection
+    );
+
+    await jobService.updateJobStatus(
+      jobId,
+      'processing',
+      `Saving plan ${i + 1} of ${total}…`
+    );
+
+    const recommendationInput: CreateRecommendationInput = {
+      client_id: questionnaire.client_id,
+      questionnaire_id: job.questionnaire_id,
+      client_type: structure.client_type,
+      sessions_per_week: structure.sessions_per_week,
+      session_length_minutes: structure.session_length_minutes,
+      training_style: structure.training_style,
+      plan_structure: structure.plan_structure,
+      ai_reasoning: structure.ai_reasoning,
+      inbody_scan_id: latestScan?.id,
+      trainer_id: trainerId,
+      comparison_batch_id: batchId,
+    };
+
+    const rec = await recommendationService.createRecommendation(
+      recommendationInput,
+      createdBy
+    );
+    await workoutService.createWorkouts(
+      mapLlmWorkoutsToInputs(llmWorkouts, rec.id)
+    );
+    recommendationIds.push(rec.id);
+  }
+
+  await jobService.mergeJobMetadata(jobId, {
+    comparison_batch_id: batchId,
+    recommendation_ids: recommendationIds,
+  });
+  await jobService.completeJob(
+    jobId,
+    recommendationIds[recommendationIds.length - 1]
+  );
+}
 
 /**
  * Background processor for recommendation generation
@@ -83,6 +225,36 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
       return;
     }
 
+    const rawMeta = job.metadata;
+    const comparisonMeta =
+      rawMeta &&
+      typeof rawMeta === 'object' &&
+      (rawMeta as { mode?: string }).mode === 'trainer_comparison' &&
+      Array.isArray((rawMeta as { trainer_ids?: unknown }).trainer_ids)
+        ? (rawMeta as unknown as TrainerComparisonJobMeta)
+        : null;
+
+    if (
+      comparisonMeta &&
+      comparisonMeta.trainer_ids.length >= 2
+    ) {
+      try {
+        await processTrainerComparisonJob(
+          jobId,
+          job,
+          questionnaire,
+          client,
+          latestScan,
+          comparisonMeta
+        );
+        console.log(`✅ Trainer comparison job ${jobId} completed`);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Unknown error';
+        await jobService.failJob(jobId, message);
+      }
+      return;
+    }
+
     // Step 1: Generate recommendation structure
     await jobService.updateJobStatus(
       jobId,
@@ -97,32 +269,61 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
       return;
     }
     
-    const recommendationStructure =
-      await aiService.generateRecommendationStructure(questionnaire, null, latestScan, client);
+    const structuredData = aiService.parseQuestionnaireData(questionnaire);
 
-    // Step 2: Generate workouts
+    const allTrainers = await trainerService.getTrainersByAdmin(job.created_by!);
+    const coachOptions = trainerService.trainersToCoachMatchOptions(allTrainers);
+
+    let coachInjection: string | undefined;
+    let singleTrainerId: number | undefined;
+    if (
+      rawMeta &&
+      typeof rawMeta === 'object' &&
+      typeof (rawMeta as { trainer_id?: number }).trainer_id === 'number'
+    ) {
+      singleTrainerId = (rawMeta as { trainer_id: number }).trainer_id;
+      try {
+        coachInjection = await trainerService.getCoachPromptInjectionForPlan(
+          singleTrainerId,
+          job.created_by!
+        );
+      } catch (e) {
+        const message =
+          e instanceof Error ? e.message : 'Trainer persona not available';
+        await jobService.failJob(jobId, message);
+        return;
+      }
+    }
+
+    const recommendationStructure =
+      await aiService.generateRecommendationStructure(
+        questionnaire,
+        structuredData,
+        latestScan,
+        client,
+        coachInjection ?? null,
+        { coachMatchOptions: coachOptions }
+      );
+
     await jobService.updateJobStatus(
       jobId,
       'processing',
       'Generating workouts...'
     );
-    
-    // Check if cancelled before expensive AI call
-    const checkJob2 = await jobService.getJobById(jobId);
-    if (checkJob2?.status === 'cancelled') {
-      console.log(`Job ${jobId} was cancelled before generating workouts`);
+    const checkJobW = await jobService.getJobById(jobId);
+    if (checkJobW?.status === 'cancelled') {
       return;
     }
-    
-    const workouts = await aiService.generateWorkouts(
+
+    const llmWorkouts = await aiService.generateWorkouts(
       recommendationStructure,
       questionnaire,
-      null,
+      structuredData,
       latestScan,
-      client
+      client,
+      coachInjection
     );
 
-    // Step 3: Save to database
     await jobService.updateJobStatus(
       jobId,
       'processing',
@@ -139,11 +340,12 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
       plan_structure: recommendationStructure.plan_structure,
       ai_reasoning: recommendationStructure.ai_reasoning,
       inbody_scan_id: latestScan?.id,
+      trainer_id: singleTrainerId ?? null,
+      comparison_batch_id: null,
     };
 
-    // Convert LLM workout responses to CreateWorkoutInput format
-    const workoutInputs: CreateWorkoutInput[] = workouts.map((w) => ({
-      recommendation_id: 0, // Will be set after recommendation is created
+    const workoutInputs: CreateWorkoutInput[] = llmWorkouts.map((w) => ({
+      recommendation_id: 0,
       week_number: w.week_number,
       session_number: w.session_number,
       workout_name: w.workout_name,
@@ -226,19 +428,139 @@ router.post(
         return;
       }
 
-      // Create new job
+      let trainerMeta: Record<string, unknown> = { mode: 'single_plan' };
+      try {
+        const resolved = await resolveTrainerInjectionForGeneration(
+          req.body,
+          req.user.userId
+        );
+        if (resolved.trainerId !== undefined) {
+          trainerMeta = { mode: 'single_plan', trainer_id: resolved.trainerId };
+        }
+      } catch {
+        res.status(400).json({
+          success: false,
+          error:
+            'Invalid trainer_id, or that trainer does not have a generated persona yet.',
+        });
+        return;
+      }
+
       const job = await jobService.createJob({
         questionnaire_id: questionnaireId,
         client_id: questionnaire.client_id,
         created_by: req.user.userId,
+        metadata: trainerMeta,
       });
 
-      // Job will be processed by cron job (runs every 2 minutes)
-      // No need to process here - just create the job and return
       res.status(202).json({
         success: true,
         data: { job_id: job.id },
         message: 'Recommendation generation started. Job will be processed shortly.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ success: false, error: message });
+    }
+  }
+);
+
+router.post(
+  '/generate/:questionnaireId/compare',
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Not authenticated' });
+        return;
+      }
+
+      const questionnaireId = parseInt(req.params.questionnaireId, 10);
+      if (Number.isNaN(questionnaireId)) {
+        res.status(400).json({ success: false, error: 'Invalid questionnaire ID' });
+        return;
+      }
+
+      const rawIds = (req.body as { trainer_ids?: unknown })?.trainer_ids;
+      if (!Array.isArray(rawIds) || rawIds.length < 2) {
+        res.status(400).json({
+          success: false,
+          error: 'Select at least two trainers with generated personas to compare.',
+        });
+        return;
+      }
+
+      const trainerIds = rawIds
+        .map((x) => (typeof x === 'number' ? x : parseInt(String(x), 10)))
+        .filter((n) => !Number.isNaN(n) && n > 0);
+
+      const unique = [...new Set(trainerIds)];
+      if (unique.length < 2) {
+        res.status(400).json({
+          success: false,
+          error: 'Select at least two valid trainer IDs.',
+        });
+        return;
+      }
+
+      const questionnaire =
+        await questionnaireService.getQuestionnaireById(questionnaireId);
+      if (!questionnaire) {
+        res.status(404).json({ success: false, error: 'Questionnaire not found' });
+        return;
+      }
+
+      const hasScan = await inbodyScanService.hasInBodyScan(questionnaire.client_id);
+      if (!hasScan) {
+        res.status(400).json({
+          success: false,
+          error: 'At least one InBody scan is required before generating recommendations',
+        });
+        return;
+      }
+
+      for (const tid of unique) {
+        try {
+          await trainerService.getCoachPromptInjectionForPlan(tid, req.user.userId);
+        } catch {
+          res.status(400).json({
+            success: false,
+            error: `Trainer ${tid} needs a generated persona before comparison. Open Trainers and generate one.`,
+          });
+          return;
+        }
+      }
+
+      const existingJob =
+        await jobService.getLatestJobByQuestionnaireId(questionnaireId);
+      if (
+        existingJob &&
+        (existingJob.status === 'pending' || existingJob.status === 'processing')
+      ) {
+        res.json({
+          success: true,
+          data: { job_id: existingJob.id },
+          message: 'Job already in progress',
+        });
+        return;
+      }
+
+      const batchId = randomUUID();
+      const job = await jobService.createJob({
+        questionnaire_id: questionnaireId,
+        client_id: questionnaire.client_id,
+        created_by: req.user.userId,
+        metadata: {
+          mode: 'trainer_comparison',
+          trainer_ids: unique,
+          comparison_batch_id: batchId,
+        },
+      });
+
+      res.status(202).json({
+        success: true,
+        data: { job_id: job.id, comparison_batch_id: batchId },
+        message:
+          'Coach comparison started. Plans will be ready shortly. You can leave this page and return.',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -505,11 +827,16 @@ router.post(
         return;
       }
 
-      // Generate AI recommendation with workouts
-      const aiAnalysis =
-        await aiService.generateRecommendationWithAI(questionnaire, latestScan, client);
+      const coachOptions = trainerService.trainersToCoachMatchOptions(
+        await trainerService.getTrainersByAdmin(req.user.userId)
+      );
+      const aiAnalysis = await aiService.generateRecommendationWithAI(
+        questionnaire,
+        latestScan,
+        client,
+        { coachMatchOptions: coachOptions }
+      );
 
-      // Create or update recommendation record (1:1 with questionnaire)
       const recommendationInput: CreateRecommendationInput = {
         client_id: questionnaire.client_id,
         questionnaire_id: questionnaireId,
@@ -522,21 +849,11 @@ router.post(
         inbody_scan_id: latestScan?.id,
       };
 
-      // Convert LLM workout responses to CreateWorkoutInput format
-      const workouts: CreateWorkoutInput[] = aiAnalysis.workouts.map((w) => ({
-        recommendation_id: 0, // Will be set after recommendation is created
-        week_number: w.week_number,
-        session_number: w.session_number,
-        workout_name: w.workout_name,
-        workout_data: w.workout_data,
-        workout_reasoning: w.workout_reasoning,
-      }));
-
       const recommendation =
         await recommendationService.createOrUpdateRecommendationForQuestionnaire(
           recommendationInput,
           req.user.userId,
-          workouts
+          []
         );
 
       // Fetch the created workouts to include in response
@@ -605,11 +922,16 @@ router.post(
         return;
       }
 
-      // Generate AI recommendation with workouts
-      const aiAnalysis =
-        await aiService.generateRecommendationWithAI(questionnaire, latestScan, client);
+      const coachOptions = trainerService.trainersToCoachMatchOptions(
+        await trainerService.getTrainersByAdmin(req.user.userId)
+      );
+      const aiAnalysis = await aiService.generateRecommendationWithAI(
+        questionnaire,
+        latestScan,
+        client,
+        { coachMatchOptions: coachOptions }
+      );
 
-      // Create or update recommendation record (1:1 with questionnaire)
       const recommendationInput: CreateRecommendationInput = {
         client_id: clientId,
         questionnaire_id: questionnaire.id,
@@ -622,21 +944,11 @@ router.post(
         inbody_scan_id: latestScan?.id,
       };
 
-      // Convert LLM workout responses to CreateWorkoutInput format
-      const workouts: CreateWorkoutInput[] = aiAnalysis.workouts.map((w) => ({
-        recommendation_id: 0, // Will be set after recommendation is created
-        week_number: w.week_number,
-        session_number: w.session_number,
-        workout_name: w.workout_name,
-        workout_data: w.workout_data,
-        workout_reasoning: w.workout_reasoning,
-      }));
-
       const recommendation =
         await recommendationService.createOrUpdateRecommendationForQuestionnaire(
           recommendationInput,
           req.user.userId,
-          workouts
+          []
         );
 
       // Fetch the created workouts to include in response
@@ -731,183 +1043,15 @@ router.get('/questionnaire/:questionnaireId', async (req: Request, res: Response
 
 // Generate next week workouts (async) - MUST come before /:id route
 router.post('/:id/generate-week', async (req: Request, res: Response) => {
-  try {
-    if (!req.user) {
-      res.status(401).json({ success: false, error: 'Not authenticated' });
-      return;
-    }
-
-    const id = parseInt(req.params.id, 10);
-    const { week_number } = req.body;
-
-    if (Number.isNaN(id)) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid recommendation ID',
-      });
-      return;
-    }
-
-    if (!week_number || typeof week_number !== 'number') {
-      res.status(400).json({
-        success: false,
-        error: 'week_number is required',
-      });
-      return;
-    }
-
-    // Verify recommendation exists
-    const recommendation = await recommendationService.getRecommendationById(id);
-    if (!recommendation) {
-      res.status(404).json({
-        success: false,
-        error: 'Recommendation not found',
-      });
-      return;
-    }
-
-    // Validate week number
-    if (week_number < 2 || week_number > 6) {
-      res.status(400).json({
-        success: false,
-        error: 'Week number must be between 2 and 6',
-      });
-      return;
-    }
-
-    // Check if previous week is complete
-    const previousWeek = week_number - 1;
-    const previousWeekStatus = await workoutService.getWeekCompletionStatus(
-      id,
-      previousWeek
-    );
-    if (!previousWeekStatus.is_complete) {
-      res.status(400).json({
-        success: false,
-        error: `Week ${previousWeek} must be completed (all workouts completed or skipped) before generating Week ${week_number}`,
-        data: {
-          previous_week_status: previousWeekStatus,
-        },
-      });
-      return;
-    }
-
-    // Check if there's already a job for this week
-    const existingJob = await weekGenerationJobService.getWeekGenerationJobByRecommendationAndWeek(
-      id,
-      week_number
-    );
-
-    if (existingJob) {
-      // If job is pending or processing, return existing job
-      if (existingJob.status === 'pending' || existingJob.status === 'processing') {
-        res.json({
-          success: true,
-          data: { job_id: existingJob.id },
-          message: 'Week generation already in progress',
-        });
-        return;
-      }
-
-      // If job is completed, allow regeneration by deleting workouts and resetting job
-      if (existingJob.status === 'completed') {
-        const existingWorkouts = await workoutService.getWorkoutsByWeek(id, week_number);
-        if (existingWorkouts.length > 0) {
-          // Delete existing workouts to allow regeneration
-          await workoutService.deleteWorkoutsByWeek(id, week_number);
-        }
-        // Reset job to pending to allow regeneration
-        const resetJob = await weekGenerationJobService.resetWeekGenerationJobToPending(
-          existingJob.id,
-          req.user.userId
-        );
-        res.status(202).json({
-          success: true,
-          data: { job_id: resetJob.id },
-          message: 'Week generation restarted. Existing workouts deleted. Job will be processed shortly.',
-        });
-        return;
-      }
-
-      // If job is failed, reset it to pending to allow retry
-      if (existingJob.status === 'failed') {
-        const resetJob = await weekGenerationJobService.resetWeekGenerationJobToPending(
-          existingJob.id,
-          req.user.userId
-        );
-        res.status(202).json({
-          success: true,
-          data: { job_id: resetJob.id },
-          message: 'Week generation restarted. Job will be processed shortly.',
-        });
-        return;
-      }
-    }
-
-    // Check if week is already generated (workouts exist but no job record)
-    const existingWorkouts = await workoutService.getWorkoutsByWeek(id, week_number);
-    if (existingWorkouts.length > 0 && !existingJob) {
-      res.status(400).json({
-        success: false,
-        error: `Week ${week_number} workouts already exist. Delete existing workouts first to regenerate.`,
-      });
-      return;
-    }
-
-    // Create new job (or update existing if conflict)
-    // The createWeekGenerationJob function uses INSERT ... ON CONFLICT to handle duplicates
-    let job: Awaited<ReturnType<typeof weekGenerationJobService.createWeekGenerationJob>>;
-    try {
-      job = await weekGenerationJobService.createWeekGenerationJob(
-        {
-          recommendation_id: id,
-          week_number,
-        },
-        req.user.userId
-      );
-      
-      // If we got here and there was an existing job, it means the ON CONFLICT updated it
-      // Check if workouts need to be deleted for regeneration
-      if (existingJob && existingJob.status === 'completed') {
-        const workouts = await workoutService.getWorkoutsByWeek(id, week_number);
-        if (workouts.length > 0) {
-          await workoutService.deleteWorkoutsByWeek(id, week_number);
-        }
-      }
-    } catch (error) {
-      // Handle any remaining duplicate key errors (shouldn't happen with ON CONFLICT, but just in case)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      if (errorMessage.includes('unique constraint') || errorMessage.includes('duplicate key')) {
-        // Job was created/updated by another request, fetch it
-        const raceConditionJob = await weekGenerationJobService.getWeekGenerationJobByRecommendationAndWeek(
-          id,
-          week_number
-        );
-        if (raceConditionJob) {
-          res.json({
-            success: true,
-            data: { job_id: raceConditionJob.id },
-            message: 'Week generation already in progress',
-          });
-          return;
-        }
-      }
-      // Log the error for debugging
-      console.error('Error creating week generation job:', error);
-      throw error; // Re-throw if it's a different error
-    }
-
-    // Job will be processed by cron job (runs every 2 minutes)
-    // No need to process here - just create the job and return
-    res.status(202).json({
-      success: true,
-      data: { job_id: job.id },
-      message: 'Week generation started. Job will be processed shortly.',
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ success: false, error: message });
+  if (!req.user) {
+    res.status(401).json({ success: false, error: 'Not authenticated' });
+    return;
   }
+  res.status(400).json({
+    success: false,
+    error:
+      'AI week generation is not available. Add workouts manually from the training plan.',
+  });
 });
 
 // Get week generation job status - MUST come before /:id route
@@ -937,6 +1081,59 @@ router.get('/:id/generate-week/job/:jobId', async (req: Request, res: Response) 
       success: true,
       data: job,
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Multi-coach comparison batch (static path before /:id)
+router.get('/comparison-batch/:batchId', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+    const batchId = req.params.batchId;
+    const plans = await recommendationService.listComparisonBatch(
+      batchId,
+      req.user.userId
+    );
+    res.json({ success: true, data: { plans } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+router.post('/comparison-batch/:batchId/select', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+    const batchId = req.params.batchId;
+    const raw = (req.body as { recommendation_id?: number | string })
+      ?.recommendation_id;
+    const recommendationId =
+      typeof raw === 'number' ? raw : parseInt(String(raw ?? ''), 10);
+    if (Number.isNaN(recommendationId)) {
+      res.status(400).json({
+        success: false,
+        error: 'recommendation_id is required',
+      });
+      return;
+    }
+    const rec = await recommendationService.selectComparisonPlan(
+      batchId,
+      recommendationId,
+      req.user.userId
+    );
+    if (!rec) {
+      res.status(404).json({ success: false, error: 'Plan not found in batch' });
+      return;
+    }
+    res.json({ success: true, data: rec });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });
@@ -1161,185 +1358,14 @@ router.get('/:id/week/:weekNumber/status', async (req: Request, res: Response) =
 });
 
 /**
- * Background processor for week generation
- * Exported so it can be called from cron jobs
+ * Background processor for week generation (disabled — fails fast).
+ * Exported so it can be called from cron jobs.
  */
 export async function processWeekGenerationJob(jobId: number): Promise<void> {
-  try {
-    console.log(`🔄 Starting to process week generation job ${jobId}`);
-    const job = await weekGenerationJobService.getWeekGenerationJobById(jobId);
-    if (!job) {
-      console.error(`❌ Week generation job ${jobId} not found`);
-      return;
-    }
-    
-    console.log(`📋 Job ${jobId} status: ${job.status}, week: ${job.week_number}, recommendation: ${job.recommendation_id}`);
-
-    // Get recommendation
-    const recommendation = await recommendationService.getRecommendationById(
-      job.recommendation_id
-    );
-    if (!recommendation) {
-      await weekGenerationJobService.failWeekGenerationJob(
-        jobId,
-        'Recommendation not found'
-      );
-      return;
-    }
-
-    // Get questionnaire
-    let questionnaire = null;
-    if (recommendation.questionnaire_id) {
-      questionnaire = await questionnaireService.getQuestionnaireById(
-        recommendation.questionnaire_id
-      );
-    }
-
-    if (!questionnaire) {
-      await weekGenerationJobService.failWeekGenerationJob(
-        jobId,
-        'Questionnaire not found'
-      );
-      return;
-    }
-
-    // Step 1: Collect previous weeks' performance data
-    await weekGenerationJobService.updateWeekGenerationJobStatus(
-      jobId,
-      'processing',
-      'Collecting performance data...'
-    );
-
-    // Get all previous weeks in parallel (1 to targetWeek - 1)
-    const weekNumbers = Array.from(
-      { length: job.week_number - 1 },
-      (_, i) => i + 1
-    );
-    const weekWorkoutPromises = weekNumbers.map((week) =>
-      workoutService.getWorkoutsByWeek(recommendation.id, week)
-    );
-    const allWeekWorkouts = await Promise.all(weekWorkoutPromises);
-
-    // Get all actual workouts in a single batch query
-    // Flatten the array and filter out any undefined/null workouts
-    const allWorkoutIds = allWeekWorkouts
-      .flat()
-      .filter((w): w is Workout => w !== null && w !== undefined && w.id !== undefined)
-      .map((w) => w.id);
-    
-    const allActualWorkouts =
-      allWorkoutIds.length > 0
-        ? await actualWorkoutService.getActualWorkoutsByWorkoutIds(allWorkoutIds)
-        : [];
-
-    // Create a map of workout_id -> actual_workout for efficient lookup
-    const actualWorkoutMap = new Map<number, ActualWorkout>();
-    if (allActualWorkouts && Array.isArray(allActualWorkouts)) {
-      for (const actualWorkout of allActualWorkouts) {
-        // Safety check: ensure actualWorkout exists and has workout_id
-        if (actualWorkout && typeof actualWorkout === 'object' && 'workout_id' in actualWorkout && actualWorkout.workout_id !== undefined && actualWorkout.workout_id !== null) {
-          actualWorkoutMap.set(actualWorkout.workout_id, actualWorkout);
-        }
-      }
-    }
-
-    // Build previousWeeksData array matching the original structure
-    const previousWeeksData: {
-      week_number: number;
-      workouts: Workout[];
-      actual_workouts: ActualWorkout[];
-    }[] = [];
-
-    for (let i = 0; i < weekNumbers.length; i++) {
-      const week = weekNumbers[i];
-      const workouts = allWeekWorkouts[i];
-      const validActualWorkouts = workouts
-        .map((w) => actualWorkoutMap.get(w.id))
-        .filter((aw): aw is ActualWorkout => aw !== null);
-
-      previousWeeksData.push({
-        week_number: week,
-        workouts,
-        actual_workouts: validActualWorkouts,
-      });
-    }
-
-    // Step 2: Generate workouts for target week
-    await weekGenerationJobService.updateWeekGenerationJobStatus(
-      jobId,
-      'processing',
-      'Generating workouts...'
-    );
-
-    // Parse structured data from questionnaire
-    let structuredData = null;
-    if (questionnaire.notes) {
-      try {
-        const parsed = JSON.parse(questionnaire.notes);
-        if (parsed.section1_energy_level !== undefined) {
-          structuredData = parsed;
-        }
-      } catch {
-        // Not JSON or not structured format, use null
-      }
-    }
-
-    // Parallelize client and InBody scan queries
-    const [client, latestScan] = await Promise.all([
-      clientService.getClientById(recommendation.client_id),
-      inbodyScanService.getLatestInBodyScanByClientIdWithFallback(
-        recommendation.client_id
-      ),
-    ]);
-
-    const workouts = await aiService.generateWeekWorkouts(
-      recommendation,
-      previousWeeksData,
-      questionnaire,
-      structuredData,
-      job.week_number,
-      latestScan,
-      client
-    );
-
-    // Step 3: Save workouts
-    await weekGenerationJobService.updateWeekGenerationJobStatus(
-      jobId,
-      'processing',
-      'Saving workouts...'
-    );
-
-    const workoutsToCreate: CreateWorkoutInput[] = workouts.map((w) => ({
-      recommendation_id: recommendation.id,
-      week_number: w.week_number,
-      session_number: w.session_number,
-      workout_name: w.workout_name,
-      workout_data: w.workout_data,
-      workout_reasoning: w.workout_reasoning,
-    }));
-
-    await workoutService.createWorkouts(workoutsToCreate);
-
-    // Step 4: Update recommendation current_week
-    await recommendationService.updateRecommendation(
-      recommendation.id,
-      { current_week: job.week_number },
-      job.created_by || 0
-    );
-
-    // Complete job
-    await weekGenerationJobService.completeWeekGenerationJob(jobId);
-    console.log(`✅ Week ${job.week_number} generation completed for recommendation ${recommendation.id}`);
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error(`❌ Week generation job ${jobId} failed:`, errorMessage);
-    if (errorStack) {
-      console.error(`Stack trace:`, errorStack);
-    }
-    await weekGenerationJobService.failWeekGenerationJob(jobId, errorMessage);
-  }
+  await weekGenerationJobService.failWeekGenerationJob(
+    jobId,
+    'AI week generation is disabled. Build workouts from your training plan instead.'
+  );
 }
 
 

@@ -5,71 +5,10 @@ import * as clientService from '../src/services/client.service';
 import * as questionnaireService from '../src/services/questionnaire.service';
 import * as inbodyScanService from '../src/services/inbody-scan.service';
 import type { Client, Questionnaire, InBodyScan, StructuredQuestionnaireData } from '../src/types';
-
-// Import the formatting functions (we'll need to make them exportable or duplicate the logic)
-// For now, let's duplicate the key formatting logic
-
-function formatQuestionnaireForPrompt(
-  questionnaire: Questionnaire,
-  structuredData: StructuredQuestionnaireData | null
-): string {
-  let prompt = '## Client Questionnaire Data\n\n';
-
-  if (structuredData) {
-    // New structured format
-    prompt += '### Section 1 - Starting Point\n';
-    prompt += `- Energy Level: ${structuredData.section1_energy_level || 'N/A'}/10\n`;
-    prompt += `- Exercise Consistency: ${structuredData.section1_exercise_consistency || 'N/A'}/10\n`;
-    prompt += `- Strength Confidence: ${structuredData.section1_strength_confidence || 'N/A'}/10\n`;
-    if (structuredData.section1_limiting_factors) {
-      prompt += `- Limiting Factors: ${structuredData.section1_limiting_factors}\n`;
-    }
-
-    prompt += '\n### Section 2 - Motivation & Mindset\n';
-    prompt += `- Motivation: ${structuredData.section2_motivation || 'N/A'}/10\n`;
-    prompt += `- Discipline: ${structuredData.section2_discipline || 'N/A'}/10\n`;
-    prompt += `- Support Level: ${structuredData.section2_support_level || 'N/A'}/10\n`;
-    if (structuredData.section2_what_keeps_going) {
-      prompt += `- What Keeps Going: ${structuredData.section2_what_keeps_going}\n`;
-    }
-
-    prompt += '\n### Section 3 - Body & Movement\n';
-    prompt += `- Pain Limitations: ${structuredData.section3_pain_limitations || 'N/A'}/10\n`;
-    prompt += `- Mobility Confidence: ${structuredData.section3_mobility_confidence || 'N/A'}/10\n`;
-    prompt += `- Strength Comparison: ${structuredData.section3_strength_comparison || 'N/A'}/10\n`;
-
-    prompt += '\n### Section 4 - Nutrition & Recovery\n';
-    prompt += `- Nutrition Alignment: ${structuredData.section4_nutrition_alignment || 'N/A'}/10\n`;
-    prompt += `- Meal Consistency: ${structuredData.section4_meal_consistency || 'N/A'}/10\n`;
-    prompt += `- Sleep Quality: ${structuredData.section4_sleep_quality || 'N/A'}/10\n`;
-    prompt += `- Stress Level: ${structuredData.section4_stress_level || 'N/A'}/10\n`;
-
-    prompt += '\n### Section 5 - Identity & Self-Perception\n';
-    prompt += `- Body Connection: ${structuredData.section5_body_connection || 'N/A'}/10\n`;
-    prompt += `- Appearance Satisfaction: ${structuredData.section5_appearance_satisfaction || 'N/A'}/10\n`;
-    prompt += `- Motivation Driver: ${structuredData.section5_motivation_driver || 'N/A'}/10\n`;
-    prompt += `- Sustainability Confidence: ${structuredData.section5_sustainability_confidence || 'N/A'}/10\n`;
-    if (structuredData.section5_success_vision) {
-      prompt += `- Success Vision: ${structuredData.section5_success_vision}\n`;
-    }
-  } else {
-    // Old format
-    prompt += `- Primary Goal: ${questionnaire.primary_goal || 'N/A'}\n`;
-    prompt += `- Experience Level: ${questionnaire.experience_level || 'N/A'}\n`;
-    prompt += `- Available Days Per Week: ${questionnaire.available_days_per_week || 'N/A'}\n`;
-    prompt += `- Preferred Session Length: ${questionnaire.preferred_session_length || 'N/A'} minutes\n`;
-    prompt += `- Activity Level: ${questionnaire.activity_level || 'N/A'}\n`;
-    prompt += `- Stress Level: ${questionnaire.stress_level || 'N/A'}\n`;
-    if (questionnaire.injury_history) {
-      prompt += `- Injury History: ${questionnaire.injury_history}\n`;
-    }
-    if (questionnaire.medical_conditions) {
-      prompt += `- Medical Conditions: ${questionnaire.medical_conditions}\n`;
-    }
-  }
-
-  return prompt;
-}
+import {
+  formatQuestionnaireForPrompt,
+  parseQuestionnaireData,
+} from '../src/services/questionnaire-prompt.service';
 
 function formatClientInfoForPrompt(client: Client | null): string {
   if (!client) {
@@ -211,11 +150,8 @@ async function showPrompts() {
 
     console.log(`✅ Found questionnaire (ID: ${questionnaire.id})\n`);
 
-    // Get structured data if available
-    let structuredData: StructuredQuestionnaireData | null = null;
-    if (questionnaire.structured_data) {
-      structuredData = questionnaire.structured_data as StructuredQuestionnaireData;
-    }
+    const structuredData: StructuredQuestionnaireData | null =
+      parseQuestionnaireData(questionnaire);
 
     // Get InBody scan
     const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(johnDoe.id);

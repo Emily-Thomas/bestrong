@@ -36,6 +36,151 @@ import {
   type UpdateRecommendationInput,
 } from '@/lib/api';
 
+function PlanGuidanceDisplay({ plan }: { plan: Record<string, unknown> }) {
+  const schedule = Array.isArray(plan.weekly_repeating_schedule)
+    ? (plan.weekly_repeating_schedule as Array<{
+        day?: string;
+        session_label?: string;
+        focus_theme?: string;
+      }>)
+    : [];
+
+  const recommended = plan.recommended_coach as
+    | { coach_name?: string; reasoning?: string; trainer_id?: number }
+    | undefined;
+
+  const peers = Array.isArray(plan.other_coaches_preview)
+    ? (plan.other_coaches_preview as Array<{
+        trainer_id?: number;
+        coach_name?: string;
+        direction_summary?: string;
+        differs_from_recommended?: string;
+      }>)
+    : [];
+
+  const phaseWeeks =
+    typeof plan.phase_1_weeks === 'number' ? plan.phase_1_weeks : null;
+
+  return (
+    <div className="space-y-4">
+      <Label>Planning direction</Label>
+
+      {recommended && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Recommended coach</CardTitle>
+            <CardDescription>
+              {recommended.coach_name ?? 'Coach'}{' '}
+              {recommended.trainer_id != null ? `(id ${recommended.trainer_id})` : ''}
+            </CardDescription>
+          </CardHeader>
+          {recommended.reasoning && (
+            <CardContent className="pt-0 text-sm text-muted-foreground">
+              {recommended.reasoning}
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      <Card className="bg-muted/50">
+        <CardContent className="p-4 space-y-4">
+          {typeof plan.description === 'string' && (
+            <p className="text-sm">{plan.description}</p>
+          )}
+          {phaseWeeks != null && (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">First phase length: </span>
+              {phaseWeeks} week{phaseWeeks !== 1 ? 's' : ''}
+            </p>
+          )}
+          {Array.isArray(plan.training_methods) && plan.training_methods.length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-1">Training methods</p>
+              <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                {(plan.training_methods as string[]).map((m, mi) => (
+                  <li key={`tm-${mi}-${m}`}>{m}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {schedule.length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-2">Weekly repeating themes</p>
+              <div className="space-y-2">
+                {schedule.map((row) => (
+                  <div
+                    key={`${row.day ?? 'day'}-${row.session_label ?? ''}-${row.focus_theme ?? ''}`}
+                    className="rounded-md border bg-background/80 p-3 text-sm"
+                  >
+                    <div className="font-medium">{row.day ?? 'Day'}</div>
+                    {row.session_label && (
+                      <div className="text-muted-foreground">{row.session_label}</div>
+                    )}
+                    {row.focus_theme && (
+                      <div className="text-muted-foreground mt-1">{row.focus_theme}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {typeof plan.progression_guidelines === 'string' && (
+            <div>
+              <p className="text-sm font-medium mb-1">Progression</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {plan.progression_guidelines}
+              </p>
+            </div>
+          )}
+          {typeof plan.intensity_load_progression === 'string' && (
+            <div>
+              <p className="text-sm font-medium mb-1">Load and intensity</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {plan.intensity_load_progression}
+              </p>
+            </div>
+          )}
+          {typeof plan.periodization_approach === 'string' && (
+            <div>
+              <p className="text-sm font-medium mb-1">Periodization</p>
+              <p className="text-sm text-muted-foreground">{plan.periodization_approach}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {peers.length > 0 && (
+        <Card className="bg-muted/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Other coaches (preview)</CardTitle>
+            <CardDescription>
+              How other roster coaches might steer direction for this client
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
+            {peers.map((p) => (
+              <div
+                key={p.trainer_id ?? `${p.coach_name ?? 'coach'}-${p.direction_summary?.slice(0, 24) ?? ''}`}
+                className="rounded-md border p-3 text-sm"
+              >
+                <div className="font-medium">{p.coach_name ?? 'Coach'}</div>
+                {p.direction_summary && (
+                  <p className="text-muted-foreground mt-1">{p.direction_summary}</p>
+                )}
+                {p.differs_from_recommended && (
+                  <p className="text-xs text-muted-foreground mt-2 italic">
+                    {p.differs_from_recommended}
+                  </p>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function RecommendationDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -126,7 +271,7 @@ export default function RecommendationDetailPage() {
     <ProtectedRoute>
       <AppShell
         title={recommendation.client_type}
-        description="AI-generated training plan recommendation"
+        description="AI planning direction (sessions and exercises are built separately)"
         action={
           !editing && (
             <Button variant="outline" onClick={() => setEditing(true)}>
@@ -317,20 +462,7 @@ export default function RecommendationDetailPage() {
                 )}
 
                 {recommendation.plan_structure && (
-                  <div className="space-y-2">
-                    <Label>6-Week Plan Structure</Label>
-                    <Card className="bg-muted/50">
-                      <CardContent className="p-4">
-                        <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono overflow-x-auto">
-                          {JSON.stringify(
-                            recommendation.plan_structure,
-                            null,
-                            2
-                          )}
-                        </pre>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  <PlanGuidanceDisplay plan={recommendation.plan_structure} />
                 )}
 
                 <div className="space-y-2">
@@ -354,13 +486,12 @@ export default function RecommendationDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Workouts Section */}
         {workouts.length > 0 && (
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle>6-Week Workout Program</CardTitle>
+              <CardTitle>Workout sessions</CardTitle>
               <CardDescription>
-                Complete workout plan with exercises, sets, reps, and guidance
+                Sessions added to this plan (not AI-generated as part of the recommendation)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -532,7 +663,7 @@ function ExerciseList({ exercises }: { exercises: Array<{ name: string; sets?: n
     <div className="space-y-2">
       {exercises.map((exercise, idx) => (
         <div
-          key={idx}
+          key={`${exercise.name}-${idx}`}
           className="flex items-start gap-3 p-3 bg-background rounded-md border"
         >
           <div className="flex-1">
