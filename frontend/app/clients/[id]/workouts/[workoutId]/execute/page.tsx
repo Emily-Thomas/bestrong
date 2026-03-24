@@ -1,12 +1,20 @@
 'use client';
 
-import { ArrowLeft, Loader2, Save, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  Save,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -15,22 +23,26 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   type ActualExercisePerformance,
   type ActualWorkoutPerformance,
   type CreateActualWorkoutInput,
+  clientsApi,
   type Workout,
   workoutsApi,
-  clientsApi,
 } from '@/lib/api';
 import { ExerciseInputModal } from './components/ExerciseInputModal';
+import {
+  PreWorkoutSurvey,
+  type PreWorkoutSurveyResponse,
+} from './components/PreWorkoutSurvey';
 import { WorkoutRatingSection } from './components/WorkoutRatingSection';
-import { PreWorkoutSurvey, type PreWorkoutSurveyResponse } from './components/PreWorkoutSurvey';
 
 // Helper function to determine concern level from survey response
-function getConcernLevel(response: PreWorkoutSurveyResponse): 'high' | 'medium' | 'low' | 'none' {
+function getConcernLevel(
+  response: PreWorkoutSurveyResponse
+): 'high' | 'medium' | 'low' | 'none' {
   // High concern: very sore, very tired, not feeling it, or significant injuries
   if (
     response.recovery === 'very_sore' ||
@@ -67,7 +79,7 @@ function getConcernLevel(response: PreWorkoutSurveyResponse): 'high' | 'medium' 
 function formatResponseValue(value: string): string {
   return value
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
@@ -81,15 +93,21 @@ export default function WorkoutExecutionPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [actualPerformance, setActualPerformance] = useState<ActualWorkoutPerformance>({
-    exercises: [],
-  });
+  const [actualPerformance, setActualPerformance] =
+    useState<ActualWorkoutPerformance>({
+      exercises: [],
+    });
   const [sessionNotes, setSessionNotes] = useState('');
   const [trainerObservations, setTrainerObservations] = useState('');
-  const [workoutRating, setWorkoutRating] = useState<'happy' | 'meh' | 'sad' | undefined>();
-  const [openExerciseIndex, setOpenExerciseIndex] = useState<number | null>(null);
+  const [workoutRating, setWorkoutRating] = useState<
+    'happy' | 'meh' | 'sad' | undefined
+  >();
+  const [openExerciseIndex, setOpenExerciseIndex] = useState<number | null>(
+    null
+  );
   const [showSurvey, setShowSurvey] = useState(false);
-  const [surveyResponse, setSurveyResponse] = useState<PreWorkoutSurveyResponse | null>(null);
+  const [surveyResponse, setSurveyResponse] =
+    useState<PreWorkoutSurveyResponse | null>(null);
   const [clientName, setClientName] = useState<string>('');
 
   const loadWorkout = useCallback(async () => {
@@ -112,13 +130,12 @@ export default function WorkoutExecutionPage() {
         // Initialize actual performance with proposed exercises
         // Only set exercise_name - don't pre-populate actual performance data
         if (w.workout_data.exercises) {
-          const exercises: ActualExercisePerformance[] = w.workout_data.exercises.map(
-            (ex) => ({
+          const exercises: ActualExercisePerformance[] =
+            w.workout_data.exercises.map((ex) => ({
               exercise_name: ex.name,
               // Don't pre-populate reps_completed, weight_used, etc.
               // These should only be set when trainer actually records data
-            })
-          );
+            }));
           setActualPerformance({ exercises });
         }
 
@@ -132,7 +149,8 @@ export default function WorkoutExecutionPage() {
 
         // Show survey for workouts that aren't completed or skipped (for testing)
         // This allows trainers to see the survey even if they've started recording
-        const shouldShowSurvey = w.status !== 'completed' && w.status !== 'skipped';
+        const shouldShowSurvey =
+          w.status !== 'completed' && w.status !== 'skipped';
         if (shouldShowSurvey && !surveyResponse) {
           // Only show if we haven't already completed a survey
           setShowSurvey(true);
@@ -140,7 +158,7 @@ export default function WorkoutExecutionPage() {
       } else {
         setError(response.error || 'Failed to load workout');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to load workout');
     } finally {
       setLoading(false);
@@ -190,7 +208,7 @@ export default function WorkoutExecutionPage() {
       } else {
         setError(response.error || 'Failed to save workout');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to save workout');
     } finally {
       setSaving(false);
@@ -205,19 +223,25 @@ export default function WorkoutExecutionPage() {
   const getExerciseStatus = (exercise: ActualExercisePerformance) => {
     // Check if user has actually entered meaningful data
     // Empty strings don't count as data
-    const hasReps = exercise.reps_completed && String(exercise.reps_completed).trim() !== '';
-    const hasWeight = exercise.weight_used && String(exercise.weight_used).trim() !== '';
-    const hasRounds = exercise.rounds && exercise.rounds.length > 0 && 
-      exercise.rounds.some(r => 
-        (r.reps && String(r.reps).trim() !== '') || 
-        (r.weight && String(r.weight).trim() !== '')
+    const hasReps =
+      exercise.reps_completed && String(exercise.reps_completed).trim() !== '';
+    const hasWeight =
+      exercise.weight_used && String(exercise.weight_used).trim() !== '';
+    const hasRounds =
+      exercise.rounds &&
+      exercise.rounds.length > 0 &&
+      exercise.rounds.some(
+        (r) =>
+          (r.reps && String(r.reps).trim() !== '') ||
+          (r.weight && String(r.weight).trim() !== '')
       );
     const hasRating = exercise.exercise_rating !== undefined;
-    const hasNotes = exercise.exercise_notes && exercise.exercise_notes.trim() !== '';
-    
+    const hasNotes =
+      exercise.exercise_notes && exercise.exercise_notes.trim() !== '';
+
     // Exercise is only completed if user has entered at least one piece of actual data
     const hasData = hasReps || hasWeight || hasRounds || hasRating || hasNotes;
-    
+
     if (hasData) {
       return 'completed';
     }
@@ -255,7 +279,10 @@ export default function WorkoutExecutionPage() {
   return (
     <ProtectedRoute>
       <AppShell
-        title={workout.workout_name || `Week ${workout.week_number}, Session ${workout.session_number}`}
+        title={
+          workout.workout_name ||
+          `Week ${workout.week_number}, Session ${workout.session_number}`
+        }
         description="Record workout performance"
         backAction={
           <Button variant="ghost" size="sm" asChild>
@@ -286,28 +313,51 @@ export default function WorkoutExecutionPage() {
             <Card className="border-2 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Pre-Workout Assessment</CardTitle>
-                  <Badge 
+                  <CardTitle className="text-lg">
+                    Pre-Workout Assessment
+                  </CardTitle>
+                  <Badge
                     variant={
-                      getConcernLevel(surveyResponse) === 'high' ? 'destructive' :
-                      getConcernLevel(surveyResponse) === 'medium' ? 'default' :
-                      getConcernLevel(surveyResponse) === 'low' ? 'secondary' : 'outline'
+                      getConcernLevel(surveyResponse) === 'high'
+                        ? 'destructive'
+                        : getConcernLevel(surveyResponse) === 'medium'
+                          ? 'default'
+                          : getConcernLevel(surveyResponse) === 'low'
+                            ? 'secondary'
+                            : 'outline'
                     }
                   >
-                    {getConcernLevel(surveyResponse) === 'high' ? 'High Concern' :
-                     getConcernLevel(surveyResponse) === 'medium' ? 'Moderate Concern' :
-                     getConcernLevel(surveyResponse) === 'low' ? 'Low Concern' : 'All Good'}
+                    {getConcernLevel(surveyResponse) === 'high'
+                      ? 'High Concern'
+                      : getConcernLevel(surveyResponse) === 'medium'
+                        ? 'Moderate Concern'
+                        : getConcernLevel(surveyResponse) === 'low'
+                          ? 'Low Concern'
+                          : 'All Good'}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div><strong>Recovery:</strong> {formatResponseValue(surveyResponse.recovery)}</div>
-                <div><strong>Rest:</strong> {formatResponseValue(surveyResponse.rest)}</div>
-                <div><strong>Mood:</strong> {formatResponseValue(surveyResponse.mood)}</div>
-                <div><strong>Injuries:</strong> {formatResponseValue(surveyResponse.injuries)}</div>
+                <div>
+                  <strong>Recovery:</strong>{' '}
+                  {formatResponseValue(surveyResponse.recovery)}
+                </div>
+                <div>
+                  <strong>Rest:</strong>{' '}
+                  {formatResponseValue(surveyResponse.rest)}
+                </div>
+                <div>
+                  <strong>Mood:</strong>{' '}
+                  {formatResponseValue(surveyResponse.mood)}
+                </div>
+                <div>
+                  <strong>Injuries:</strong>{' '}
+                  {formatResponseValue(surveyResponse.injuries)}
+                </div>
                 {surveyResponse.injuryDetails && (
                   <div className="pt-2 border-t">
-                    <strong>Injury Details:</strong> {surveyResponse.injuryDetails}
+                    <strong>Injury Details:</strong>{' '}
+                    {surveyResponse.injuryDetails}
                   </div>
                 )}
                 {surveyResponse.notes && (
@@ -315,11 +365,14 @@ export default function WorkoutExecutionPage() {
                     <strong>Notes:</strong> {surveyResponse.notes}
                   </div>
                 )}
-                {(getConcernLevel(surveyResponse) === 'medium' || getConcernLevel(surveyResponse) === 'high') && (
+                {(getConcernLevel(surveyResponse) === 'medium' ||
+                  getConcernLevel(surveyResponse) === 'high') && (
                   <Alert variant="destructive" className="mt-4">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Consider modifying today's workout based on the client's current state. You may want to reduce intensity, volume, or change exercises.
+                      Consider modifying today's workout based on the client's
+                      current state. You may want to reduce intensity, volume,
+                      or change exercises.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -336,27 +389,29 @@ export default function WorkoutExecutionPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {workout.workout_data.warmup && workout.workout_data.warmup.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2 text-sm">Warmup</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                    {workout.workout_data.warmup.map((ex, idx) => (
-                      <li key={idx}>{ex.name}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {workout.workout_data.warmup &&
+                workout.workout_data.warmup.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2 text-sm">Warmup</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      {workout.workout_data.warmup.map((ex, idx) => (
+                        <li key={idx}>{ex.name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-              {workout.workout_data.cooldown && workout.workout_data.cooldown.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2 text-sm">Cooldown</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                    {workout.workout_data.cooldown.map((ex, idx) => (
-                      <li key={idx}>{ex.name}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {workout.workout_data.cooldown &&
+                workout.workout_data.cooldown.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2 text-sm">Cooldown</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      {workout.workout_data.cooldown.map((ex, idx) => (
+                        <li key={idx}>{ex.name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
             </CardContent>
           </Card>
 
@@ -365,7 +420,12 @@ export default function WorkoutExecutionPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Exercises</h2>
               <Badge variant="outline" className="text-sm">
-                {actualPerformance.exercises.filter(ex => getExerciseStatus(ex) === 'completed').length} / {actualPerformance.exercises.length} completed
+                {
+                  actualPerformance.exercises.filter(
+                    (ex) => getExerciseStatus(ex) === 'completed'
+                  ).length
+                }{' '}
+                / {actualPerformance.exercises.length} completed
               </Badge>
             </div>
 
@@ -377,10 +437,10 @@ export default function WorkoutExecutionPage() {
 
                 return (
                   <div key={idx}>
-                    <Card 
+                    <Card
                       className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
-                        status === 'completed' 
-                          ? 'border-green-500 bg-green-50/50 dark:bg-green-950/20' 
+                        status === 'completed'
+                          ? 'border-green-500 bg-green-50/50 dark:bg-green-950/20'
                           : 'border-border hover:border-primary'
                       }`}
                       onClick={() => setOpenExerciseIndex(idx)}
@@ -402,17 +462,26 @@ export default function WorkoutExecutionPage() {
                               {proposedExercise && (
                                 <div className="flex flex-wrap gap-2 mb-2">
                                   {proposedExercise.sets && (
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
                                       {proposedExercise.sets} sets
                                     </Badge>
                                   )}
                                   {proposedExercise.reps && (
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
                                       {proposedExercise.reps} reps
                                     </Badge>
                                   )}
                                   {proposedExercise.weight && (
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
                                       {proposedExercise.weight}
                                     </Badge>
                                   )}
@@ -426,18 +495,28 @@ export default function WorkoutExecutionPage() {
                                   {exercise.weight_used && (
                                     <div>Weight: {exercise.weight_used}</div>
                                   )}
-                                  {exercise.rounds && exercise.rounds.length > 0 && (
-                                    <div>{exercise.rounds.length} round(s) tracked</div>
-                                  )}
+                                  {exercise.rounds &&
+                                    exercise.rounds.length > 0 && (
+                                      <div>
+                                        {exercise.rounds.length} round(s)
+                                        tracked
+                                      </div>
+                                    )}
                                   {exercise.exercise_rating && (
-                                    <div className="capitalize">Rating: {exercise.exercise_rating}</div>
+                                    <div className="capitalize">
+                                      Rating: {exercise.exercise_rating}
+                                    </div>
                                   )}
                                 </div>
                               )}
                             </div>
                           </div>
                           <div className="flex-shrink-0 ml-4">
-                            <Button variant="outline" size="lg" className="h-12 px-6">
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              className="h-12 px-6"
+                            >
                               {status === 'completed' ? 'Edit' : 'Record'}
                             </Button>
                           </div>
@@ -457,7 +536,9 @@ export default function WorkoutExecutionPage() {
                           setOpenExerciseIndex(idx);
                         }
                       }}
-                      onUpdate={(updates) => updateExercisePerformance(idx, updates)}
+                      onUpdate={(updates) =>
+                        updateExercisePerformance(idx, updates)
+                      }
                       exerciseIndex={idx}
                       totalExercises={actualPerformance.exercises.length}
                     />

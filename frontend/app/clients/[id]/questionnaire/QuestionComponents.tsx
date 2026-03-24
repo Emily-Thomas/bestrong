@@ -1,21 +1,21 @@
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 import type {
-  QuestionnaireData,
+  MultiSelectQuestion,
+  NumberQuestion,
   Question,
+  QuestionnaireData,
+  SingleChoiceQuestion,
   SliderQuestion,
   TextareaQuestion,
   YesNoQuestion,
-  SingleChoiceQuestion,
-  MultiSelectQuestion,
-  NumberQuestion,
 } from './types';
-import { cn } from '@/lib/utils';
 
 function setField<K extends keyof QuestionnaireData>(
   setFormData: React.Dispatch<React.SetStateAction<QuestionnaireData>>,
@@ -163,8 +163,12 @@ function SliderQuestionComponent({
       <Label>{question.label}</Label>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{question.minLabel}</span>
-          <span className="text-xs text-muted-foreground">{question.maxLabel}</span>
+          <span className="text-xs text-muted-foreground">
+            {question.minLabel}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {question.maxLabel}
+          </span>
         </div>
         <Slider
           min={min}
@@ -256,7 +260,9 @@ export function QuestionComponent({
       <YesNoField
         question={question}
         value={formData[field] as boolean | undefined}
-        onChange={(v) => setField(setFormData, field, v as QuestionnaireData[typeof field])}
+        onChange={(v) =>
+          setField(setFormData, field, v as QuestionnaireData[typeof field])
+        }
       />
     );
   }
@@ -266,7 +272,9 @@ export function QuestionComponent({
       <SingleChoiceField
         question={question}
         value={formData[field] as string | undefined}
-        onChange={(v) => setField(setFormData, field, v as QuestionnaireData[typeof field])}
+        onChange={(v) =>
+          setField(setFormData, field, v as QuestionnaireData[typeof field])
+        }
       />
     );
   }
@@ -276,7 +284,9 @@ export function QuestionComponent({
       <MultiSelectField
         question={question}
         value={formData[field] as string[] | undefined}
-        onChange={(v) => setField(setFormData, field, v as QuestionnaireData[typeof field])}
+        onChange={(v) =>
+          setField(setFormData, field, v as QuestionnaireData[typeof field])
+        }
       />
     );
   }
@@ -286,7 +296,9 @@ export function QuestionComponent({
       <SliderQuestionComponent
         question={question}
         value={formData[field] as number | undefined}
-        onChange={(v) => setField(setFormData, field, v as QuestionnaireData[typeof field])}
+        onChange={(v) =>
+          setField(setFormData, field, v as QuestionnaireData[typeof field])
+        }
       />
     );
   }
@@ -307,7 +319,9 @@ export function QuestionComponent({
     <TextareaQuestionComponent
       question={question as TextareaQuestion}
       value={formData[field] as string | undefined}
-      onChange={(v) => setField(setFormData, field, v as QuestionnaireData[typeof field])}
+      onChange={(v) =>
+        setField(setFormData, field, v as QuestionnaireData[typeof field])
+      }
     />
   );
 }

@@ -16,8 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   type InBodyScan,
-  type UpdateInBodyScanInput,
   inbodyScansApi,
+  type UpdateInBodyScanInput,
 } from '@/lib/api';
 import { formatNumber } from './utils';
 
@@ -65,7 +65,10 @@ export function ScanReviewModal({
     }
   };
 
-  const handleChange = (field: keyof UpdateInBodyScanInput, value: string | number | undefined) => {
+  const handleChange = (
+    field: keyof UpdateInBodyScanInput,
+    value: string | number | undefined
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value === '' ? undefined : value,
@@ -78,7 +81,8 @@ export function ScanReviewModal({
         <DialogHeader>
           <DialogTitle>Review Extracted Data</DialogTitle>
           <DialogDescription>
-            Please review and verify the extracted data from the InBody scan. You can edit any values if needed.
+            Please review and verify the extracted data from the InBody scan.
+            You can edit any values if needed.
           </DialogDescription>
         </DialogHeader>
 
@@ -109,7 +113,10 @@ export function ScanReviewModal({
                 step="0.1"
                 value={formData.weight_lbs || ''}
                 onChange={(e) =>
-                  handleChange('weight_lbs', e.target.value ? parseFloat(e.target.value) : undefined)
+                  handleChange(
+                    'weight_lbs',
+                    e.target.value ? parseFloat(e.target.value) : undefined
+                  )
                 }
                 disabled={saving}
               />
@@ -123,7 +130,10 @@ export function ScanReviewModal({
                 step="0.1"
                 value={formData.smm_lbs || ''}
                 onChange={(e) =>
-                  handleChange('smm_lbs', e.target.value ? parseFloat(e.target.value) : undefined)
+                  handleChange(
+                    'smm_lbs',
+                    e.target.value ? parseFloat(e.target.value) : undefined
+                  )
                 }
                 disabled={saving}
               />
@@ -154,7 +164,10 @@ export function ScanReviewModal({
                 step="0.1"
                 value={formData.bmi || ''}
                 onChange={(e) =>
-                  handleChange('bmi', e.target.value ? parseFloat(e.target.value) : undefined)
+                  handleChange(
+                    'bmi',
+                    e.target.value ? parseFloat(e.target.value) : undefined
+                  )
                 }
                 disabled={saving}
               />
@@ -182,44 +195,57 @@ export function ScanReviewModal({
             <div className="space-y-4">
               <h4 className="font-medium text-sm">Segment Analysis</h4>
               <div className="grid gap-4 sm:grid-cols-2">
-                {Object.entries(scan.segment_analysis).map(([segment, data]) => (
-                  <div key={segment} className="border rounded-lg p-3 space-y-2">
-                    <h5 className="font-medium text-sm capitalize">
-                      {segment.replace('_', ' ')}
-                    </h5>
-                    {data && typeof data === 'object' && (
-                      <div className="space-y-1 text-sm">
-                        {(() => {
-                          const muscleMass = formatNumber(data.muscle_mass_lbs);
-                          return muscleMass ? (
-                            <div>
-                              <span className="text-muted-foreground">Muscle:</span>{' '}
-                              {muscleMass} lbs
-                            </div>
-                          ) : null;
-                        })()}
-                        {(() => {
-                          const fatMass = formatNumber(data.fat_mass_lbs);
-                          return fatMass ? (
-                            <div>
-                              <span className="text-muted-foreground">Fat:</span>{' '}
-                              {fatMass} lbs
-                            </div>
-                          ) : null;
-                        })()}
-                        {(() => {
-                          const percentFat = formatNumber(data.percent_fat);
-                          return percentFat ? (
-                            <div>
-                              <span className="text-muted-foreground">% Fat:</span>{' '}
-                              {percentFat}%
-                            </div>
-                          ) : null;
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {Object.entries(scan.segment_analysis).map(
+                  ([segment, data]) => (
+                    <div
+                      key={segment}
+                      className="border rounded-lg p-3 space-y-2"
+                    >
+                      <h5 className="font-medium text-sm capitalize">
+                        {segment.replace('_', ' ')}
+                      </h5>
+                      {data && typeof data === 'object' && (
+                        <div className="space-y-1 text-sm">
+                          {(() => {
+                            const muscleMass = formatNumber(
+                              data.muscle_mass_lbs
+                            );
+                            return muscleMass ? (
+                              <div>
+                                <span className="text-muted-foreground">
+                                  Muscle:
+                                </span>{' '}
+                                {muscleMass} lbs
+                              </div>
+                            ) : null;
+                          })()}
+                          {(() => {
+                            const fatMass = formatNumber(data.fat_mass_lbs);
+                            return fatMass ? (
+                              <div>
+                                <span className="text-muted-foreground">
+                                  Fat:
+                                </span>{' '}
+                                {fatMass} lbs
+                              </div>
+                            ) : null;
+                          })()}
+                          {(() => {
+                            const percentFat = formatNumber(data.percent_fat);
+                            return percentFat ? (
+                              <div>
+                                <span className="text-muted-foreground">
+                                  % Fat:
+                                </span>{' '}
+                                {percentFat}%
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
               </div>
             </div>
           )}
@@ -251,4 +277,3 @@ export function ScanReviewModal({
     </Dialog>
   );
 }
-

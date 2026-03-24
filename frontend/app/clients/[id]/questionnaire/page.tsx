@@ -14,19 +14,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  type CreateQuestionnaireInput,
-  questionnairesApi,
-} from '@/lib/api';
-import { QuestionComponent } from './QuestionComponents';
+import { type CreateQuestionnaireInput, questionnairesApi } from '@/lib/api';
 import { QUESTIONNAIRE_SECTIONS } from './config';
-import type { QuestionnaireData } from './types';
+import { QuestionComponent } from './QuestionComponents';
 import {
-  DEFAULT_QUESTIONNAIRE,
   buildQuestionnaireApiInput,
+  DEFAULT_QUESTIONNAIRE,
   isLegacyV1Notes,
   validateQuestionnaire,
 } from './submit';
+import type { QuestionnaireData } from './types';
 
 function parqAnyYes(d: QuestionnaireData): boolean {
   return !!(
@@ -45,7 +42,9 @@ export default function QuestionnairePage() {
   const router = useRouter();
   const clientId = Number(params.id);
 
-  const [formData, setFormData] = useState<QuestionnaireData>(DEFAULT_QUESTIONNAIRE);
+  const [formData, setFormData] = useState<QuestionnaireData>(
+    DEFAULT_QUESTIONNAIRE
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -53,7 +52,11 @@ export default function QuestionnairePage() {
   const [legacyBanner, setLegacyBanner] = useState(false);
 
   const mergedDefaults = useMemo(
-    () => ({ ...DEFAULT_QUESTIONNAIRE, ...formData, schema_version: 2 as const }),
+    () => ({
+      ...DEFAULT_QUESTIONNAIRE,
+      ...formData,
+      schema_version: 2 as const,
+    }),
     [formData]
   );
 
@@ -158,19 +161,24 @@ export default function QuestionnairePage() {
                 <Alert>
                   <AlertTitle>Previous format detected</AlertTitle>
                   <AlertDescription>
-                    Your old slider-based answers could not be migrated automatically. The form
-                    has been reset to the new intake — please complete it again.
+                    Your old slider-based answers could not be migrated
+                    automatically. The form has been reset to the new intake —
+                    please complete it again.
                   </AlertDescription>
                 </Alert>
               ) : null}
 
               {parqAnyYes(mergedDefaults) ? (
-                <Alert variant="default" className="border-amber-500/40 bg-amber-500/5">
+                <Alert
+                  variant="default"
+                  className="border-amber-500/40 bg-amber-500/5"
+                >
                   <AlertTitle>Medical clearance</AlertTitle>
                   <AlertDescription>
-                    You answered yes to at least one screening question. You may need clearance
-                    from a clinician before increasing exercise intensity — your coach will use
-                    this as context, not as a diagnosis.
+                    You answered yes to at least one screening question. You may
+                    need clearance from a clinician before increasing exercise
+                    intensity — your coach will use this as context, not as a
+                    diagnosis.
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -200,7 +208,11 @@ export default function QuestionnairePage() {
               })}
 
               <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={saving}>

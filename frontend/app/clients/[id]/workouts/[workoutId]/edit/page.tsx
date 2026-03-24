@@ -19,9 +19,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  type Exercise,
   type Workout,
   type WorkoutData,
-  type Exercise,
   workoutsApi,
 } from '@/lib/api';
 
@@ -54,7 +54,7 @@ export default function EditWorkoutPage() {
       } else {
         setError(response.error || 'Failed to load workout');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to load workout');
     } finally {
       setLoading(false);
@@ -110,7 +110,7 @@ export default function EditWorkoutPage() {
       } else {
         setError(response.error || 'Failed to update workout');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to update workout');
     } finally {
       setSaving(false);
@@ -148,7 +148,10 @@ export default function EditWorkoutPage() {
   if (workout.status === 'completed') {
     return (
       <ProtectedRoute>
-        <AppShell title="Edit Workout" description="Cannot edit completed workout">
+        <AppShell
+          title="Edit Workout"
+          description="Cannot edit completed workout"
+        >
           <Card>
             <CardContent className="text-center py-12">
               <p className="text-muted-foreground mb-4">
@@ -246,7 +249,9 @@ export default function EditWorkoutPage() {
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor={`exercise-name-${index}`}>Exercise Name</Label>
+                        <Label htmlFor={`exercise-name-${index}`}>
+                          Exercise Name
+                        </Label>
                         <Input
                           id={`exercise-name-${index}`}
                           value={exercise.name}
@@ -265,7 +270,9 @@ export default function EditWorkoutPage() {
                           value={exercise.sets || ''}
                           onChange={(e) =>
                             updateExercise(index, {
-                              sets: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                              sets: e.target.value
+                                ? parseInt(e.target.value, 10)
+                                : undefined,
                             })
                           }
                         />
@@ -318,7 +325,9 @@ export default function EditWorkoutPage() {
                           value={exercise.rir !== undefined ? exercise.rir : ''}
                           onChange={(e) =>
                             updateExercise(index, {
-                              rir: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                              rir: e.target.value
+                                ? parseInt(e.target.value, 10)
+                                : undefined,
                             })
                           }
                         />
@@ -369,4 +378,3 @@ export default function EditWorkoutPage() {
     </ProtectedRoute>
   );
 }
-

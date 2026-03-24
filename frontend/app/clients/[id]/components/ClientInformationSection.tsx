@@ -2,6 +2,7 @@
 
 import { Edit, Loader2, Save, UserCheck } from 'lucide-react';
 import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +14,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,8 +27,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   type Client,
-  type Recommendation,
   clientsApi,
+  type Recommendation,
   recommendationsApi,
 } from '@/lib/api';
 
@@ -109,7 +109,7 @@ export function ClientInformationSection({
       } else {
         setError(response.error || 'Failed to activate client');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to activate client');
     } finally {
       setActivating(false);
@@ -142,40 +142,47 @@ export function ClientInformationSection({
           <CardDescription>Contact and basics</CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          {(client.status === 'prospect' || !client.status) && recommendation && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="default" size="sm" disabled={activating}>
-                  {activating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Activating...
-                    </>
-                  ) : (
-                    <>
-                      <UserCheck className="mr-2 h-4 w-4" />
-                      Activate Client
-                    </>
-                  )}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Activate Client</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will activate the client and accept the current recommendation.
-                    All workouts will be marked as scheduled and ready to execute.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={activating}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleActivate} disabled={activating}>
-                    {activating ? 'Activating...' : 'Activate'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          {(client.status === 'prospect' || !client.status) &&
+            recommendation && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="default" size="sm" disabled={activating}>
+                    {activating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Activating...
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        Activate Client
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Activate Client</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will activate the client and accept the current
+                      recommendation. All workouts will be marked as scheduled
+                      and ready to execute.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={activating}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleActivate}
+                      disabled={activating}
+                    >
+                      {activating ? 'Activating...' : 'Activate'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           {!editing && (
             <Button
               variant="outline"
@@ -345,4 +352,3 @@ export function ClientInformationSection({
     </Card>
   );
 }
-

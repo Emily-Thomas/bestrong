@@ -1,5 +1,5 @@
-import path from 'node:path';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { config } from 'dotenv';
 
 // Load .env file only if it exists and we're not in Vercel
@@ -9,27 +9,44 @@ if (!process.env.VERCEL) {
   if (existsSync(envPath)) {
     config({ path: envPath });
   } else {
-    console.log('ℹ️  No .env file found, using environment variables from system');
+    console.log(
+      'ℹ️  No .env file found, using environment variables from system'
+    );
   }
 }
 
 // Debug: Log available environment variables (without sensitive data)
 console.log('🔍 Environment check:');
 console.log('   VERCEL:', process.env.VERCEL ? 'true' : 'false');
-console.log('   POSTGRES_URL:', process.env.POSTGRES_URL ? '***set***' : 'not set');
-console.log('   POSTGRES_PRISMA_URL:', process.env.POSTGRES_PRISMA_URL ? '***set***' : 'not set');
-console.log('   POSTGRES_URL_NON_POOLING:', process.env.POSTGRES_URL_NON_POOLING ? '***set***' : 'not set');
+console.log(
+  '   POSTGRES_URL:',
+  process.env.POSTGRES_URL ? '***set***' : 'not set'
+);
+console.log(
+  '   POSTGRES_PRISMA_URL:',
+  process.env.POSTGRES_PRISMA_URL ? '***set***' : 'not set'
+);
+console.log(
+  '   POSTGRES_URL_NON_POOLING:',
+  process.env.POSTGRES_URL_NON_POOLING ? '***set***' : 'not set'
+);
 console.log('   POSTGRES_HOST:', process.env.POSTGRES_HOST || 'not set');
-console.log('   POSTGRES_DATABASE:', process.env.POSTGRES_DATABASE || 'not set');
+console.log(
+  '   POSTGRES_DATABASE:',
+  process.env.POSTGRES_DATABASE || 'not set'
+);
 console.log('   POSTGRES_USER:', process.env.POSTGRES_USER || 'not set');
-console.log('   POSTGRES_PASSWORD:', process.env.POSTGRES_PASSWORD ? '***set***' : 'not set');
+console.log(
+  '   POSTGRES_PASSWORD:',
+  process.env.POSTGRES_PASSWORD ? '***set***' : 'not set'
+);
 console.log('');
 
 // Support Supabase PostgreSQL connection strings
 // Supabase provides POSTGRES_URL, POSTGRES_PRISMA_URL, or POSTGRES_URL_NON_POOLING
-const databaseUrl = 
-  process.env.POSTGRES_URL || 
-  process.env.POSTGRES_PRISMA_URL || 
+const databaseUrl =
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
   process.env.POSTGRES_URL_NON_POOLING;
 if (!databaseUrl) {
   // Validate required environment variables for non-connection-string deployments (Supabase standard)
@@ -49,15 +66,9 @@ if (!databaseUrl) {
     missingVars.forEach((varName) => {
       console.error(`   - ${varName}`);
     });
-    console.error(
-      '\n   For Supabase deployments:'
-    );
-    console.error(
-      '   1. Create a Supabase project at https://supabase.com'
-    );
-    console.error(
-      '   2. Go to Project Settings → Database'
-    );
+    console.error('\n   For Supabase deployments:');
+    console.error('   1. Create a Supabase project at https://supabase.com');
+    console.error('   2. Go to Project Settings → Database');
     console.error(
       '   3. Copy the connection string (POSTGRES_URL) or individual connection parameters'
     );
@@ -79,9 +90,9 @@ if (!databaseUrl) {
   }
 }
 
+import pool from '../src/config/database';
 // Now import modules that depend on environment variables
 import { runMigrations, testConnection } from '../src/db/migrations';
-import pool from '../src/config/database';
 
 /**
  * Verify that the workouts table exists after migration
@@ -105,7 +116,7 @@ async function verifyWorkoutsTable() {
 
       if (result.rows[0].exists) {
         console.log('✅ Workouts table exists');
-        
+
         // Check if indexes exist
         const indexResult = await client.query(`
           SELECT indexname 
@@ -113,9 +124,11 @@ async function verifyWorkoutsTable() {
           WHERE tablename = 'workouts' 
           AND schemaname = 'public';
         `);
-        
-        console.log(`✅ Found ${indexResult.rows.length} indexes on workouts table`);
-        
+
+        console.log(
+          `✅ Found ${indexResult.rows.length} indexes on workouts table`
+        );
+
         // Check if trigger exists
         const triggerResult = await client.query(`
           SELECT trigger_name 
@@ -123,11 +136,15 @@ async function verifyWorkoutsTable() {
           WHERE event_object_table = 'workouts' 
           AND trigger_schema = 'public';
         `);
-        
-        console.log(`✅ Found ${triggerResult.rows.length} triggers on workouts table`);
+
+        console.log(
+          `✅ Found ${triggerResult.rows.length} triggers on workouts table`
+        );
       } else {
-        console.warn('⚠️  Workouts table does not exist - attempting to create it...');
-        
+        console.warn(
+          '⚠️  Workouts table does not exist - attempting to create it...'
+        );
+
         // Try to create the workouts table explicitly
         try {
           await client.query(`
@@ -144,27 +161,29 @@ async function verifyWorkoutsTable() {
               UNIQUE(recommendation_id, week_number, session_number)
             );
           `);
-          
+
           // Create indexes
           await client.query(`
             CREATE INDEX IF NOT EXISTS idx_workouts_recommendation_id ON workouts(recommendation_id);
           `);
-          
+
           await client.query(`
             CREATE INDEX IF NOT EXISTS idx_workouts_week_session ON workouts(recommendation_id, week_number, session_number);
           `);
-          
+
           // Create trigger
           await client.query(`
             DROP TRIGGER IF EXISTS update_workouts_updated_at ON workouts;
           `);
-          
+
           await client.query(`
             CREATE TRIGGER update_workouts_updated_at BEFORE UPDATE ON workouts
               FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
           `);
-          
-          console.log('✅ Successfully created workouts table, indexes, and trigger');
+
+          console.log(
+            '✅ Successfully created workouts table, indexes, and trigger'
+          );
         } catch (createError) {
           console.error('❌ Failed to create workouts table:', createError);
           if (createError instanceof Error) {
@@ -200,7 +219,7 @@ async function verifyRecommendationJobsTable() {
 
       if (result.rows[0].exists) {
         console.log('✅ Recommendation jobs table exists');
-        
+
         // Check if indexes exist
         const indexResult = await client.query(`
           SELECT indexname 
@@ -208,9 +227,11 @@ async function verifyRecommendationJobsTable() {
           WHERE tablename = 'recommendation_jobs' 
           AND schemaname = 'public';
         `);
-        
-        console.log(`✅ Found ${indexResult.rows.length} indexes on recommendation_jobs table`);
-        
+
+        console.log(
+          `✅ Found ${indexResult.rows.length} indexes on recommendation_jobs table`
+        );
+
         // Check if trigger exists
         const triggerResult = await client.query(`
           SELECT trigger_name 
@@ -218,11 +239,15 @@ async function verifyRecommendationJobsTable() {
           WHERE event_object_table = 'recommendation_jobs' 
           AND trigger_schema = 'public';
         `);
-        
-        console.log(`✅ Found ${triggerResult.rows.length} triggers on recommendation_jobs table`);
+
+        console.log(
+          `✅ Found ${triggerResult.rows.length} triggers on recommendation_jobs table`
+        );
       } else {
-        console.warn('⚠️  Recommendation jobs table does not exist - attempting to create it...');
-        
+        console.warn(
+          '⚠️  Recommendation jobs table does not exist - attempting to create it...'
+        );
+
         // Try to create the recommendation_jobs table explicitly
         try {
           await client.query(`
@@ -241,33 +266,38 @@ async function verifyRecommendationJobsTable() {
               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
           `);
-          
+
           // Create indexes
           await client.query(`
             CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_status ON recommendation_jobs(status);
           `);
-          
+
           await client.query(`
             CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_questionnaire_id ON recommendation_jobs(questionnaire_id);
           `);
-          
+
           await client.query(`
             CREATE INDEX IF NOT EXISTS idx_recommendation_jobs_client_id ON recommendation_jobs(client_id);
           `);
-          
+
           // Create trigger
           await client.query(`
             DROP TRIGGER IF EXISTS update_recommendation_jobs_updated_at ON recommendation_jobs;
           `);
-          
+
           await client.query(`
             CREATE TRIGGER update_recommendation_jobs_updated_at BEFORE UPDATE ON recommendation_jobs
               FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
           `);
-          
-          console.log('✅ Successfully created recommendation_jobs table, indexes, and trigger');
+
+          console.log(
+            '✅ Successfully created recommendation_jobs table, indexes, and trigger'
+          );
         } catch (createError) {
-          console.error('❌ Failed to create recommendation_jobs table:', createError);
+          console.error(
+            '❌ Failed to create recommendation_jobs table:',
+            createError
+          );
           if (createError instanceof Error) {
             console.error(`   Error: ${createError.message}`);
           }
@@ -278,7 +308,10 @@ async function verifyRecommendationJobsTable() {
       client.release();
     }
   } catch (error) {
-    console.error('❌ Error verifying/creating recommendation_jobs table:', error);
+    console.error(
+      '❌ Error verifying/creating recommendation_jobs table:',
+      error
+    );
     if (error instanceof Error) {
       console.error('   Error message:', error.message);
     }
@@ -289,8 +322,11 @@ async function verifyRecommendationJobsTable() {
 
 async function main() {
   console.log('🔄 Running database migrations...\n');
-  
-  const databaseUrl = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+
+  const databaseUrl =
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING;
   if (databaseUrl) {
     const isSupabase = databaseUrl.includes('supabase.co');
     if (isSupabase) {
@@ -316,13 +352,13 @@ async function main() {
 
     await runMigrations();
     console.log('\n✅ Migration complete!');
-    
+
     // Verify that the workouts table was created
     await verifyWorkoutsTable();
-    
+
     // Verify that the recommendation_jobs table was created
     await verifyRecommendationJobsTable();
-    
+
     process.exit(0);
   } catch (error) {
     console.error('\n❌ Migration failed:', error);
@@ -334,4 +370,3 @@ async function main() {
 }
 
 main();
-

@@ -17,11 +17,11 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
+  inbodyScansApi,
   type Questionnaire,
   type Recommendation,
-  type Trainer,
   recommendationsApi,
-  inbodyScansApi,
+  type Trainer,
   trainersApi,
 } from '@/lib/api';
 
@@ -43,9 +43,9 @@ export function TrainingPlansSection({
   const [currentJobId, setCurrentJobId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState<string>('');
   const [completed, setCompleted] = useState(false);
-  const [completedRecommendationId, setCompletedRecommendationId] = useState<number | null>(
-    null
-  );
+  const [completedRecommendationId, setCompletedRecommendationId] = useState<
+    number | null
+  >(null);
   const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState('');
   const [hasInBodyScan, setHasInBodyScan] = useState<boolean | null>(null);
@@ -55,9 +55,9 @@ export function TrainingPlansSection({
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [trainersLoading, setTrainersLoading] = useState(false);
   const [compareTrainerIds, setCompareTrainerIds] = useState<number[]>([]);
-  const [completedComparisonBatchId, setCompletedComparisonBatchId] = useState<string | null>(
-    null
-  );
+  const [completedComparisonBatchId, setCompletedComparisonBatchId] = useState<
+    string | null
+  >(null);
 
   const trainerReadyForComparison = (t: Trainer) =>
     Boolean(t.structured_persona?.ai_prompt_injection?.trim());
@@ -115,7 +115,9 @@ export function TrainingPlansSection({
             setGenMode(null);
             setCompleted(true);
             setCompletedRecommendationId(job.recommendation_id);
-            const recResponse = await recommendationsApi.getById(job.recommendation_id);
+            const recResponse = await recommendationsApi.getById(
+              job.recommendation_id
+            );
             if (recResponse.success && recResponse.data) {
               onRecommendationUpdate(recResponse.data);
             }
@@ -147,7 +149,9 @@ export function TrainingPlansSection({
     async (questionnaireId: number) => {
       try {
         const jobResponse =
-          await recommendationsApi.getLatestJobByQuestionnaireId(questionnaireId);
+          await recommendationsApi.getLatestJobByQuestionnaireId(
+            questionnaireId
+          );
 
         if (jobResponse.success && jobResponse.data) {
           const job = jobResponse.data;
@@ -155,7 +159,9 @@ export function TrainingPlansSection({
           if (job.status === 'pending' || job.status === 'processing') {
             setGenerating(true);
             setGenMode(
-              job.metadata?.mode === 'trainer_comparison' ? 'comparison' : 'plan'
+              job.metadata?.mode === 'trainer_comparison'
+                ? 'comparison'
+                : 'plan'
             );
             setCurrentJobId(job.id);
             if (job.current_step) {
@@ -222,7 +228,9 @@ export function TrainingPlansSection({
     }
 
     if (hasInBodyScan === false) {
-      setError('Please upload at least one InBody scan before generating recommendations.');
+      setError(
+        'Please upload at least one InBody scan before generating recommendations.'
+      );
       return;
     }
 
@@ -234,7 +242,9 @@ export function TrainingPlansSection({
 
     try {
       const startResponse =
-        await recommendationsApi.startGenerationFromQuestionnaire(questionnaire.id);
+        await recommendationsApi.startGenerationFromQuestionnaire(
+          questionnaire.id
+        );
 
       if (!startResponse.success || !startResponse.data) {
         setError(startResponse.error || 'Failed to start generation');
@@ -261,7 +271,9 @@ export function TrainingPlansSection({
       return;
     }
     if (hasInBodyScan === false) {
-      setError('Please upload at least one InBody scan before generating comparisons.');
+      setError(
+        'Please upload at least one InBody scan before generating comparisons.'
+      );
       return;
     }
     if (compareTrainerIds.length < 2) {
@@ -277,10 +289,11 @@ export function TrainingPlansSection({
 
     try {
       const sortedIds = [...compareTrainerIds].sort((a, b) => a - b);
-      const startResponse = await recommendationsApi.startComparisonFromQuestionnaire(
-        questionnaire.id,
-        sortedIds
-      );
+      const startResponse =
+        await recommendationsApi.startComparisonFromQuestionnaire(
+          questionnaire.id,
+          sortedIds
+        );
 
       if (!startResponse.success || !startResponse.data) {
         setError(startResponse.error || 'Failed to start comparison');
@@ -305,7 +318,10 @@ export function TrainingPlansSection({
 
     setCancelling(true);
     try {
-      const response = await recommendationsApi.cancelJob(currentJobId, 'Cancelled by user');
+      const response = await recommendationsApi.cancelJob(
+        currentJobId,
+        'Cancelled by user'
+      );
 
       if (response.success && response.data) {
         setGenerating(false);
@@ -369,8 +385,8 @@ export function TrainingPlansSection({
             <div className="flex flex-col gap-1">
               <p className="text-sm font-medium">Compare coaching styles</p>
               <p className="text-xs text-muted-foreground">
-                Generate side-by-side draft plans steered by different trainer personas. Each
-                coach needs a generated persona (Trainers).
+                Generate side-by-side draft plans steered by different trainer
+                personas. Each coach needs a generated persona (Trainers).
               </p>
             </div>
             {trainersLoading ? (
@@ -401,13 +417,21 @@ export function TrainingPlansSection({
                           checked={compareTrainerIds.includes(t.id)}
                           onCheckedChange={() => toggleCompareTrainer(t.id)}
                           disabled={
-                            generating || checkingScan || hasInBodyScan === false
+                            generating ||
+                            checkingScan ||
+                            hasInBodyScan === false
                           }
                         />
-                        <Label htmlFor={cid} className="cursor-pointer font-normal">
+                        <Label
+                          htmlFor={cid}
+                          className="cursor-pointer font-normal"
+                        >
                           {t.first_name} {t.last_name}
                           {t.title ? (
-                            <span className="text-muted-foreground"> · {t.title}</span>
+                            <span className="text-muted-foreground">
+                              {' '}
+                              · {t.title}
+                            </span>
                           ) : null}
                         </Label>
                       </div>
@@ -447,19 +471,24 @@ export function TrainingPlansSection({
             <AlertDescription>
               <div className="flex items-center justify-between">
                 <span>
-                  Please upload at least one InBody scan before generating recommendations.
+                  Please upload at least one InBody scan before generating
+                  recommendations.
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const element = document.getElementById('inbody-scans-section');
+                    const element = document.getElementById(
+                      'inbody-scans-section'
+                    );
                     element?.scrollIntoView({ behavior: 'smooth' });
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      const element = document.getElementById('inbody-scans-section');
+                      const element = document.getElementById(
+                        'inbody-scans-section'
+                      );
                       element?.scrollIntoView({ behavior: 'smooth' });
                     }
                   }}
@@ -485,7 +514,9 @@ export function TrainingPlansSection({
                     </span>
                   </div>
                   {currentStep && (
-                    <span className="text-sm text-muted-foreground">{currentStep}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {currentStep}
+                    </span>
                   )}
                   <span className="text-sm text-muted-foreground">
                     {genMode === 'comparison'
@@ -526,8 +557,8 @@ export function TrainingPlansSection({
                     Generation cancelled
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    The training plan generation was cancelled. You can start a new generation
-                    when ready.
+                    The training plan generation was cancelled. You can start a
+                    new generation when ready.
                   </span>
                 </div>
                 <Button
@@ -627,9 +658,15 @@ export function TrainingPlansSection({
           </p>
         ) : (
           <Link
-            href={generating ? '#' : `/clients/${clientId}/recommendations/${recommendation.id}`}
+            href={
+              generating
+                ? '#'
+                : `/clients/${clientId}/recommendations/${recommendation.id}`
+            }
             className={
-              generating ? 'pointer-events-none opacity-50 cursor-not-allowed' : ''
+              generating
+                ? 'pointer-events-none opacity-50 cursor-not-allowed'
+                : ''
             }
             onClick={(e) => {
               if (generating) {
@@ -641,7 +678,9 @@ export function TrainingPlansSection({
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-1">{recommendation.client_type}</h3>
+                    <h3 className="font-semibold mb-1">
+                      {recommendation.client_type}
+                    </h3>
                     <p className="text-sm text-muted-foreground mb-2">
                       {recommendation.sessions_per_week} sessions/week •{' '}
                       {recommendation.session_length_minutes} min/session

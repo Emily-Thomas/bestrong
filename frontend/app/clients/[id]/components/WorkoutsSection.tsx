@@ -1,9 +1,29 @@
 'use client';
 
-import { Calendar, CheckCircle2, Clock, Play, Loader2, Edit, X, SkipForward } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Edit,
+  Loader2,
+  Play,
+  SkipForward,
+  X,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,20 +36,9 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
   type Recommendation,
-  type Workout,
   recommendationsApi,
+  type Workout,
   workoutsApi,
 } from '@/lib/api';
 
@@ -75,7 +84,7 @@ export function WorkoutsSection({
         setWorkouts(response.data);
         const currentWeekNum = recommendation.current_week || 1;
         setCurrentWeek(currentWeekNum);
-        
+
         // Load week status for the current week
         const weekResponse = await recommendationsApi.getWeekStatus(
           recommendation.id,
@@ -114,7 +123,8 @@ export function WorkoutsSection({
         setError(response.error || 'Failed to start workout');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to start workout';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to start workout';
       setError(errorMessage);
       console.error('Error starting workout:', err);
     } finally {
@@ -135,14 +145,18 @@ export function WorkoutsSection({
   };
 
   const [skippingWorkout, setSkippingWorkout] = useState<number | null>(null);
-  const [cancellingWorkout, setCancellingWorkout] = useState<number | null>(null);
+  const [cancellingWorkout, setCancellingWorkout] = useState<number | null>(
+    null
+  );
 
   const handleSkipWorkout = async (workoutId: number) => {
     setSkippingWorkout(workoutId);
     setError('');
     setSuccessMessage('');
     try {
-      const response = await workoutsApi.update(workoutId, { status: 'skipped' });
+      const response = await workoutsApi.update(workoutId, {
+        status: 'skipped',
+      });
       if (response.success) {
         setSuccessMessage('Workout skipped successfully');
         await loadWorkouts();
@@ -151,7 +165,7 @@ export function WorkoutsSection({
       } else {
         setError(response.error || 'Failed to skip workout');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to skip workout');
     } finally {
       setSkippingWorkout(null);
@@ -163,7 +177,9 @@ export function WorkoutsSection({
     setError('');
     setSuccessMessage('');
     try {
-      const response = await workoutsApi.update(workoutId, { status: 'cancelled' });
+      const response = await workoutsApi.update(workoutId, {
+        status: 'cancelled',
+      });
       if (response.success) {
         setSuccessMessage('Workout cancelled successfully');
         await loadWorkouts();
@@ -172,7 +188,7 @@ export function WorkoutsSection({
       } else {
         setError(response.error || 'Failed to cancel workout');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to cancel workout');
     } finally {
       setCancellingWorkout(null);
@@ -182,7 +198,9 @@ export function WorkoutsSection({
   const scheduledWorkouts = workouts.filter((w) => w.status === 'scheduled');
   const inProgressWorkouts = workouts.filter((w) => w.status === 'in_progress');
   const completedWorkouts = workouts.filter((w) => w.status === 'completed');
-  const skippedWorkouts = workouts.filter((w) => w.status === 'skipped' || w.status === 'cancelled');
+  const skippedWorkouts = workouts.filter(
+    (w) => w.status === 'skipped' || w.status === 'cancelled'
+  );
 
   const getStatusBadge = (status: Workout['status']) => {
     switch (status) {
@@ -208,7 +226,8 @@ export function WorkoutsSection({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <h4 className="font-semibold">
-                {workout.workout_name || `Week ${workout.week_number}, Session ${workout.session_number}`}
+                {workout.workout_name ||
+                  `Week ${workout.week_number}, Session ${workout.session_number}`}
               </h4>
               {getStatusBadge(workout.status)}
             </div>
@@ -279,19 +298,23 @@ export function WorkoutsSection({
                       <AlertDialogHeader>
                         <AlertDialogTitle>Skip Workout</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to skip this workout? Skipped workouts
-                          count toward week completion.
+                          Are you sure you want to skip this workout? Skipped
+                          workouts count toward week completion.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel disabled={skippingWorkout === workout.id}>
+                        <AlertDialogCancel
+                          disabled={skippingWorkout === workout.id}
+                        >
                           Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => handleSkipWorkout(workout.id)}
                           disabled={skippingWorkout === workout.id}
                         >
-                          {skippingWorkout === workout.id ? 'Skipping...' : 'Skip Workout'}
+                          {skippingWorkout === workout.id
+                            ? 'Skipping...'
+                            : 'Skip Workout'}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -333,20 +356,24 @@ export function WorkoutsSection({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Cancel Workout</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to cancel this workout? Cancelled workouts
-                        do not count toward week completion. You can start it again later
-                        if needed.
+                        Are you sure you want to cancel this workout? Cancelled
+                        workouts do not count toward week completion. You can
+                        start it again later if needed.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel disabled={cancellingWorkout === workout.id}>
+                      <AlertDialogCancel
+                        disabled={cancellingWorkout === workout.id}
+                      >
                         Keep Working Out
                       </AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => handleCancelWorkout(workout.id)}
                         disabled={cancellingWorkout === workout.id}
                       >
-                        {cancellingWorkout === workout.id ? 'Cancelling...' : 'Cancel Workout'}
+                        {cancellingWorkout === workout.id
+                          ? 'Cancelling...'
+                          : 'Cancel Workout'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -363,7 +390,8 @@ export function WorkoutsSection({
                 View
               </Button>
             )}
-            {(workout.status === 'skipped' || workout.status === 'cancelled') && (
+            {(workout.status === 'skipped' ||
+              workout.status === 'cancelled') && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -403,7 +431,8 @@ export function WorkoutsSection({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Activate the client and accept the recommendation to start tracking workouts.
+            Activate the client and accept the recommendation to start tracking
+            workouts.
           </p>
         </CardContent>
       </Card>
@@ -424,7 +453,8 @@ export function WorkoutsSection({
                 Week {currentWeek} Progress
               </div>
               <div className="text-xs text-muted-foreground">
-                {weekStatus.completed_workouts} / {weekStatus.total_workouts} completed
+                {weekStatus.completed_workouts} / {weekStatus.total_workouts}{' '}
+                completed
               </div>
             </div>
           )}
@@ -433,7 +463,8 @@ export function WorkoutsSection({
           <Progress
             value={
               weekStatus.total_workouts > 0
-                ? (weekStatus.completed_workouts / weekStatus.total_workouts) * 100
+                ? (weekStatus.completed_workouts / weekStatus.total_workouts) *
+                  100
                 : 0
             }
             className="mt-2"
@@ -458,8 +489,8 @@ export function WorkoutsSection({
 
         {weekStatus && weekStatus.total_workouts > 0 && (
           <p className="text-sm text-muted-foreground mb-4">
-            Track sessions you add from the training plan. AI does not generate additional
-            weeks automatically.
+            Track sessions you add from the training plan. AI does not generate
+            additional weeks automatically.
           </p>
         )}
 
@@ -533,4 +564,3 @@ export function WorkoutsSection({
     </Card>
   );
 }
-

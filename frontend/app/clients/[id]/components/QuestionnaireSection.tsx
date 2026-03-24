@@ -2,6 +2,7 @@
 
 import { FileText } from 'lucide-react';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -10,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import type { Questionnaire } from '@/lib/api';
 
 interface QuestionnaireSectionProps {
@@ -20,10 +20,22 @@ interface QuestionnaireSectionProps {
 
 function v2Summary(notes: string): { line1: string; line2?: string } | null {
   try {
-    const p = JSON.parse(notes) as { schema_version?: number; primary_goal_label?: string; goal_categories?: string[]; work_pattern?: string; available_days_per_week?: number };
+    const p = JSON.parse(notes) as {
+      schema_version?: number;
+      primary_goal_label?: string;
+      goal_categories?: string[];
+      work_pattern?: string;
+      available_days_per_week?: number;
+    };
     if (p.schema_version !== 2 && !p.work_pattern) return null;
-    const goals = (p.goal_categories ?? []).join(', ') || p.primary_goal_label || 'Goals on file';
-    const days = p.available_days_per_week != null ? `${p.available_days_per_week} d/wk` : '';
+    const goals =
+      (p.goal_categories ?? []).join(', ') ||
+      p.primary_goal_label ||
+      'Goals on file';
+    const days =
+      p.available_days_per_week != null
+        ? `${p.available_days_per_week} d/wk`
+        : '';
     const work = p.work_pattern ? p.work_pattern.replace(/_/g, ' ') : '';
     return {
       line1: goals,
@@ -117,4 +129,3 @@ export function QuestionnaireSection({
     </Card>
   );
 }
-

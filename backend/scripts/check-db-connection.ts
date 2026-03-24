@@ -8,29 +8,39 @@ config({ path: envPath });
 
 async function checkConnection() {
   console.log('🔍 Testing database connection...\n');
-  
+
   // Check for connection string first (Supabase standard)
-  const databaseUrl = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
-  
+  const databaseUrl =
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING;
+
   if (databaseUrl) {
     console.log('Configuration:');
-    console.log(`  Using connection string: ${databaseUrl.includes('supabase.co') ? 'Supabase' : 'PostgreSQL'}\n`);
+    console.log(
+      `  Using connection string: ${databaseUrl.includes('supabase.co') ? 'Supabase' : 'PostgreSQL'}\n`
+    );
   } else {
     console.log('Configuration:');
     console.log(`  Host: ${process.env.POSTGRES_HOST || 'localhost'}`);
     console.log(`  Port: ${process.env.POSTGRES_PORT || '5432'}`);
     console.log(`  Database: ${process.env.POSTGRES_DATABASE || 'postgres'}`);
     console.log(`  User: ${process.env.POSTGRES_USER || 'postgres'}`);
-    console.log(`  Password: ${process.env.POSTGRES_PASSWORD ? '***' : 'NOT SET'}\n`);
+    console.log(
+      `  Password: ${process.env.POSTGRES_PASSWORD ? '***' : 'NOT SET'}\n`
+    );
   }
 
   // For Supabase, ensure SSL is enabled in connection string if not already present
   let finalConnectionString = databaseUrl;
-  if (databaseUrl && databaseUrl.includes('supabase.co') && !databaseUrl.includes('sslmode=')) {
+  if (
+    databaseUrl?.includes('supabase.co') &&
+    !databaseUrl.includes('sslmode=')
+  ) {
     const separator = databaseUrl.includes('?') ? '&' : '?';
     finalConnectionString = `${databaseUrl}${separator}sslmode=require`;
   }
-  
+
   const poolConfig = databaseUrl
     ? {
         connectionString: finalConnectionString,

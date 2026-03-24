@@ -1,11 +1,8 @@
 import { type Request, type Response, Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
-import * as workoutService from '../services/workout.service';
 import * as actualWorkoutService from '../services/actual-workout.service';
-import type {
-  UpdateWorkoutInput,
-  CreateActualWorkoutInput,
-} from '../types';
+import * as workoutService from '../services/workout.service';
+import type { CreateActualWorkoutInput, UpdateWorkoutInput } from '../types';
 
 const router = Router();
 
@@ -190,7 +187,8 @@ router.patch('/:id/actual', async (req: Request, res: Response) => {
     }
 
     // Get actual workout by workout_id
-    const existingActual = await actualWorkoutService.getActualWorkoutByWorkoutId(id);
+    const existingActual =
+      await actualWorkoutService.getActualWorkoutByWorkoutId(id);
     if (!existingActual) {
       res.status(404).json({
         success: false,
@@ -225,4 +223,3 @@ router.patch('/:id/actual', async (req: Request, res: Response) => {
 });
 
 export default router;
-

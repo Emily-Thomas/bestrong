@@ -1,6 +1,8 @@
 'use client';
 
+import { Check, Frown, Meh, Plus, Smile, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,10 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Smile, Meh, Frown, Plus, Trash2, Check } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import type { ActualExercisePerformance, ExerciseRound } from '@/lib/api';
 
 interface ExerciseInputModalProps {
@@ -150,22 +150,26 @@ export function ExerciseInputModal({
           {!showRounds && (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-3">
-                <Label htmlFor={`reps-${exerciseIndex}`} className="text-lg font-semibold">
+                <Label
+                  htmlFor={`reps-${exerciseIndex}`}
+                  className="text-lg font-semibold"
+                >
                   Total Reps Completed
                 </Label>
                 <Input
                   id={`reps-${exerciseIndex}`}
                   type="text"
                   value={exercise.reps_completed || ''}
-                  onChange={(e) =>
-                    onUpdate({ reps_completed: e.target.value })
-                  }
+                  onChange={(e) => onUpdate({ reps_completed: e.target.value })}
                   placeholder="e.g., 8-10 or 8"
                   className="h-14 text-xl"
                 />
               </div>
               <div className="space-y-3">
-                <Label htmlFor={`weight-${exerciseIndex}`} className="text-lg font-semibold">
+                <Label
+                  htmlFor={`weight-${exerciseIndex}`}
+                  className="text-lg font-semibold"
+                >
                   Weight/Load Used
                 </Label>
                 <Input
@@ -198,9 +202,14 @@ export function ExerciseInputModal({
               </div>
 
               {rounds.map((round, roundIndex) => (
-                <div key={roundIndex} className="p-5 border-2 rounded-lg bg-muted/30">
+                <div
+                  key={roundIndex}
+                  className="p-5 border-2 rounded-lg bg-muted/30"
+                >
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold">Round {round.round_number}</h4>
+                    <h4 className="text-lg font-semibold">
+                      Round {round.round_number}
+                    </h4>
                     <Button
                       type="button"
                       variant="ghost"
@@ -254,7 +263,8 @@ export function ExerciseInputModal({
 
               {rounds.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground text-lg">
-                  No rounds added yet. Click "Add Round" to track per-round data.
+                  No rounds added yet. Click "Add Round" to track per-round
+                  data.
                 </div>
               )}
             </div>
@@ -349,11 +359,7 @@ export function ExerciseInputModal({
 
         {/* Footer with Done button */}
         <div className="px-6 py-4 border-t flex-shrink-0 flex justify-end">
-          <Button
-            onClick={handleDone}
-            size="lg"
-            className="h-12 px-8 text-lg"
-          >
+          <Button onClick={handleDone} size="lg" className="h-12 px-8 text-lg">
             <Check className="mr-2 h-5 w-5" />
             Done
           </Button>

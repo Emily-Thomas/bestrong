@@ -1,6 +1,13 @@
 'use client';
 
-import { ArrowLeft, ChevronDown, ChevronUp, Edit, Loader2, Save } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Edit,
+  Loader2,
+  Save,
+} from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
@@ -31,9 +38,9 @@ import {
 } from '@/components/ui/select';
 import {
   type Recommendation,
-  type Workout,
   recommendationsApi,
   type UpdateRecommendationInput,
+  type Workout,
 } from '@/lib/api';
 
 function PlanGuidanceDisplay({ plan }: { plan: Record<string, unknown> }) {
@@ -71,7 +78,9 @@ function PlanGuidanceDisplay({ plan }: { plan: Record<string, unknown> }) {
             <CardTitle className="text-base">Recommended coach</CardTitle>
             <CardDescription>
               {recommended.coach_name ?? 'Coach'}{' '}
-              {recommended.trainer_id != null ? `(id ${recommended.trainer_id})` : ''}
+              {recommended.trainer_id != null
+                ? `(id ${recommended.trainer_id})`
+                : ''}
             </CardDescription>
           </CardHeader>
           {recommended.reasoning && (
@@ -89,23 +98,28 @@ function PlanGuidanceDisplay({ plan }: { plan: Record<string, unknown> }) {
           )}
           {phaseWeeks != null && (
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">First phase length: </span>
+              <span className="font-medium text-foreground">
+                First phase length:{' '}
+              </span>
               {phaseWeeks} week{phaseWeeks !== 1 ? 's' : ''}
             </p>
           )}
-          {Array.isArray(plan.training_methods) && plan.training_methods.length > 0 && (
-            <div>
-              <p className="text-sm font-medium mb-1">Training methods</p>
-              <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                {(plan.training_methods as string[]).map((m, mi) => (
-                  <li key={`tm-${mi}-${m}`}>{m}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {Array.isArray(plan.training_methods) &&
+            plan.training_methods.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-1">Training methods</p>
+                <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                  {(plan.training_methods as string[]).map((m, mi) => (
+                    <li key={`tm-${mi}-${m}`}>{m}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           {schedule.length > 0 && (
             <div>
-              <p className="text-sm font-medium mb-2">Weekly repeating themes</p>
+              <p className="text-sm font-medium mb-2">
+                Weekly repeating themes
+              </p>
               <div className="space-y-2">
                 {schedule.map((row) => (
                   <div
@@ -114,10 +128,14 @@ function PlanGuidanceDisplay({ plan }: { plan: Record<string, unknown> }) {
                   >
                     <div className="font-medium">{row.day ?? 'Day'}</div>
                     {row.session_label && (
-                      <div className="text-muted-foreground">{row.session_label}</div>
+                      <div className="text-muted-foreground">
+                        {row.session_label}
+                      </div>
                     )}
                     {row.focus_theme && (
-                      <div className="text-muted-foreground mt-1">{row.focus_theme}</div>
+                      <div className="text-muted-foreground mt-1">
+                        {row.focus_theme}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -143,7 +161,9 @@ function PlanGuidanceDisplay({ plan }: { plan: Record<string, unknown> }) {
           {typeof plan.periodization_approach === 'string' && (
             <div>
               <p className="text-sm font-medium mb-1">Periodization</p>
-              <p className="text-sm text-muted-foreground">{plan.periodization_approach}</p>
+              <p className="text-sm text-muted-foreground">
+                {plan.periodization_approach}
+              </p>
             </div>
           )}
         </CardContent>
@@ -160,12 +180,17 @@ function PlanGuidanceDisplay({ plan }: { plan: Record<string, unknown> }) {
           <CardContent className="space-y-3 pt-0">
             {peers.map((p) => (
               <div
-                key={p.trainer_id ?? `${p.coach_name ?? 'coach'}-${p.direction_summary?.slice(0, 24) ?? ''}`}
+                key={
+                  p.trainer_id ??
+                  `${p.coach_name ?? 'coach'}-${p.direction_summary?.slice(0, 24) ?? ''}`
+                }
                 className="rounded-md border p-3 text-sm"
               >
                 <div className="font-medium">{p.coach_name ?? 'Coach'}</div>
                 {p.direction_summary && (
-                  <p className="text-muted-foreground mt-1">{p.direction_summary}</p>
+                  <p className="text-muted-foreground mt-1">
+                    {p.direction_summary}
+                  </p>
                 )}
                 {p.differs_from_recommended && (
                   <p className="text-xs text-muted-foreground mt-2 italic">
@@ -491,7 +516,8 @@ export default function RecommendationDetailPage() {
             <CardHeader>
               <CardTitle>Workout sessions</CardTitle>
               <CardDescription>
-                Sessions added to this plan (not AI-generated as part of the recommendation)
+                Sessions added to this plan (not AI-generated as part of the
+                recommendation)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -509,13 +535,16 @@ function WorkoutsDisplay({ workouts }: { workouts: Workout[] }) {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
 
   // Group workouts by week
-  const workoutsByWeek = workouts.reduce((acc, workout) => {
-    if (!acc[workout.week_number]) {
-      acc[workout.week_number] = [];
-    }
-    acc[workout.week_number].push(workout);
-    return acc;
-  }, {} as Record<number, Workout[]>);
+  const workoutsByWeek = workouts.reduce(
+    (acc, workout) => {
+      if (!acc[workout.week_number]) {
+        acc[workout.week_number] = [];
+      }
+      acc[workout.week_number].push(workout);
+      return acc;
+    },
+    {} as Record<number, Workout[]>
+  );
 
   // Sort weeks
   const weeks = Object.keys(workoutsByWeek)
@@ -658,7 +687,20 @@ function WorkoutCard({ workout }: { workout: Workout }) {
 }
 
 // Component to display a list of exercises
-function ExerciseList({ exercises }: { exercises: Array<{ name: string; sets?: number; reps?: string | number; weight?: string; rest_seconds?: number; notes?: string; tempo?: string; rir?: number }> }) {
+function ExerciseList({
+  exercises,
+}: {
+  exercises: Array<{
+    name: string;
+    sets?: number;
+    reps?: string | number;
+    weight?: string;
+    rest_seconds?: number;
+    notes?: string;
+    tempo?: string;
+    rir?: number;
+  }>;
+}) {
   return (
     <div className="space-y-2">
       {exercises.map((exercise, idx) => (

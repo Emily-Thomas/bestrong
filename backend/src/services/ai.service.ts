@@ -1,28 +1,31 @@
 import OpenAI from 'openai';
 import type {
-  Questionnaire,
-  StructuredQuestionnaireData,
+  ActualWorkout,
+  Client,
+  InBodyScan,
   LLMRecommendationResponse,
   LLMWorkoutResponse,
-  Recommendation,
-  Workout,
-  ActualWorkout,
-  InBodyScan,
-  Client,
-  TrainerPersonaStructured,
-  RecommendedCoachMatch,
   PeerCoachDirectionPreview,
+  Questionnaire,
+  Recommendation,
+  RecommendedCoachMatch,
+  StructuredQuestionnaireData,
   TrainerCoachMatchOption,
+  TrainerPersonaStructured,
+  Workout,
 } from '../types';
+import * as exerciseLibraryService from './exercise-library.service';
 import {
   formatQuestionnaireForPrompt,
-  parseQuestionnaireData,
   GOALS_VS_INJURIES_INSTRUCTION,
+  parseQuestionnaireData,
 } from './questionnaire-prompt.service';
-import * as exerciseLibraryService from './exercise-library.service';
 import { enrichAIWorkoutsWithLibrary } from './workout-library-integration.service';
 
-export { parseQuestionnaireData, formatQuestionnaireForPrompt } from './questionnaire-prompt.service';
+export {
+  formatQuestionnaireForPrompt,
+  parseQuestionnaireData,
+} from './questionnaire-prompt.service';
 
 async function enrichLlmWorkoutsWithExerciseLibrary(
   workouts: LLMWorkoutResponse[]
@@ -106,36 +109,36 @@ function extractJSON(content: string): string {
  */
 function findLastValidPosition(json: string, errorPosition: number): number {
   let braceDepth = 0;
-  let bracketDepth = 0;
+  let _bracketDepth = 0;
   let inString = false;
   let escapeNext = false;
   let lastValidBrace = -1;
-  let lastStringEnd = -1;
+  let _lastStringEnd = -1;
   let stringStartPos = -1;
-  
+
   // Only scan up to the error position
   const scanLength = Math.min(errorPosition, json.length);
-  
+
   for (let i = 0; i < scanLength; i++) {
     const char = json[i];
-    
+
     if (escapeNext) {
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"' && !escapeNext) {
       if (!inString) {
         stringStartPos = i;
         inString = true;
       } else {
         // String closed
-        lastStringEnd = i;
+        _lastStringEnd = i;
         inString = false;
         stringStartPos = -1;
       }
@@ -148,13 +151,13 @@ function findLastValidPosition(json: string, errorPosition: number): number {
           lastValidBrace = i;
         }
       } else if (char === '[') {
-        bracketDepth++;
+        _bracketDepth++;
       } else if (char === ']') {
-        bracketDepth--;
+        _bracketDepth--;
       }
     }
   }
-  
+
   // If we're in a string at the error position, try to find where that string started
   // and truncate before it
   if (inString && stringStartPos !== -1) {
@@ -170,15 +173,19 @@ function findLastValidPosition(json: string, errorPosition: number): number {
     // If we can't find a safe point, truncate before the string
     return stringStartPos;
   }
-  
+
   // Return the position of the last complete object
   if (lastValidBrace !== -1) {
     return lastValidBrace + 1;
   }
-  
+
   // If no complete object, try to find a safe truncation point
   // Go back from error position to find a closing quote, brace, or bracket
-  for (let i = Math.min(errorPosition - 1, json.length - 1); i >= Math.max(0, errorPosition - 1000); i--) {
+  for (
+    let i = Math.min(errorPosition - 1, json.length - 1);
+    i >= Math.max(0, errorPosition - 1000);
+    i--
+  ) {
     const char = json[i];
     if (char === '"' || char === '}' || char === ']' || char === ',') {
       // Make sure we're not in a string at this position
@@ -202,7 +209,7 @@ function findLastValidPosition(json: string, errorPosition: number): number {
       }
     }
   }
-  
+
   return 0;
 }
 
@@ -276,7 +283,11 @@ export function mergePlanWithPeerCoachPreviews(
  * Robust JSON parsing with repair and retry logic
  * Reduced retries to minimize token waste - only repair JSON, don't retry API calls
  */
-function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: string): T {
+function parseJSONWithRepair<T>(
+  content: string,
+  maxRetries = 1,
+  rawResponse?: string
+): T {
   let cleaned = sanitizeJsonUnicodeEscapes(extractJSON(content));
 
   // Attempt to parse with repair attempts
@@ -285,7 +296,7 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
       return JSON.parse(cleaned) as T;
     } catch (error) {
       const isLastAttempt = attempt === maxRetries - 1;
-      
+
       // Extract error position if available - try multiple patterns
       let errorPos = 0;
       if (error instanceof SyntaxError) {
@@ -294,14 +305,18 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
         if (posMatch) {
           errorPos = parseInt(posMatch[1], 10);
         }
-        
+
         // Also try "line X column Y" pattern and calculate position
-        const lineColMatch = error.message.match(/line\s+(\d+)\s+column\s+(\d+)/i);
+        const lineColMatch = error.message.match(
+          /line\s+(\d+)\s+column\s+(\d+)/i
+        );
         if (lineColMatch && errorPos === 0) {
           const lineNum = parseInt(lineColMatch[1], 10);
           const colNum = parseInt(lineColMatch[2], 10);
           // Calculate position from line/column
-          const lines = cleaned.substring(0, Math.min(cleaned.length, 100000)).split('\n');
+          const lines = cleaned
+            .substring(0, Math.min(cleaned.length, 100000))
+            .split('\n');
           if (lineNum <= lines.length) {
             let calculatedPos = 0;
             for (let i = 0; i < lineNum - 1 && i < lines.length; i++) {
@@ -312,38 +327,49 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
           }
         }
       }
-      
+
       // Log error details for all attempts (but more detail on last attempt)
       if (isLastAttempt || attempt > 0) {
-        console.warn(`⚠️  JSON Parse Error (attempt ${attempt + 1}/${maxRetries}):`);
-        console.warn(`   Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+        console.warn(
+          `⚠️  JSON Parse Error (attempt ${attempt + 1}/${maxRetries}):`
+        );
+        console.warn(
+          `   Error: ${error instanceof Error ? error.message : 'Unknown'}`
+        );
         if (errorPos > 0) {
-          console.warn(`   Position: ${errorPos}, Content length: ${cleaned.length}`);
+          console.warn(
+            `   Position: ${errorPos}, Content length: ${cleaned.length}`
+          );
         }
       }
-      
+
       if (isLastAttempt) {
         // Last attempt - try multiple repair strategies
         let repaired = cleaned;
-        
+
         // Strategy 1: Truncate at last valid position before error
         if (errorPos > 0) {
           const lastValidPos = findLastValidPosition(cleaned, errorPos);
-          if (lastValidPos > 100) { // Only if we have substantial content
+          if (lastValidPos > 100) {
+            // Only if we have substantial content
             repaired = cleaned.substring(0, lastValidPos);
             // Close any open structures
             repaired = repairJSON(repaired);
-            
+
             try {
-              const parsed = JSON.parse(sanitizeJsonUnicodeEscapes(repaired)) as T;
-              console.warn(`⚠️  JSON was truncated at position ${errorPos}, parsed up to position ${lastValidPos}`);
+              const parsed = JSON.parse(
+                sanitizeJsonUnicodeEscapes(repaired)
+              ) as T;
+              console.warn(
+                `⚠️  JSON was truncated at position ${errorPos}, parsed up to position ${lastValidPos}`
+              );
               return parsed;
             } catch {
               // Continue to next strategy
             }
           }
         }
-        
+
         // Strategy 2: Try to find and extract just the JSON object portion
         // Look for the main object structure
         const firstBrace = cleaned.indexOf('{');
@@ -353,20 +379,24 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
           let inString = false;
           let escapeNext = false;
           let lastCompleteBrace = -1;
-          
-          for (let i = firstBrace; i < cleaned.length && i < errorPos + 1000; i++) {
+
+          for (
+            let i = firstBrace;
+            i < cleaned.length && i < errorPos + 1000;
+            i++
+          ) {
             const char = cleaned[i];
-            
+
             if (escapeNext) {
               escapeNext = false;
               continue;
             }
-            
+
             if (char === '\\') {
               escapeNext = true;
               continue;
             }
-            
+
             if (char === '"' && !escapeNext) {
               inString = !inString;
             } else if (!inString) {
@@ -380,133 +410,194 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
               }
             }
           }
-          
+
           if (lastCompleteBrace !== -1) {
             repaired = cleaned.substring(firstBrace, lastCompleteBrace + 1);
             try {
-              const parsed = JSON.parse(sanitizeJsonUnicodeEscapes(repaired)) as T;
-              console.warn(`⚠️  Extracted complete JSON object (truncated from ${cleaned.length} to ${repaired.length} chars)`);
+              const parsed = JSON.parse(
+                sanitizeJsonUnicodeEscapes(repaired)
+              ) as T;
+              console.warn(
+                `⚠️  Extracted complete JSON object (truncated from ${cleaned.length} to ${repaired.length} chars)`
+              );
               return parsed;
             } catch {
               // Continue to next strategy
             }
           }
         }
-        
+
         // Strategy 3: Aggressive repair
         repaired = repairJSON(cleaned);
         try {
           return JSON.parse(sanitizeJsonUnicodeEscapes(repaired)) as T;
-        } catch (finalError) {
+        } catch (_finalError) {
           // Log detailed error information for debugging
-          const start = Math.max(0, errorPos - 500);
-          const end = Math.min(cleaned.length, errorPos + 500);
-          
+          const _start = Math.max(0, errorPos - 500);
+          const _end = Math.min(cleaned.length, errorPos + 500);
+
           console.error('\n❌ JSON Parse Error (final attempt):');
-          console.error(`   Error: ${error instanceof Error ? error.message : 'Unknown'}`);
-          console.error(`   Position: ${errorPos}, Total length: ${cleaned.length}`);
-          
+          console.error(
+            `   Error: ${error instanceof Error ? error.message : 'Unknown'}`
+          );
+          console.error(
+            `   Position: ${errorPos}, Total length: ${cleaned.length}`
+          );
+
           // Calculate line and column
           const linesBeforeError = cleaned.substring(0, errorPos).split('\n');
           const lineNumber = linesBeforeError.length;
-          const columnNumber = linesBeforeError[linesBeforeError.length - 1].length + 1;
-          console.error(`   Location: Line ${lineNumber}, Column ${columnNumber}`);
-          
+          const columnNumber =
+            linesBeforeError[linesBeforeError.length - 1].length + 1;
+          console.error(
+            `   Location: Line ${lineNumber}, Column ${columnNumber}`
+          );
+
           // Show the exact error location with visual indicator
           const contextStart = Math.max(0, errorPos - 500);
           const contextEnd = Math.min(cleaned.length, errorPos + 500);
           const context = cleaned.substring(contextStart, contextEnd);
           const relativeErrorPos = errorPos - contextStart;
-          
-          console.error(`\n   Context around error (chars ${contextStart}-${contextEnd}):`);
-          console.error('   ' + '─'.repeat(80));
-          
+
+          console.error(
+            `\n   Context around error (chars ${contextStart}-${contextEnd}):`
+          );
+          console.error(`   ${'─'.repeat(80)}`);
+
           // Show context with line numbers and highlight the error
           const contextLines = context.split('\n');
           let charCount = 0;
-          const errorLineIndex = context.substring(0, relativeErrorPos).split('\n').length - 1;
-          
+          const errorLineIndex =
+            context.substring(0, relativeErrorPos).split('\n').length - 1;
+
           contextLines.forEach((line, idx) => {
-            const lineStart = charCount;
+            const _lineStart = charCount;
             const lineEnd = charCount + line.length;
             const isErrorLine = idx === errorLineIndex;
-            
+
             if (isErrorLine) {
               // Show the error line with indicator
-              const beforeError = line.substring(0, Math.min(relativeErrorPos - (charCount - contextStart), line.length));
-              const atError = line[Math.min(relativeErrorPos - (charCount - contextStart), line.length - 1)] || '';
-              const afterError = line.substring(Math.min(relativeErrorPos - (charCount - contextStart) + 1, line.length));
-              
-              console.error(`   ${lineNumber - errorLineIndex + idx} | ${beforeError}${atError}${afterError}`);
-              console.error(`      ${' '.repeat(beforeError.length)}^ ERROR HERE (char ${errorPos}, col ${columnNumber})`);
+              const beforeError = line.substring(
+                0,
+                Math.min(
+                  relativeErrorPos - (charCount - contextStart),
+                  line.length
+                )
+              );
+              const atError =
+                line[
+                  Math.min(
+                    relativeErrorPos - (charCount - contextStart),
+                    line.length - 1
+                  )
+                ] || '';
+              const afterError = line.substring(
+                Math.min(
+                  relativeErrorPos - (charCount - contextStart) + 1,
+                  line.length
+                )
+              );
+
+              console.error(
+                `   ${lineNumber - errorLineIndex + idx} | ${beforeError}${atError}${afterError}`
+              );
+              console.error(
+                `      ${' '.repeat(beforeError.length)}^ ERROR HERE (char ${errorPos}, col ${columnNumber})`
+              );
             } else if (Math.abs(idx - errorLineIndex) <= 3) {
               // Show nearby lines
-              console.error(`   ${lineNumber - errorLineIndex + idx} | ${line}`);
+              console.error(
+                `   ${lineNumber - errorLineIndex + idx} | ${line}`
+              );
             }
-            
+
             charCount = lineEnd + 1; // +1 for newline
           });
-          
-          console.error('   ' + '─'.repeat(80));
-          
+
+          console.error(`   ${'─'.repeat(80)}`);
+
           // Show character details
           const errorChar = cleaned[errorPos];
           const charBefore = errorPos > 0 ? cleaned[errorPos - 1] : '';
-          const charAfter = errorPos < cleaned.length - 1 ? cleaned[errorPos + 1] : '';
+          const charAfter =
+            errorPos < cleaned.length - 1 ? cleaned[errorPos + 1] : '';
           console.error(`\n   Character details:`);
-          console.error(`   - At error position ${errorPos}: "${errorChar}" (code: ${errorChar ? cleaned.charCodeAt(errorPos) : 'N/A'})`);
-          console.error(`   - Before: "${charBefore}" (code: ${charBefore ? cleaned.charCodeAt(errorPos - 1) : 'N/A'})`);
-          console.error(`   - After: "${charAfter}" (code: ${charAfter ? cleaned.charCodeAt(errorPos + 1) : 'N/A'})`);
-          
+          console.error(
+            `   - At error position ${errorPos}: "${errorChar}" (code: ${errorChar ? cleaned.charCodeAt(errorPos) : 'N/A'})`
+          );
+          console.error(
+            `   - Before: "${charBefore}" (code: ${charBefore ? cleaned.charCodeAt(errorPos - 1) : 'N/A'})`
+          );
+          console.error(
+            `   - After: "${charAfter}" (code: ${charAfter ? cleaned.charCodeAt(errorPos + 1) : 'N/A'})`
+          );
+
           // Show hex dump around error for hidden characters
           const hexStart = Math.max(0, errorPos - 20);
           const hexEnd = Math.min(cleaned.length, errorPos + 20);
-          console.error(`\n   Hex dump around error (positions ${hexStart}-${hexEnd}):`);
+          console.error(
+            `\n   Hex dump around error (positions ${hexStart}-${hexEnd}):`
+          );
           const hexContext = cleaned.substring(hexStart, hexEnd);
           for (let i = 0; i < hexContext.length; i += 16) {
             const chunk = hexContext.substring(i, i + 16);
             const hex = Array.from(chunk)
-              .map(c => c.charCodeAt(0).toString(16).padStart(2, '0'))
+              .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
               .join(' ');
             const ascii = Array.from(chunk)
-              .map(c => (c.charCodeAt(0) >= 32 && c.charCodeAt(0) < 127) ? c : '.')
+              .map((c) =>
+                c.charCodeAt(0) >= 32 && c.charCodeAt(0) < 127 ? c : '.'
+              )
               .join('');
-            const marker = hexStart + i <= errorPos && hexStart + i + 16 > errorPos ? ' <-- ERROR' : '';
-            console.error(`   ${(hexStart + i).toString(16).padStart(8, '0')}: ${hex.padEnd(48)} |${ascii}|${marker}`);
+            const marker =
+              hexStart + i <= errorPos && hexStart + i + 16 > errorPos
+                ? ' <-- ERROR'
+                : '';
+            console.error(
+              `   ${(hexStart + i).toString(16).padStart(8, '0')}: ${hex.padEnd(48)} |${ascii}|${marker}`
+            );
           }
-          
+
           // Analyze what the parser expected
           if (error instanceof SyntaxError) {
             const errorMsg = error.message;
             console.error(`\n   Parser error message: "${errorMsg}"`);
-            
+
             // Extract expected token from error message
-            const expectedMatch = errorMsg.match(/Expected\s+['"]([^'"]+)['"]/i);
+            const expectedMatch = errorMsg.match(
+              /Expected\s+['"]([^'"]+)['"]/i
+            );
             if (expectedMatch) {
               console.error(`   - Parser expected: "${expectedMatch[1]}"`);
             }
-            
+
             // Extract position from error message if available
             const posMatch = errorMsg.match(/position\s+(\d+)/i);
             if (posMatch) {
               const msgPos = parseInt(posMatch[1], 10);
               if (msgPos !== errorPos) {
-                console.error(`   - Note: Error message reports position ${msgPos}, but we calculated ${errorPos}`);
+                console.error(
+                  `   - Note: Error message reports position ${msgPos}, but we calculated ${errorPos}`
+                );
               }
             }
-            
+
             // Extract line/column from error message if available
             const lineMatch = errorMsg.match(/line\s+(\d+)\s+column\s+(\d+)/i);
             if (lineMatch) {
               const msgLine = parseInt(lineMatch[1], 10);
               const msgCol = parseInt(lineMatch[2], 10);
-              console.error(`   - Error message reports: Line ${msgLine}, Column ${msgCol}`);
+              console.error(
+                `   - Error message reports: Line ${msgLine}, Column ${msgCol}`
+              );
               if (msgLine !== lineNumber || msgCol !== columnNumber) {
-                console.error(`   - Note: Calculated position is Line ${lineNumber}, Column ${columnNumber}`);
+                console.error(
+                  `   - Note: Calculated position is Line ${lineNumber}, Column ${columnNumber}`
+                );
               }
             }
           }
-          
+
           // Show JSON structure context (what object/array we're in)
           let braceDepth = 0;
           let bracketDepth = 0;
@@ -514,26 +605,32 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
           let escapeNext = false;
           const path: string[] = [];
           let currentKey = '';
-          const recentProperties: Array<{key: string, value: string, pos: number}> = [];
-          
+          const recentProperties: Array<{
+            key: string;
+            value: string;
+            pos: number;
+          }> = [];
+
           for (let i = 0; i < errorPos && i < cleaned.length; i++) {
             const char = cleaned[i];
-            
+
             if (escapeNext) {
               escapeNext = false;
               continue;
             }
-            
+
             if (char === '\\') {
               escapeNext = true;
               continue;
             }
-            
+
             if (char === '"' && !escapeNext) {
               inString = !inString;
               if (!inString && braceDepth > 0) {
                 // Might be a key
-                const nextNonWhitespace = cleaned.substring(i + 1).match(/^\s*:/);
+                const nextNonWhitespace = cleaned
+                  .substring(i + 1)
+                  .match(/^\s*:/);
                 if (nextNonWhitespace) {
                   const keyStart = cleaned.lastIndexOf('"', i - 1);
                   if (keyStart !== -1) {
@@ -561,20 +658,23 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
                 // Found a key-value pair, try to extract the value
                 const valueStart = i + 1;
                 let valueEnd = valueStart;
-                let valueInString = false;
+                let _valueInString = false;
                 let valueEscapeNext = false;
-                
+
                 // Skip whitespace
-                while (valueEnd < cleaned.length && /\s/.test(cleaned[valueEnd])) {
+                while (
+                  valueEnd < cleaned.length &&
+                  /\s/.test(cleaned[valueEnd])
+                ) {
                   valueEnd++;
                 }
-                
+
                 // Try to find the end of the value
                 if (valueEnd < cleaned.length) {
                   const firstChar = cleaned[valueEnd];
                   if (firstChar === '"') {
                     // String value
-                    valueInString = true;
+                    _valueInString = true;
                     valueEnd++;
                     while (valueEnd < cleaned.length) {
                       if (valueEscapeNext) {
@@ -607,7 +707,10 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
                       if (cleaned[valueEnd] === '"') {
                         // Skip string
                         valueEnd++;
-                        while (valueEnd < cleaned.length && cleaned[valueEnd] !== '"') {
+                        while (
+                          valueEnd < cleaned.length &&
+                          cleaned[valueEnd] !== '"'
+                        ) {
                           if (cleaned[valueEnd] === '\\') valueEnd++;
                           valueEnd++;
                         }
@@ -620,18 +723,26 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
                     }
                   } else {
                     // Number, boolean, null - find end
-                    while (valueEnd < cleaned.length && /[^,\s}\]\]]/.test(cleaned[valueEnd])) {
+                    while (
+                      valueEnd < cleaned.length &&
+                      /[^,\s}\]\]]/.test(cleaned[valueEnd])
+                    ) {
                       valueEnd++;
                     }
                   }
-                  
-                  const valuePreview = cleaned.substring(valueStart, Math.min(valueEnd, valueStart + 100));
+
+                  const valuePreview = cleaned.substring(
+                    valueStart,
+                    Math.min(valueEnd, valueStart + 100)
+                  );
                   recentProperties.push({
                     key: currentKey,
-                    value: valuePreview.replace(/\n/g, '\\n').replace(/\r/g, '\\r'),
-                    pos: valueStart
+                    value: valuePreview
+                      .replace(/\n/g, '\\n')
+                      .replace(/\r/g, '\\r'),
+                    pos: valueStart,
                   });
-                  
+
                   // Keep only last 5 properties
                   if (recentProperties.length > 5) {
                     recentProperties.shift();
@@ -640,83 +751,115 @@ function parseJSONWithRepair<T>(content: string, maxRetries = 1, rawResponse?: s
               }
             }
           }
-          
+
           console.error(`\n   JSON structure context:`);
           console.error(`   - Brace depth: ${braceDepth}`);
           console.error(`   - Bracket depth: ${bracketDepth}`);
           console.error(`   - In string: ${inString}`);
-          console.error(`   - Current path: ${path.length > 0 ? path.join(' → ') : 'root'}`);
+          console.error(
+            `   - Current path: ${path.length > 0 ? path.join(' → ') : 'root'}`
+          );
           if (currentKey) {
             console.error(`   - Current key: "${currentKey}"`);
           }
-          
+
           if (recentProperties.length > 0) {
             console.error(`\n   Recent properties before error:`);
             recentProperties.forEach((prop, idx) => {
               const distance = errorPos - prop.pos;
-              console.error(`   ${idx + 1}. "${prop.key}": ${prop.value.substring(0, 80)}${prop.value.length > 80 ? '...' : ''} (at position ${prop.pos}, ${distance} chars before error)`);
+              console.error(
+                `   ${idx + 1}. "${prop.key}": ${prop.value.substring(0, 80)}${prop.value.length > 80 ? '...' : ''} (at position ${prop.pos}, ${distance} chars before error)`
+              );
             });
           }
-          
+
           // Show what comes after the error position
-          const afterError = cleaned.substring(errorPos, Math.min(errorPos + 100, cleaned.length));
+          const afterError = cleaned.substring(
+            errorPos,
+            Math.min(errorPos + 100, cleaned.length)
+          );
           console.error(`\n   Content immediately after error position:`);
-          console.error(`   "${afterError.replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`);
-          
+          console.error(
+            `   "${afterError.replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`
+          );
+
           // Show first and last portions
           console.error(`\n   First 1500 chars:`);
-          console.error('   ' + cleaned.substring(0, 1500).split('\n').slice(0, 30).join('\n   '));
+          console.error(
+            `   ${cleaned.substring(0, 1500).split('\n').slice(0, 30).join('\n   ')}`
+          );
           if (cleaned.length > 1500) {
             console.error('   ... (truncated)');
           }
-          
+
           console.error(`\n   Last 1500 chars:`);
-          const lastPortion = cleaned.substring(Math.max(0, cleaned.length - 1500));
-          console.error('   ' + lastPortion.split('\n').slice(-30).join('\n   '));
-          
+          const lastPortion = cleaned.substring(
+            Math.max(0, cleaned.length - 1500)
+          );
+          console.error(
+            `   ${lastPortion.split('\n').slice(-30).join('\n   ')}`
+          );
+
           // Log the raw OpenAI response for debugging
           if (rawResponse) {
             console.error('\n📋 RAW OPENAI RESPONSE (for debugging):');
             console.error('   Length:', rawResponse.length);
             console.error('   First 2000 chars:');
-            console.error('   ' + rawResponse.substring(0, 2000).split('\n').join('\n   '));
+            console.error(
+              `   ${rawResponse.substring(0, 2000).split('\n').join('\n   ')}`
+            );
             console.error('\n   Last 2000 chars:');
-            console.error('   ' + rawResponse.substring(Math.max(0, rawResponse.length - 2000)).split('\n').join('\n   '));
-            
+            console.error(
+              `   ${rawResponse
+                .substring(Math.max(0, rawResponse.length - 2000))
+                .split('\n')
+                .join('\n   ')}`
+            );
+
             // Log the full response in chunks for easier reading
             const chunkSize = 5000;
             const chunks = Math.ceil(rawResponse.length / chunkSize);
             if (chunks > 1) {
-              console.error(`\n   Full response (${chunks} chunks of ${chunkSize} chars):`);
+              console.error(
+                `\n   Full response (${chunks} chunks of ${chunkSize} chars):`
+              );
               for (let i = 0; i < chunks; i++) {
                 const start = i * chunkSize;
                 const end = Math.min(start + chunkSize, rawResponse.length);
-                console.error(`   Chunk ${i + 1}/${chunks} (chars ${start}-${end}):`);
-                console.error('   ' + rawResponse.substring(start, end).split('\n').slice(0, 50).join('\n   '));
+                console.error(
+                  `   Chunk ${i + 1}/${chunks} (chars ${start}-${end}):`
+                );
+                console.error(
+                  `   ${rawResponse.substring(start, end).split('\n').slice(0, 50).join('\n   ')}`
+                );
                 if (end < rawResponse.length) {
                   console.error('   ... (truncated for readability)');
                 }
               }
             } else {
               console.error('\n   Full response:');
-              console.error('   ' + rawResponse.split('\n').join('\n   '));
+              console.error(`   ${rawResponse.split('\n').join('\n   ')}`);
             }
           } else {
             console.error('\n📋 CLEANED/EXTRACTED JSON (for debugging):');
             console.error('   Length:', cleaned.length);
             const cleanedChunks = Math.ceil(cleaned.length / 5000);
             if (cleanedChunks > 1) {
-              console.error(`   Full cleaned response (${cleanedChunks} chunks):`);
+              console.error(
+                `   Full cleaned response (${cleanedChunks} chunks):`
+              );
               for (let i = 0; i < cleanedChunks; i++) {
                 const start = i * 5000;
                 const end = Math.min(start + 5000, cleaned.length);
-                console.error(`   Chunk ${i + 1}/${cleanedChunks}: ${cleaned.substring(start, end)}`);
+                console.error(
+                  `   Chunk ${i + 1}/${cleanedChunks}: ${cleaned.substring(start, end)}`
+                );
               }
             } else {
               console.error('   Full cleaned response:', cleaned);
             }
           }
-          
+
           throw new Error(
             `Failed to parse JSON after ${maxRetries} repair attempts at position ${errorPos}. The AI response may be truncated or contain invalid characters.`
           );
@@ -746,28 +889,28 @@ function repairJSON(json: string): string {
   let bracketDepth = 0;
   let inString = false;
   let escapeNext = false;
-  let lastStringStart = -1;
-  
+  let _lastStringStart = -1;
+
   for (let i = 0; i < repaired.length; i++) {
     const char = repaired[i];
-    
+
     if (escapeNext) {
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"' && !escapeNext) {
       if (!inString) {
-        lastStringStart = i;
+        _lastStringStart = i;
         inString = true;
       } else {
         inString = false;
-        lastStringStart = -1;
+        _lastStringStart = -1;
       }
     } else if (!inString) {
       if (char === '{') braceDepth++;
@@ -803,20 +946,20 @@ function repairJSON(json: string): string {
   inString = false;
   escapeNext = false;
   let lastValidBrace = -1;
-  
+
   for (let i = 0; i < repaired.length; i++) {
     const char = repaired[i];
-    
+
     if (escapeNext) {
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"' && !escapeNext) {
       inString = !inString;
     } else if (!inString) {
@@ -856,9 +999,11 @@ async function callOpenAIWithRetry(
   const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
 
   // Calculate approximate input tokens (rough estimate: 4 chars per token)
-  const inputText = messages.map(m => 
-    typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
-  ).join(' ');
+  const inputText = messages
+    .map((m) =>
+      typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+    )
+    .join(' ');
   const estimatedInputTokens = Math.ceil(inputText.length / 4);
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -874,48 +1019,64 @@ async function callOpenAIWithRetry(
       const duration = Date.now() - startTime;
       const finishReason = completion.choices[0]?.finish_reason;
       const content = completion.choices[0]?.message?.content;
-      
+
       // Track token usage
       const usage = completion.usage;
       if (usage) {
-        console.log(`[OpenAI] Token usage - Input: ${usage.prompt_tokens}, Output: ${usage.completion_tokens}, Total: ${usage.total_tokens} (${duration}ms)`);
+        console.log(
+          `[OpenAI] Token usage - Input: ${usage.prompt_tokens}, Output: ${usage.completion_tokens}, Total: ${usage.total_tokens} (${duration}ms)`
+        );
       } else {
-        console.log(`[OpenAI] Estimated input tokens: ~${estimatedInputTokens} (usage not available)`);
+        console.log(
+          `[OpenAI] Estimated input tokens: ~${estimatedInputTokens} (usage not available)`
+        );
       }
-      
+
       if (!content) {
         throw new Error('No response content from OpenAI');
       }
 
       // Warn if response was truncated
       if (finishReason === 'length') {
-        console.warn(`⚠️  Response was truncated (length finish reason). Content length: ${content.length}`);
+        console.warn(
+          `⚠️  Response was truncated (length finish reason). Content length: ${content.length}`
+        );
         // Still return the content - our repair logic will try to fix it
       }
 
       return content;
     } catch (error) {
       const isLastAttempt = attempt === maxRetries - 1;
-      
+
       // Log the error with token context
       if (error instanceof Error) {
-        console.error(`[OpenAI] API Error (attempt ${attempt + 1}/${maxRetries}):`, {
-          error: error.message,
-          estimatedInputTokens,
-          isLastAttempt,
-        });
+        console.error(
+          `[OpenAI] API Error (attempt ${attempt + 1}/${maxRetries}):`,
+          {
+            error: error.message,
+            estimatedInputTokens,
+            isLastAttempt,
+          }
+        );
       }
 
       // Only retry on rate limit errors (not API errors, authentication errors, etc.)
       if (error instanceof Error) {
-        const isRateLimit = 
+        const httpStatus =
+          'status' in error &&
+          typeof (error as { status?: unknown }).status === 'number'
+            ? (error as { status: number }).status
+            : undefined;
+        const isRateLimit =
           error.message.toLowerCase().includes('rate limit') ||
           error.message.toLowerCase().includes('rate_limit') ||
-          (error as any).status === 429; // HTTP 429 Too Many Requests
-        
+          httpStatus === 429; // HTTP 429 Too Many Requests
+
         if (isRateLimit && !isLastAttempt) {
-          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s...
-          console.warn(`[OpenAI] Rate limit hit. Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+          const delay = 2 ** attempt * 1000; // Exponential backoff: 1s, 2s, 4s...
+          console.warn(
+            `[OpenAI] Rate limit hit. Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`
+          );
           await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
@@ -1058,14 +1219,15 @@ function formatClientInfoForPrompt(client: Client | null): string {
   }
 
   let text = `## Client Information\n\n`;
-  
+
   if (client.date_of_birth) {
-    const birthDate = typeof client.date_of_birth === 'string' 
-      ? new Date(client.date_of_birth) 
-      : client.date_of_birth;
+    const birthDate =
+      typeof client.date_of_birth === 'string'
+        ? new Date(client.date_of_birth)
+        : client.date_of_birth;
     text += `- Date of Birth: ${birthDate.toLocaleDateString()}\n`;
   }
-  
+
   text += `\nConsider the client's age (calculate from date of birth) when:
 - Selecting age-appropriate exercises and training methods
 - Setting realistic progression expectations based on age
@@ -1160,7 +1322,10 @@ The client's latest InBody scan shows:`;
     };
 
     for (const segment of segments) {
-      const data = scan.segment_analysis[segment.key as keyof typeof scan.segment_analysis];
+      const data =
+        scan.segment_analysis[
+          segment.key as keyof typeof scan.segment_analysis
+        ];
       if (data && typeof data === 'object') {
         const parts: string[] = [];
         const muscleMass = formatNumber(data.muscle_mass_lbs);
@@ -1210,7 +1375,10 @@ export async function generatePeerCoachDirectionPreviews(
     return [];
   }
 
-  const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const questionnaireText = formatQuestionnaireForPrompt(
+    questionnaire,
+    structuredData
+  );
   const inbodyText = formatInBodyScanForPrompt(inbodyScan);
   const clientInfoText = formatClientInfoForPrompt(client);
 
@@ -1290,7 +1458,10 @@ export async function generateRecommendationStructure(
   trainerPersonaInjection?: string | null,
   options?: GenerateRecommendationStructureOptions
 ): Promise<Omit<LLMRecommendationResponse, 'workouts'>> {
-  const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const questionnaireText = formatQuestionnaireForPrompt(
+    questionnaire,
+    structuredData
+  );
   const inbodyText = formatInBodyScanForPrompt(inbodyScan);
   const clientInfoText = formatClientInfoForPrompt(client);
 
@@ -1414,14 +1585,13 @@ CRITICAL: Respond with ONLY valid JSON. No markdown fences or extra text.`;
 
   let result = normalizeGuidanceForStorage(parsed);
 
-  if (
-    !options?.skipCoachRecommendation &&
-    options?.coachMatchOptions?.length
-  ) {
+  if (!options?.skipCoachRecommendation && options?.coachMatchOptions?.length) {
     const rc = (result.plan_structure as Record<string, unknown>)
       ?.recommended_coach as RecommendedCoachMatch | undefined;
     if (rc && typeof rc.trainer_id === 'number') {
-      const peers = options.coachMatchOptions.filter((o) => o.id !== rc.trainer_id);
+      const peers = options.coachMatchOptions.filter(
+        (o) => o.id !== rc.trainer_id
+      );
       if (peers.length) {
         const previews = await generatePeerCoachDirectionPreviews(
           questionnaire,
@@ -1457,7 +1627,10 @@ export async function generateWorkouts(
   client: Client | null = null,
   trainerPersonaInjection?: string
 ): Promise<LLMWorkoutResponse[]> {
-  const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const questionnaireText = formatQuestionnaireForPrompt(
+    questionnaire,
+    structuredData
+  );
   const inbodyText = formatInBodyScanForPrompt(inbodyScan);
   const clientInfoText = formatClientInfoForPrompt(client);
   const week1Workouts = recommendation.sessions_per_week; // Only week 1
@@ -1661,7 +1834,10 @@ export async function generateWeekWorkouts(
     );
   }
 
-  const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+  const questionnaireText = formatQuestionnaireForPrompt(
+    questionnaire,
+    structuredData
+  );
   const inbodyText = formatInBodyScanForPrompt(inbodyScan);
   const clientInfoText = formatClientInfoForPrompt(client);
   const sessionsPerWeek = recommendation.sessions_per_week;
@@ -1670,38 +1846,50 @@ export async function generateWeekWorkouts(
   let performanceHistoryText = '';
   if (previousWeeksData.length > 0) {
     performanceHistoryText = '## Performance History\n\n';
-    
+
     for (const weekData of previousWeeksData) {
       performanceHistoryText += `### Week ${weekData.week_number} Results:\n\n`;
-      
+
       for (let i = 0; i < weekData.workouts.length; i++) {
         const workout = weekData.workouts[i];
         const actualWorkout = weekData.actual_workouts.find(
-          aw => aw.workout_id === workout.id
+          (aw) => aw.workout_id === workout.id
         );
 
         performanceHistoryText += `**Session ${workout.session_number}: ${workout.workout_name || 'Workout'}**\n`;
-        
+
         if (actualWorkout) {
           performanceHistoryText += `- Overall RIR: ${actualWorkout.overall_rir || 'N/A'}/5\n`;
           performanceHistoryText += `- Client Energy Level: ${actualWorkout.client_energy_level || 'N/A'}/10\n`;
           if (actualWorkout.workout_rating) {
-            const ratingEmoji = actualWorkout.workout_rating === 'happy' ? '😊' : 
-                               actualWorkout.workout_rating === 'meh' ? '😐' : '😞';
+            const ratingEmoji =
+              actualWorkout.workout_rating === 'happy'
+                ? '😊'
+                : actualWorkout.workout_rating === 'meh'
+                  ? '😐'
+                  : '😞';
             performanceHistoryText += `- Overall Workout Rating: ${ratingEmoji} (${actualWorkout.workout_rating})\n`;
           }
-          
+
           if (actualWorkout.actual_performance.exercises.length > 0) {
             performanceHistoryText += `- Exercise Performance:\n`;
             actualWorkout.actual_performance.exercises.forEach((ex) => {
               performanceHistoryText += `  - ${ex.exercise_name}: `;
-              if (ex.sets_completed) performanceHistoryText += `${ex.sets_completed} sets, `;
-              if (ex.reps_completed) performanceHistoryText += `${ex.reps_completed} reps, `;
-              if (ex.weight_used) performanceHistoryText += `${ex.weight_used}, `;
-              if (ex.rir !== undefined) performanceHistoryText += `RIR ${ex.rir}`;
+              if (ex.sets_completed)
+                performanceHistoryText += `${ex.sets_completed} sets, `;
+              if (ex.reps_completed)
+                performanceHistoryText += `${ex.reps_completed} reps, `;
+              if (ex.weight_used)
+                performanceHistoryText += `${ex.weight_used}, `;
+              if (ex.rir !== undefined)
+                performanceHistoryText += `RIR ${ex.rir}`;
               if (ex.exercise_rating) {
-                const ratingEmoji = ex.exercise_rating === 'happy' ? '😊' : 
-                                   ex.exercise_rating === 'meh' ? '😐' : '😞';
+                const ratingEmoji =
+                  ex.exercise_rating === 'happy'
+                    ? '😊'
+                    : ex.exercise_rating === 'meh'
+                      ? '😐'
+                      : '😞';
                 performanceHistoryText += `, Rating: ${ratingEmoji} (${ex.exercise_rating})`;
               }
               performanceHistoryText += '\n';
@@ -1715,15 +1903,18 @@ export async function generateWeekWorkouts(
                 performanceHistoryText += `    Round Details:\n`;
                 ex.rounds.forEach((round) => {
                   performanceHistoryText += `      Round ${round.round_number}: `;
-                  if (round.reps) performanceHistoryText += `${round.reps} reps, `;
-                  if (round.weight) performanceHistoryText += `${round.weight}, `;
-                  if (round.rir !== undefined) performanceHistoryText += `RIR ${round.rir}`;
+                  if (round.reps)
+                    performanceHistoryText += `${round.reps} reps, `;
+                  if (round.weight)
+                    performanceHistoryText += `${round.weight}, `;
+                  if (round.rir !== undefined)
+                    performanceHistoryText += `RIR ${round.rir}`;
                   performanceHistoryText += '\n';
                 });
               }
             });
           }
-          
+
           if (actualWorkout.trainer_observations) {
             performanceHistoryText += `- Trainer Observations: ${actualWorkout.trainer_observations}\n`;
           }
@@ -1851,7 +2042,9 @@ CRITICAL:
     }
   );
 
-  console.log(`Received week ${targetWeek} workout response (${responseContent.length} characters)`);
+  console.log(
+    `Received week ${targetWeek} workout response (${responseContent.length} characters)`
+  );
 
   const parsed = parseJSONWithRepair<{ workouts: LLMWorkoutResponse[] }>(
     responseContent,
@@ -1865,27 +2058,42 @@ CRITICAL:
 
   // Validate we got the right number of workouts
   if (parsed.workouts.length !== sessionsPerWeek) {
-    console.warn(`⚠️  Expected ${sessionsPerWeek} workouts for week ${targetWeek}, got ${parsed.workouts.length}`);
+    console.warn(
+      `⚠️  Expected ${sessionsPerWeek} workouts for week ${targetWeek}, got ${parsed.workouts.length}`
+    );
   }
 
   // Validate all workouts are for the target week
-  const invalidWeeks = parsed.workouts.filter(w => w.week_number !== targetWeek);
+  const invalidWeeks = parsed.workouts.filter(
+    (w) => w.week_number !== targetWeek
+  );
   if (invalidWeeks.length > 0) {
-    console.warn(`⚠️  Found ${invalidWeeks.length} workouts not for week ${targetWeek}, filtering them out`);
-    parsed.workouts = parsed.workouts.filter(w => w.week_number === targetWeek);
+    console.warn(
+      `⚠️  Found ${invalidWeeks.length} workouts not for week ${targetWeek}, filtering them out`
+    );
+    parsed.workouts = parsed.workouts.filter(
+      (w) => w.week_number === targetWeek
+    );
   }
 
-  console.log(`✅ Generated ${parsed.workouts.length} workouts for Week ${targetWeek}`);
+  console.log(
+    `✅ Generated ${parsed.workouts.length} workouts for Week ${targetWeek}`
+  );
 
   return enrichLlmWorkoutsWithExerciseLibrary(parsed.workouts);
 }
 
-function assertTrainerPersonaShape(data: unknown): asserts data is TrainerPersonaStructured {
+function assertTrainerPersonaShape(
+  data: unknown
+): asserts data is TrainerPersonaStructured {
   if (!data || typeof data !== 'object') {
     throw new Error('Invalid trainer persona JSON');
   }
   const o = data as Record<string, unknown>;
-  if (typeof o.coaching_headline !== 'string' || typeof o.coaching_narrative !== 'string') {
+  if (
+    typeof o.coaching_headline !== 'string' ||
+    typeof o.coaching_narrative !== 'string'
+  ) {
     throw new Error('Invalid trainer persona: missing required text fields');
   }
 }

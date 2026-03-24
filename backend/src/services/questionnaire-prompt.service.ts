@@ -30,7 +30,9 @@ export function parseQuestionnaireData(
     return null;
   }
   try {
-    const parsed = JSON.parse(questionnaire.notes) as StructuredQuestionnaireData;
+    const parsed = JSON.parse(
+      questionnaire.notes
+    ) as StructuredQuestionnaireData;
     if (parsed.schema_version === 2) {
       return parsed;
     }
@@ -51,8 +53,11 @@ export function parseQuestionnaireData(
   }
 }
 
-function formatQuestionnaireDbColumnsForPrompt(questionnaire: Questionnaire): string {
-  let prompt = '## Client Questionnaire Data (database columns only — no structured JSON)\n\n';
+function formatQuestionnaireDbColumnsForPrompt(
+  questionnaire: Questionnaire
+): string {
+  let prompt =
+    '## Client Questionnaire Data (database columns only — no structured JSON)\n\n';
   prompt += `- Primary Goal: ${questionnaire.primary_goal || 'N/A'}\n`;
   prompt += `- Experience Level: ${questionnaire.experience_level || 'N/A'}\n`;
   prompt += `- Available Days Per Week: ${questionnaire.available_days_per_week ?? 'N/A'}\n`;
@@ -70,7 +75,9 @@ function formatQuestionnaireDbColumnsForPrompt(questionnaire: Questionnaire): st
   return prompt;
 }
 
-function formatQuestionnaireV1ForPrompt(structuredData: StructuredQuestionnaireData): string {
+function formatQuestionnaireV1ForPrompt(
+  structuredData: StructuredQuestionnaireData
+): string {
   let prompt = '## Client Questionnaire Data (legacy slider format)\n\n';
   prompt += '### Section 1 - Starting Point\n';
   prompt += `- Energy Level: ${structuredData.section1_energy_level ?? 'N/A'}/10\n`;
@@ -110,7 +117,9 @@ function formatQuestionnaireV1ForPrompt(structuredData: StructuredQuestionnaireD
   return prompt;
 }
 
-function formatQuestionnaireV2ForPrompt(d: StructuredQuestionnaireData): string {
+function formatQuestionnaireV2ForPrompt(
+  d: StructuredQuestionnaireData
+): string {
   let prompt = '## Client Questionnaire Data (structured intake, v2)\n\n';
   prompt +=
     '**Training context:** Sessions are at the **trainer’s gym** (on-site coaching with full facility access). Program for in-person training, not a generic home plan.\n\n';

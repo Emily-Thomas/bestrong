@@ -1,16 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
 import {
+  AlertTriangle,
   ArrowLeft,
   Loader2,
   Mail,
   Pencil,
   Sparkles,
-  AlertTriangle,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,13 +30,13 @@ import {
 } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { trainersApi, type Trainer } from '@/lib/api';
+import { type Trainer, trainersApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 function initials(first: string, last: string): string {
   const a = first.trim().charAt(0).toUpperCase();
   const b = last.trim().charAt(0).toUpperCase();
-  return (a + b) || '?';
+  return a + b || '?';
 }
 
 export default function TrainerDetailPage() {
@@ -172,7 +172,9 @@ export default function TrainerDetailPage() {
                     {trainer.persona_generated_at ? (
                       <p className="text-xs text-muted-foreground">
                         Persona generated{' '}
-                        {new Date(trainer.persona_generated_at).toLocaleString()}
+                        {new Date(
+                          trainer.persona_generated_at
+                        ).toLocaleString()}
                       </p>
                     ) : null}
                   </div>
@@ -199,12 +201,14 @@ export default function TrainerDetailPage() {
                 </div>
               </div>
               {genError ? (
-                <p className="relative mt-4 text-sm text-destructive">{genError}</p>
+                <p className="relative mt-4 text-sm text-destructive">
+                  {genError}
+                </p>
               ) : null}
               {trainer.persona_stale && p ? (
                 <p className="relative mt-4 text-sm text-amber-800 dark:text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-                  Raw coaching text changed since this persona was generated. Regenerate
-                  to align AI recommendations with your latest notes.
+                  Raw coaching text changed since this persona was generated.
+                  Regenerate to align AI recommendations with your latest notes.
                 </p>
               ) : null}
             </div>
@@ -212,14 +216,20 @@ export default function TrainerDetailPage() {
             {!p ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Build a structured persona</CardTitle>
+                  <CardTitle className="text-lg">
+                    Build a structured persona
+                  </CardTitle>
                   <CardDescription>
-                    We&apos;ll read your free-form notes and produce a consistent coaching
-                    profile—pillars, client fit, and instructions for program generation.
+                    We&apos;ll read your free-form notes and produce a
+                    consistent coaching profile—pillars, client fit, and
+                    instructions for program generation.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button onClick={() => void runGenerate()} disabled={generating}>
+                  <Button
+                    onClick={() => void runGenerate()}
+                    disabled={generating}
+                  >
                     {generating ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -258,14 +268,18 @@ export default function TrainerDetailPage() {
                       </p>
                       <Separator />
                       <div>
-                        <h3 className="text-sm font-medium mb-3">Programming pillars</h3>
+                        <h3 className="text-sm font-medium mb-3">
+                          Programming pillars
+                        </h3>
                         <div className="grid gap-3 sm:grid-cols-2">
                           {(p.programming_pillars ?? []).map((pillar) => (
                             <div
                               key={pillar.name}
                               className="rounded-xl border bg-card/50 p-4 shadow-sm"
                             >
-                              <p className="font-medium text-sm">{pillar.name}</p>
+                              <p className="font-medium text-sm">
+                                {pillar.name}
+                              </p>
                               <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
                                 {pillar.summary}
                               </p>
@@ -281,11 +295,15 @@ export default function TrainerDetailPage() {
                   <div className="grid gap-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Coaching story</CardTitle>
+                        <CardTitle className="text-base">
+                          Coaching story
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm text-muted-foreground leading-relaxed">
                         <p>
-                          <span className="font-medium text-foreground">Headline: </span>
+                          <span className="font-medium text-foreground">
+                            Headline:{' '}
+                          </span>
                           {p.coaching_headline}
                         </p>
                         <p>{p.coaching_narrative}</p>
@@ -293,7 +311,9 @@ export default function TrainerDetailPage() {
                     </Card>
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Progression & intensity</CardTitle>
+                        <CardTitle className="text-base">
+                          Progression & intensity
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4 text-sm text-muted-foreground leading-relaxed">
                         <div>
@@ -325,7 +345,9 @@ export default function TrainerDetailPage() {
                           {p.client_archetype_summary}
                         </p>
                         <div>
-                          <p className="text-sm font-medium mb-2">Typical needs</p>
+                          <p className="text-sm font-medium mb-2">
+                            Typical needs
+                          </p>
                           <ul className="list-disc pl-5 space-y-1.5 text-sm text-muted-foreground">
                             {(p.ideal_client_needs ?? []).map((line) => (
                               <li key={line}>{line}</li>
@@ -333,7 +355,9 @@ export default function TrainerDetailPage() {
                           </ul>
                         </div>
                         <div>
-                          <p className="text-sm font-medium mb-2">What they avoid</p>
+                          <p className="text-sm font-medium mb-2">
+                            What they avoid
+                          </p>
                           <ul className="list-disc pl-5 space-y-1.5 text-sm text-muted-foreground">
                             {(p.programming_anti_patterns ?? []).map((line) => (
                               <li key={line}>{line}</li>
@@ -348,10 +372,13 @@ export default function TrainerDetailPage() {
                 <TabsContent value="ai" className="mt-6">
                   <Card className="border-primary/20 bg-muted/20">
                     <CardHeader>
-                      <CardTitle className="text-base">Prompt injection block</CardTitle>
+                      <CardTitle className="text-base">
+                        Prompt injection block
+                      </CardTitle>
                       <CardDescription>
-                        This paragraph is written for downstream AI when building programs.
-                        It encodes this coach&apos;s biases and rules of thumb.
+                        This paragraph is written for downstream AI when
+                        building programs. It encodes this coach&apos;s biases
+                        and rules of thumb.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -369,10 +396,12 @@ export default function TrainerDetailPage() {
                 <CardHeader className="pb-2">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <CardTitle className="text-base">Original raw inputs</CardTitle>
+                      <CardTitle className="text-base">
+                        Original raw inputs
+                      </CardTitle>
                       <CardDescription>
-                        Verbatim text used to generate the persona. Edit these from the
-                        trainer list or edit flow.
+                        Verbatim text used to generate the persona. Edit these
+                        from the trainer list or edit flow.
                       </CardDescription>
                     </div>
                     <CollapsibleTrigger asChild>

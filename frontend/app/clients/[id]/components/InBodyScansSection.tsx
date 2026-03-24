@@ -12,10 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  type InBodyScan,
-  inbodyScansApi,
-} from '@/lib/api';
+import { type InBodyScan, inbodyScansApi } from '@/lib/api';
 import { ScanDetailsModal } from './ScanDetailsModal';
 import { ScanReviewModal } from './ScanReviewModal';
 import { ScanUploadModal } from './ScanUploadModal';
@@ -65,19 +62,17 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
           const response = await inbodyScansApi.getStatus(scanId);
           if (response.success && response.data) {
             const { extraction_status, scan } = response.data;
-            
+
             if (extraction_status === 'completed' && scan) {
               // Update the scan in the list
-              setScans((prev) =>
-                prev.map((s) => (s.id === scanId ? scan : s))
-              );
+              setScans((prev) => prev.map((s) => (s.id === scanId ? scan : s)));
               // Remove from polling set
               setPollingScans((prev) => {
                 const next = new Set(prev);
                 next.delete(scanId);
                 return next;
               });
-              
+
               // Open review modal if this is a new extraction
               if (scan.extraction_status === 'completed' && !scan.verified) {
                 setSelectedScan(scan);
@@ -153,7 +148,9 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
       const dateA = a.scan_date ? new Date(a.scan_date).getTime() : 0;
       const dateB = b.scan_date ? new Date(b.scan_date).getTime() : 0;
       if (dateA !== dateB) return dateB - dateA;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     });
     return sorted[0].id === scan.id;
   };
@@ -164,7 +161,9 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
       const dateA = a.scan_date ? new Date(a.scan_date).getTime() : 0;
       const dateB = b.scan_date ? new Date(b.scan_date).getTime() : 0;
       if (dateA !== dateB) return dateA - dateB;
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return (
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
     });
     return sorted[0].id === scan.id;
   };
@@ -231,33 +230,35 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
                             {new Date(scan.scan_date).toLocaleDateString()}
                           </span>
                         )}
-                        {scan.weight_lbs && (() => {
-                          const weight = formatNumber(scan.weight_lbs);
-                          return weight ? (
-                            <span>
-                              <span className="font-medium">Weight:</span>{' '}
-                              {weight} lbs
-                            </span>
-                          ) : null;
-                        })()}
-                        {scan.percent_body_fat && (() => {
-                          const bodyFat = formatNumber(scan.percent_body_fat);
-                          return bodyFat ? (
-                            <span>
-                              <span className="font-medium">Body Fat:</span>{' '}
-                              {bodyFat}%
-                            </span>
-                          ) : null;
-                        })()}
-                        {scan.bmi && (() => {
-                          const bmi = formatNumber(scan.bmi);
-                          return bmi ? (
-                            <span>
-                              <span className="font-medium">BMI:</span>{' '}
-                              {bmi}
-                            </span>
-                          ) : null;
-                        })()}
+                        {scan.weight_lbs &&
+                          (() => {
+                            const weight = formatNumber(scan.weight_lbs);
+                            return weight ? (
+                              <span>
+                                <span className="font-medium">Weight:</span>{' '}
+                                {weight} lbs
+                              </span>
+                            ) : null;
+                          })()}
+                        {scan.percent_body_fat &&
+                          (() => {
+                            const bodyFat = formatNumber(scan.percent_body_fat);
+                            return bodyFat ? (
+                              <span>
+                                <span className="font-medium">Body Fat:</span>{' '}
+                                {bodyFat}%
+                              </span>
+                            ) : null;
+                          })()}
+                        {scan.bmi &&
+                          (() => {
+                            const bmi = formatNumber(scan.bmi);
+                            return bmi ? (
+                              <span>
+                                <span className="font-medium">BMI:</span> {bmi}
+                              </span>
+                            ) : null;
+                          })()}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Uploaded:{' '}
@@ -266,18 +267,19 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {scan.extraction_status === 'completed' && !scan.verified && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedScan(scan);
-                          setReviewModalOpen(true);
-                        }}
-                      >
-                        Review
-                      </Button>
-                    )}
+                    {scan.extraction_status === 'completed' &&
+                      !scan.verified && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedScan(scan);
+                            setReviewModalOpen(true);
+                          }}
+                        >
+                          Review
+                        </Button>
+                      )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -326,4 +328,3 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
     </>
   );
 }
-

@@ -1,8 +1,5 @@
 import pool from '../config/database';
-import type {
-  ActualWorkout,
-  CreateActualWorkoutInput,
-} from '../types';
+import type { ActualWorkout, CreateActualWorkoutInput } from '../types';
 
 export async function createActualWorkout(
   input: CreateActualWorkoutInput
@@ -44,7 +41,9 @@ export async function createActualWorkout(
   const actualWorkout = result.rows[0];
   // Parse JSONB actual_performance if it's a string
   if (actualWorkout && typeof actualWorkout.actual_performance === 'string') {
-    actualWorkout.actual_performance = JSON.parse(actualWorkout.actual_performance);
+    actualWorkout.actual_performance = JSON.parse(
+      actualWorkout.actual_performance
+    );
   }
   return actualWorkout;
 }
@@ -60,7 +59,9 @@ export async function getActualWorkoutByWorkoutId(
   if (result.rows[0]) {
     const actualWorkout = result.rows[0];
     if (typeof actualWorkout.actual_performance === 'string') {
-      actualWorkout.actual_performance = JSON.parse(actualWorkout.actual_performance);
+      actualWorkout.actual_performance = JSON.parse(
+        actualWorkout.actual_performance
+      );
     }
   }
 
@@ -78,7 +79,9 @@ export async function getActualWorkoutById(
   if (result.rows[0]) {
     const actualWorkout = result.rows[0];
     if (typeof actualWorkout.actual_performance === 'string') {
-      actualWorkout.actual_performance = JSON.parse(actualWorkout.actual_performance);
+      actualWorkout.actual_performance = JSON.parse(
+        actualWorkout.actual_performance
+      );
     }
   }
 
@@ -97,8 +100,8 @@ export async function getActualWorkoutsByWorkoutIds(
   }
 
   // Filter out any invalid IDs
-  const validWorkoutIds = workoutIds.filter((id): id is number => 
-    typeof id === 'number' && !Number.isNaN(id) && id > 0
+  const validWorkoutIds = workoutIds.filter(
+    (id): id is number => typeof id === 'number' && !Number.isNaN(id) && id > 0
   );
 
   if (validWorkoutIds.length === 0) {
@@ -106,8 +109,10 @@ export async function getActualWorkoutsByWorkoutIds(
   }
 
   // Create placeholders for the IN clause
-  const placeholders = validWorkoutIds.map((_, index) => `$${index + 1}`).join(', ');
-  
+  const placeholders = validWorkoutIds
+    .map((_, index) => `$${index + 1}`)
+    .join(', ');
+
   const result = await pool.query<ActualWorkout>(
     `SELECT * FROM actual_workouts WHERE workout_id IN (${placeholders})`,
     validWorkoutIds
@@ -115,11 +120,16 @@ export async function getActualWorkoutsByWorkoutIds(
 
   // Parse JSONB actual_performance for each row and filter out any invalid rows
   return result.rows
-    .filter((row): row is ActualWorkout => row !== null && row !== undefined && row.workout_id !== undefined)
+    .filter(
+      (row): row is ActualWorkout =>
+        row !== null && row !== undefined && row.workout_id !== undefined
+    )
     .map((actualWorkout) => {
       if (typeof actualWorkout.actual_performance === 'string') {
         try {
-          actualWorkout.actual_performance = JSON.parse(actualWorkout.actual_performance);
+          actualWorkout.actual_performance = JSON.parse(
+            actualWorkout.actual_performance
+          );
         } catch (e) {
           console.error('Error parsing actual_performance JSON:', e);
           // Keep the string value if parsing fails
@@ -194,7 +204,9 @@ export async function updateActualWorkout(
   if (result.rows[0]) {
     const actualWorkout = result.rows[0];
     if (typeof actualWorkout.actual_performance === 'string') {
-      actualWorkout.actual_performance = JSON.parse(actualWorkout.actual_performance);
+      actualWorkout.actual_performance = JSON.parse(
+        actualWorkout.actual_performance
+      );
     }
   }
 
@@ -202,7 +214,8 @@ export async function updateActualWorkout(
 }
 
 export async function deleteActualWorkout(id: number): Promise<boolean> {
-  const result = await pool.query('DELETE FROM actual_workouts WHERE id = $1', [id]);
+  const result = await pool.query('DELETE FROM actual_workouts WHERE id = $1', [
+    id,
+  ]);
   return (result.rowCount ?? 0) > 0;
 }
-

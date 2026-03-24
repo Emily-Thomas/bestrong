@@ -1,9 +1,9 @@
 import { type Request, type Response, Router } from 'express';
 import multer from 'multer';
 import { authenticateToken } from '../middleware/auth';
-import * as inbodyScanService from '../services/inbody-scan.service';
-import * as inbodyExtractionService from '../services/inbody-extraction.service';
 import * as fileStorageService from '../services/file-storage.service';
+import * as inbodyExtractionService from '../services/inbody-extraction.service';
+import * as inbodyScanService from '../services/inbody-scan.service';
 import type { UpdateInBodyScanInput } from '../types';
 
 const router = Router();
@@ -56,10 +56,14 @@ router.post(
 
       // Upload file using storage service (handles local dev vs production)
       const filePath = `inbody-scans/${clientId}/${Date.now()}-${req.file.originalname}`;
-      const fileUrl = await fileStorageService.uploadFile(filePath, req.file.buffer, {
-        access: 'public',
-        contentType: 'image/png',
-      });
+      const fileUrl = await fileStorageService.uploadFile(
+        filePath,
+        req.file.buffer,
+        {
+          access: 'public',
+          contentType: 'image/png',
+        }
+      );
 
       // Create database record
       const scan = await inbodyScanService.createInBodyScan(
@@ -94,9 +98,13 @@ router.post(
 );
 
 // Async function to extract data
-async function extractInBodyDataAsync(scanId: number, pdfBuffer: Buffer): Promise<void> {
+async function extractInBodyDataAsync(
+  scanId: number,
+  pdfBuffer: Buffer
+): Promise<void> {
   try {
-    const extractedData = await inbodyExtractionService.extractInBodyData(pdfBuffer);
+    const extractedData =
+      await inbodyExtractionService.extractInBodyData(pdfBuffer);
 
     await inbodyScanService.updateExtractionResult(scanId, {
       extraction_status: 'completed',
@@ -104,7 +112,8 @@ async function extractInBodyDataAsync(scanId: number, pdfBuffer: Buffer): Promis
     });
   } catch (error) {
     console.error(`Extraction failed for scan ${scanId}:`, error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     await inbodyScanService.updateExtractionResult(scanId, {
       extraction_status: 'failed',
       extraction_raw_response: errorMessage,
@@ -133,7 +142,11 @@ router.get('/:id/status', async (req: Request, res: Response) => {
       success: true,
       data: {
         extraction_status: scan.extraction_status,
-        scan: scan.extraction_status === 'completed' || scan.extraction_status === 'verified' ? scan : undefined,
+        scan:
+          scan.extraction_status === 'completed' ||
+          scan.extraction_status === 'verified'
+            ? scan
+            : undefined,
       },
     });
   } catch (error) {
@@ -195,10 +208,13 @@ router.get('/client/:clientId/latest', async (req: Request, res: Response) => {
       return;
     }
 
-    const scan = await inbodyScanService.getLatestInBodyScanByClientId(clientId);
+    const scan =
+      await inbodyScanService.getLatestInBodyScanByClientId(clientId);
 
     if (!scan) {
-      res.status(404).json({ success: false, error: 'No scan found for this client' });
+      res
+        .status(404)
+        .json({ success: false, error: 'No scan found for this client' });
       return;
     }
 
@@ -210,33 +226,39 @@ router.get('/client/:clientId/latest', async (req: Request, res: Response) => {
 });
 
 // Check if client has scan
-router.get('/client/:clientId/has-scan', async (req: Request, res: Response) => {
-  try {
-    const clientId = parseInt(req.params.clientId, 10);
+router.get(
+  '/client/:clientId/has-scan',
+  async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId, 10);
 
-    if (Number.isNaN(clientId)) {
-      res.status(400).json({ success: false, error: 'Invalid client ID' });
-      return;
+      if (Number.isNaN(clientId)) {
+        res.status(400).json({ success: false, error: 'Invalid client ID' });
+        return;
+      }
+
+      const hasScan = await inbodyScanService.hasInBodyScan(clientId);
+      const latestScan = hasScan
+        ? await inbodyScanService.getLatestInBodyScanByClientId(clientId)
+        : null;
+
+      res.json({
+        success: true,
+        data: {
+          has_scan: hasScan,
+          scan_count: hasScan
+            ? (await inbodyScanService.getInBodyScansByClientId(clientId))
+                .length
+            : 0,
+          latest_scan_id: latestScan?.id || null,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ success: false, error: message });
     }
-
-    const hasScan = await inbodyScanService.hasInBodyScan(clientId);
-    const latestScan = hasScan
-      ? await inbodyScanService.getLatestInBodyScanByClientId(clientId)
-      : null;
-
-    res.json({
-      success: true,
-      data: {
-        has_scan: hasScan,
-        scan_count: hasScan ? (await inbodyScanService.getInBodyScansByClientId(clientId)).length : 0,
-        latest_scan_id: latestScan?.id || null,
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ success: false, error: message });
   }
-});
+);
 
 // Update/verify scan data
 router.put('/:id', async (req: Request, res: Response) => {
@@ -256,7 +278,11 @@ router.put('/:id', async (req: Request, res: Response) => {
     const input: UpdateInBodyScanInput = req.body;
 
     // Note: verified_by is handled in the service layer when verified is set to true
-    const scan = await inbodyScanService.updateInBodyScan(id, input, req.user.userId);
+    const scan = await inbodyScanService.updateInBodyScan(
+      id,
+      input,
+      req.user.userId
+    );
 
     if (!scan) {
       res.status(404).json({ success: false, error: 'Scan not found' });
@@ -295,13 +321,21 @@ router.get('/:id/download', async (req: Request, res: Response) => {
     if (scan.file_path.startsWith('/api/files/')) {
       // Serve file directly for local development
       try {
-        const fileBuffer = await fileStorageService.readFileFromStorage(scan.file_path);
+        const fileBuffer = await fileStorageService.readFileFromStorage(
+          scan.file_path
+        );
         res.setHeader('Content-Type', scan.mime_type || 'image/png');
-        res.setHeader('Content-Disposition', `attachment; filename="${scan.file_name}"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${scan.file_name}"`
+        );
         res.send(fileBuffer);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        res.status(500).json({ success: false, error: `Failed to read file: ${message}` });
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
+        res
+          .status(500)
+          .json({ success: false, error: `Failed to read file: ${message}` });
       }
     } else {
       // Redirect to the blob URL (production)
@@ -325,7 +359,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     // Get scan before deleting to access file_path
     const scan = await inbodyScanService.getInBodyScanById(id);
-    
+
     // Delete file from storage
     if (scan) {
       try {
@@ -335,7 +369,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
         // Continue with database deletion even if file deletion fails
       }
     }
-    
+
     // Delete database record
     const deleted = await inbodyScanService.deleteInBodyScan(id);
 
@@ -355,4 +389,3 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 export default router;
-

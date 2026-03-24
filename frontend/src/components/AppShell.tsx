@@ -11,8 +11,8 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 
 interface AppShellProps {
   title?: string;
@@ -29,7 +29,13 @@ const navItems = [
   { href: '/exercise-library', label: 'Exercise library', icon: Dumbbell },
 ];
 
-export function AppShell({ title, description, action, backAction, children }: AppShellProps) {
+export function AppShell({
+  title,
+  description,
+  action,
+  backAction,
+  children,
+}: AppShellProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -47,7 +53,9 @@ export function AppShell({ title, description, action, backAction, children }: A
           <Link href="/dashboard" className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             <div>
-              <div className="text-lg font-semibold leading-tight">Be Strong</div>
+              <div className="text-lg font-semibold leading-tight">
+                Be Strong
+              </div>
               <div className="text-xs text-muted-foreground">
                 Health &amp; Fitness
               </div>
@@ -82,9 +90,7 @@ export function AppShell({ title, description, action, backAction, children }: A
             <div className="text-sm font-semibold">
               {user?.name || user?.email || 'Coach'}
             </div>
-            <div className="text-xs text-muted-foreground">
-              Admin
-            </div>
+            <div className="text-xs text-muted-foreground">Admin</div>
             <Button
               variant="ghost"
               size="sm"
@@ -118,10 +124,14 @@ export function AppShell({ title, description, action, backAction, children }: A
                 <div className="flex-1">
                   {backAction && <div className="mb-2">{backAction}</div>}
                   {title && (
-                    <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+                    <h1 className="text-3xl font-semibold tracking-tight">
+                      {title}
+                    </h1>
                   )}
                   {description && (
-                    <p className="text-sm text-muted-foreground">{description}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {description}
+                    </p>
                   )}
                 </div>
                 {action && <div className="sm:ml-4">{action}</div>}
@@ -134,4 +144,3 @@ export function AppShell({ title, description, action, backAction, children }: A
     </div>
   );
 }
-

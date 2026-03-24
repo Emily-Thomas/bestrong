@@ -1,19 +1,14 @@
 'use client';
 
+import { Frown, Meh, Plus, Smile, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Smile, Meh, Frown, Plus, Trash2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import type { ActualExercisePerformance, ExerciseRound } from '@/lib/api';
 
 interface ExerciseInputCardProps {
@@ -41,7 +36,7 @@ export function ExerciseInputCard({
 
   // Initialize rounds if not present
   const rounds = exercise.rounds || [];
-  const numSets = proposedExercise?.sets || exercise.sets_completed || 1;
+  const _numSets = proposedExercise?.sets || exercise.sets_completed || 1;
 
   const addRound = () => {
     const newRound: ExerciseRound = {
@@ -104,9 +99,7 @@ export function ExerciseInputCard({
                 id={`reps-${exerciseIndex}`}
                 type="text"
                 value={exercise.reps_completed || ''}
-                onChange={(e) =>
-                  onUpdate({ reps_completed: e.target.value })
-                }
+                onChange={(e) => onUpdate({ reps_completed: e.target.value })}
                 placeholder="e.g., 8-10 or 8"
                 className="h-12 text-lg"
               />

@@ -17,14 +17,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import {
-  type Workout,
-  workoutsApi,
-} from '@/lib/api';
+import { type Workout, workoutsApi } from '@/lib/api';
 
 export default function WorkoutDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   const clientId = Number(params.id);
   const workoutId = Number(params.workoutId);
 
@@ -43,7 +40,7 @@ export default function WorkoutDetailPage() {
       } else {
         setError(response.error || 'Failed to load workout');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to load workout');
     } finally {
       setLoading(false);
@@ -104,7 +101,10 @@ export default function WorkoutDetailPage() {
   return (
     <ProtectedRoute>
       <AppShell
-        title={workout.workout_name || `Week ${workout.week_number}, Session ${workout.session_number}`}
+        title={
+          workout.workout_name ||
+          `Week ${workout.week_number}, Session ${workout.session_number}`
+        }
         description="Workout details and performance"
         backAction={
           <Button variant="ghost" size="sm" asChild>
@@ -128,10 +128,12 @@ export default function WorkoutDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>
-                    {workout.workout_name || `Week ${workout.week_number}, Session ${workout.session_number}`}
+                    {workout.workout_name ||
+                      `Week ${workout.week_number}, Session ${workout.session_number}`}
                   </CardTitle>
                   <CardDescription>
-                    Week {workout.week_number} • Session {workout.session_number}
+                    Week {workout.week_number} • Session{' '}
+                    {workout.session_number}
                   </CardDescription>
                 </div>
                 {getStatusBadge(workout.status)}
@@ -148,12 +150,14 @@ export default function WorkoutDetailPage() {
               )}
               {workout.scheduled_date && (
                 <div className="text-sm text-muted-foreground">
-                  Scheduled: {new Date(workout.scheduled_date).toLocaleDateString()}
+                  Scheduled:{' '}
+                  {new Date(workout.scheduled_date).toLocaleDateString()}
                 </div>
               )}
               {workout.completed_at && (
                 <div className="text-sm text-muted-foreground">
-                  Completed: {new Date(workout.completed_at).toLocaleDateString()}
+                  Completed:{' '}
+                  {new Date(workout.completed_at).toLocaleDateString()}
                 </div>
               )}
             </CardContent>
@@ -165,19 +169,22 @@ export default function WorkoutDetailPage() {
               <CardTitle>Proposed Workout Plan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {workout.workout_data.warmup && workout.workout_data.warmup.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Warmup</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                    {workout.workout_data.warmup.map((ex, idx) => (
-                      <li key={idx}>
-                        {ex.name}
-                        {ex.notes && <span className="ml-2">- {ex.notes}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {workout.workout_data.warmup &&
+                workout.workout_data.warmup.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Warmup</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      {workout.workout_data.warmup.map((ex, idx) => (
+                        <li key={idx}>
+                          {ex.name}
+                          {ex.notes && (
+                            <span className="ml-2">- {ex.notes}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
               <div>
                 <h4 className="font-semibold mb-2">Exercises</h4>
@@ -204,19 +211,22 @@ export default function WorkoutDetailPage() {
                 </div>
               </div>
 
-              {workout.workout_data.cooldown && workout.workout_data.cooldown.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Cooldown</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                    {workout.workout_data.cooldown.map((ex, idx) => (
-                      <li key={idx}>
-                        {ex.name}
-                        {ex.notes && <span className="ml-2">- {ex.notes}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {workout.workout_data.cooldown &&
+                workout.workout_data.cooldown.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Cooldown</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      {workout.workout_data.cooldown.map((ex, idx) => (
+                        <li key={idx}>
+                          {ex.name}
+                          {ex.notes && (
+                            <span className="ml-2">- {ex.notes}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
             </CardContent>
           </Card>
 
@@ -253,14 +263,18 @@ export default function WorkoutDetailPage() {
                         );
                         return (
                           <div key={idx} className="p-3 border rounded-lg">
-                            <div className="font-medium">{ex.exercise_name}</div>
+                            <div className="font-medium">
+                              {ex.exercise_name}
+                            </div>
                             <div className="grid gap-2 sm:grid-cols-2 mt-2">
                               <div>
                                 <div className="text-xs text-muted-foreground">
                                   Proposed
                                 </div>
                                 <div className="text-sm">
-                                  {proposedEx?.sets && <span>{proposedEx.sets} sets</span>}
+                                  {proposedEx?.sets && (
+                                    <span>{proposedEx.sets} sets</span>
+                                  )}
                                   {proposedEx?.reps && (
                                     <span> • {proposedEx.reps} reps</span>
                                   )}
@@ -286,7 +300,9 @@ export default function WorkoutDetailPage() {
                                   {ex.weight_used && (
                                     <span> • {ex.weight_used}</span>
                                   )}
-                                  {ex.rir !== undefined && <span> • RIR {ex.rir}</span>}
+                                  {ex.rir !== undefined && (
+                                    <span> • RIR {ex.rir}</span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -318,7 +334,9 @@ export default function WorkoutDetailPage() {
                   <>
                     <Separator />
                     <div>
-                      <h4 className="font-semibold mb-2">Trainer Observations</h4>
+                      <h4 className="font-semibold mb-2">
+                        Trainer Observations
+                      </h4>
                       <p className="text-sm text-muted-foreground">
                         {workout.actual_workout.trainer_observations}
                       </p>
@@ -330,7 +348,10 @@ export default function WorkoutDetailPage() {
                   <>
                     <Separator />
                     <div className="text-sm text-muted-foreground">
-                      Completed: {new Date(workout.actual_workout.completed_at).toLocaleString()}
+                      Completed:{' '}
+                      {new Date(
+                        workout.actual_workout.completed_at
+                      ).toLocaleString()}
                     </div>
                   </>
                 )}
@@ -342,4 +363,3 @@ export default function WorkoutDetailPage() {
     </ProtectedRoute>
   );
 }
-

@@ -2,8 +2,8 @@ import type {
   Exercise,
   ExerciseLibraryExercise,
   ExerciseLibraryMetadataSnapshot,
-  WorkoutData,
   LLMWorkoutResponse,
+  WorkoutData,
 } from '../types';
 
 function normalizeName(name: string): string {
@@ -56,7 +56,7 @@ function enrichExerciseFromLibrary(
   return {
     ...exercise,
     // Preserve explicit overrides from the workout; fall back to library defaults where missing
-    sets: exercise.sets ?? (lib.default_sets ?? undefined),
+    sets: exercise.sets ?? lib.default_sets ?? undefined,
     reps:
       exercise.reps !== undefined
         ? exercise.reps
@@ -66,19 +66,19 @@ function enrichExerciseFromLibrary(
     weight:
       exercise.weight !== undefined
         ? exercise.weight
-        : lib.default_load ?? exercise.weight,
+        : (lib.default_load ?? exercise.weight),
     rest_seconds:
       exercise.rest_seconds !== undefined
         ? exercise.rest_seconds
-        : lib.default_rest_seconds ?? exercise.rest_seconds,
+        : (lib.default_rest_seconds ?? exercise.rest_seconds),
     tempo:
       exercise.tempo !== undefined
         ? exercise.tempo
-        : lib.default_tempo ?? exercise.tempo,
+        : (lib.default_tempo ?? exercise.tempo),
     notes:
       exercise.notes !== undefined
         ? exercise.notes
-        : lib.notes ?? exercise.notes,
+        : (lib.notes ?? exercise.notes),
     library_exercise_id: lib.id,
     library_exercise_name: lib.name,
     library_metadata: metadata,
@@ -123,4 +123,3 @@ export function enrichAIWorkoutsWithLibrary(
     ),
   }));
 }
-

@@ -1,20 +1,21 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import {
-  Loader2,
-  Pencil,
-  Plus,
-  Mail,
-  Sparkles,
   AlertTriangle,
   ChevronRight,
+  Loader2,
+  Mail,
+  Pencil,
+  Plus,
+  Sparkles,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -33,12 +34,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import {
-  trainersApi,
-  type Trainer,
-  type CreateTrainerInput,
-} from '@/lib/api';
+import { type CreateTrainerInput, type Trainer, trainersApi } from '@/lib/api';
 
 const EMPTY_FORM: CreateTrainerInput = {
   first_name: '',
@@ -53,7 +49,7 @@ const EMPTY_FORM: CreateTrainerInput = {
 function initials(first: string, last: string): string {
   const a = first.trim().charAt(0).toUpperCase();
   const b = last.trim().charAt(0).toUpperCase();
-  return (a + b) || '?';
+  return a + b || '?';
 }
 
 function trainerToForm(t: Trainer): CreateTrainerInput {
@@ -209,8 +205,8 @@ function TrainersPageContent() {
             <CardHeader>
               <CardTitle>No trainers yet</CardTitle>
               <CardDescription>
-                Add a trainer to capture how they coach and who their clients are. You can use this
-                when generating programs later.
+                Add a trainer to capture how they coach and who their clients
+                are. You can use this when generating programs later.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -262,7 +258,10 @@ function TrainersPageContent() {
                             Persona
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 h-5"
+                          >
                             Draft
                           </Badge>
                         )}
@@ -278,7 +277,8 @@ function TrainersPageContent() {
                       ) : null}
                       {!t.structured_persona ? (
                         <p className="text-xs text-muted-foreground pt-1">
-                          Generate a structured coaching persona from your raw notes.
+                          Generate a structured coaching persona from your raw
+                          notes.
                         </p>
                       ) : (
                         <p className="text-sm text-foreground/90 leading-relaxed line-clamp-3 pt-0.5">
@@ -385,11 +385,14 @@ function TrainersPageContent() {
                   placeholder="https://…"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Paste an image URL, or leave blank to use initials on the card.
+                  Paste an image URL, or leave blank to use initials on the
+                  card.
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="trainer-def">What defines them as a trainer</Label>
+                <Label htmlFor="trainer-def">
+                  What defines them as a trainer
+                </Label>
                 <Textarea
                   id="trainer-def"
                   value={form.raw_trainer_definition}
@@ -405,7 +408,9 @@ function TrainersPageContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="trainer-clients">What defines their clients&apos; needs</Label>
+                <Label htmlFor="trainer-clients">
+                  What defines their clients&apos; needs
+                </Label>
                 <Textarea
                   id="trainer-clients"
                   value={form.raw_client_needs}
@@ -432,7 +437,11 @@ function TrainersPageContent() {
               >
                 Cancel
               </Button>
-              <Button type="button" onClick={() => void submit()} disabled={saving}>
+              <Button
+                type="button"
+                onClick={() => void submit()}
+                disabled={saving}
+              >
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

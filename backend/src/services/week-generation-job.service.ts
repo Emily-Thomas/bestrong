@@ -1,5 +1,5 @@
 import pool from '../config/database';
-import type { WeekGenerationJob, CreateWeekGenerationJobInput } from '../types';
+import type { CreateWeekGenerationJobInput, WeekGenerationJob } from '../types';
 
 /**
  * Create a new week generation job
@@ -34,8 +34,12 @@ export async function createWeekGenerationJob(
     return result.rows[0];
   } catch (error) {
     // Log the error for debugging
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`Error in createWeekGenerationJob for recommendation ${input.recommendation_id}, week ${input.week_number}:`, errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `Error in createWeekGenerationJob for recommendation ${input.recommendation_id}, week ${input.week_number}:`,
+      errorMessage
+    );
     throw error;
   }
 }
@@ -159,7 +163,9 @@ export async function failWeekGenerationJob(
 /**
  * Get all pending week generation jobs (for cron processing)
  */
-export async function getPendingWeekGenerationJobs(): Promise<WeekGenerationJob[]> {
+export async function getPendingWeekGenerationJobs(): Promise<
+  WeekGenerationJob[]
+> {
   const result = await pool.query<WeekGenerationJob>(
     `SELECT * FROM week_generation_jobs 
      WHERE status = 'pending'

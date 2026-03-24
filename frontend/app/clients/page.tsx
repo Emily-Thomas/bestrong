@@ -77,7 +77,9 @@ export default function ClientsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/30 text-muted-foreground">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium">Client</th>
+                      <th className="px-4 py-3 text-left font-medium">
+                        Client
+                      </th>
                       <th className="px-4 py-3 text-left font-medium hidden md:table-cell">
                         Contact
                       </th>

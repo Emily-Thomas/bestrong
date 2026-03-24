@@ -77,7 +77,10 @@ export default function NewClientPage() {
                         required
                         value={formData.first_name}
                         onChange={(e) =>
-                          setFormData({ ...formData, first_name: e.target.value })
+                          setFormData({
+                            ...formData,
+                            first_name: e.target.value,
+                          })
                         }
                       />
                     </div>
@@ -91,7 +94,10 @@ export default function NewClientPage() {
                         required
                         value={formData.last_name}
                         onChange={(e) =>
-                          setFormData({ ...formData, last_name: e.target.value })
+                          setFormData({
+                            ...formData,
+                            last_name: e.target.value,
+                          })
                         }
                       />
                     </div>

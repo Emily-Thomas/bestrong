@@ -18,7 +18,9 @@ export function hashTrainerPersonaInputs(
     .digest('hex');
 }
 
-export function enrichTrainerWithPersonaMeta(t: Trainer): TrainerWithPersonaMeta {
+export function enrichTrainerWithPersonaMeta(
+  t: Trainer
+): TrainerWithPersonaMeta {
   const hash = hashTrainerPersonaInputs(
     t.raw_trainer_definition,
     t.raw_client_needs
@@ -102,7 +104,12 @@ export function trainersToCoachMatchOptions(
   return trainers
     .filter((t) => t.structured_persona?.ai_prompt_injection?.trim())
     .map((t) => {
-      const inj = t.structured_persona!.ai_prompt_injection!.trim();
+      const inj = t.structured_persona?.ai_prompt_injection?.trim();
+      if (!inj) {
+        throw new Error(
+          'Invariant: trainer passed filter must have prompt injection'
+        );
+      }
       const program_summary =
         inj.length > maxSummaryChars
           ? `${inj.slice(0, maxSummaryChars)}…`

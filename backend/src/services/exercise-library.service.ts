@@ -1,7 +1,7 @@
 import pool from '../config/database';
 import type {
-  ExerciseLibraryExercise,
   CreateExerciseLibraryExerciseInput,
+  ExerciseLibraryExercise,
   UpdateExerciseLibraryExerciseInput,
 } from '../types';
 
@@ -135,7 +135,8 @@ export async function updateExercise(
   if (updates.secondary_muscle_groups !== undefined) {
     updateFields.push(`secondary_muscle_groups = $${param}`);
     values.push(
-      updates.secondary_muscle_groups && updates.secondary_muscle_groups.length > 0
+      updates.secondary_muscle_groups &&
+        updates.secondary_muscle_groups.length > 0
         ? updates.secondary_muscle_groups
         : null
     );
@@ -222,4 +223,3 @@ export async function archiveExercise(
   );
   return result.rows[0] || null;
 }
-

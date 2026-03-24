@@ -1,11 +1,11 @@
 'use client';
 
+import { Frown, Meh, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { Smile, Meh, Frown } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 
 interface WorkoutRatingSectionProps {
   workoutRating?: 'happy' | 'meh' | 'sad';
@@ -73,7 +73,10 @@ export function WorkoutRatingSection({
 
         {/* Trainer Observations */}
         <div className="space-y-2">
-          <Label htmlFor="trainer-observations" className="text-base font-semibold">
+          <Label
+            htmlFor="trainer-observations"
+            className="text-base font-semibold"
+          >
             What went right or wrong?
           </Label>
           <Textarea

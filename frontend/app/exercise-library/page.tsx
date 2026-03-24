@@ -1,9 +1,10 @@
 'use client';
 
+import { Archive, Edit2, Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Edit2, Archive, RefreshCw } from 'lucide-react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,16 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -29,10 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  exerciseLibraryApi,
-  type ExerciseLibraryExercise,
-} from '@/lib/api';
+import { Textarea } from '@/components/ui/textarea';
+import { type ExerciseLibraryExercise, exerciseLibraryApi } from '@/lib/api';
 
 interface ExerciseFormState {
   id?: number;
@@ -118,7 +115,10 @@ export default function ExerciseLibraryPage() {
     const term = search.trim().toLowerCase();
     const filtered = exercises.filter((ex) => {
       if (!showArchived && ex.status === 'archived') return false;
-      if (primaryFilter !== 'all' && ex.primary_muscle_group !== primaryFilter) {
+      if (
+        primaryFilter !== 'all' &&
+        ex.primary_muscle_group !== primaryFilter
+      ) {
         return false;
       }
       if (equipmentFilter !== 'all' && ex.equipment !== equipmentFilter) {
@@ -137,7 +137,14 @@ export default function ExerciseLibraryPage() {
       );
     });
     return filtered;
-  }, [exercises, search, showArchived, primaryFilter, equipmentFilter, categoryFilter]);
+  }, [
+    exercises,
+    search,
+    showArchived,
+    primaryFilter,
+    equipmentFilter,
+    categoryFilter,
+  ]);
 
   const totalItems = filteredExercises.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
@@ -161,9 +168,13 @@ export default function ExerciseLibraryPage() {
       equipment: exercise.equipment || '',
       category: exercise.category || '',
       default_sets:
-        exercise.default_sets !== undefined ? String(exercise.default_sets) : '',
+        exercise.default_sets !== undefined
+          ? String(exercise.default_sets)
+          : '',
       default_reps:
-        exercise.default_reps !== undefined ? String(exercise.default_reps) : '',
+        exercise.default_reps !== undefined
+          ? String(exercise.default_reps)
+          : '',
       default_load: exercise.default_load || '',
       default_rest_seconds:
         exercise.default_rest_seconds !== undefined
@@ -204,7 +215,9 @@ export default function ExerciseLibraryPage() {
       if (response.success && response.data) {
         const updatedExercise = response.data;
         setExercises((prev) =>
-          prev.map((ex) => (ex.id === updatedExercise.id ? updatedExercise : ex))
+          prev.map((ex) =>
+            ex.id === updatedExercise.id ? updatedExercise : ex
+          )
         );
       }
     } else {
@@ -229,7 +242,9 @@ export default function ExerciseLibraryPage() {
   };
 
   const handleRefresh = async () => {
-    const response = await exerciseLibraryApi.getAll({ status: showArchived ? 'all' : 'active' });
+    const response = await exerciseLibraryApi.getAll({
+      status: showArchived ? 'all' : 'active',
+    });
     if (response.success && response.data) {
       setExercises(response.data);
     }
@@ -246,8 +261,8 @@ export default function ExerciseLibraryPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                Create and manage atomic exercises (e.g., Barbell Bench Press, Back
-                Squat) for reuse in workouts.
+                Create and manage atomic exercises (e.g., Barbell Bench Press,
+                Back Squat) for reuse in workouts.
               </p>
             </div>
             <div className="flex gap-2">
@@ -266,8 +281,8 @@ export default function ExerciseLibraryPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Exercises</CardTitle>
               <CardDescription>
-                Search and filter your exercise library. Archived exercises are hidden
-                by default.
+                Search and filter your exercise library. Archived exercises are
+                hidden by default.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -359,8 +374,8 @@ export default function ExerciseLibraryPage() {
 
               {filteredExercises.length === 0 ? (
                 <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                  No exercises found. Try adjusting your search, toggling archived
-                  exercises, or create a new one.
+                  No exercises found. Try adjusting your search, toggling
+                  archived exercises, or create a new one.
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
@@ -377,7 +392,8 @@ export default function ExerciseLibraryPage() {
                               {exercise.name}
                             </CardTitle>
                             <CardDescription>
-                              {exercise.primary_muscle_group || 'Muscle group not set'}
+                              {exercise.primary_muscle_group ||
+                                'Muscle group not set'}
                             </CardDescription>
                           </div>
                           <div className="flex flex-col items-end gap-1">
@@ -399,7 +415,8 @@ export default function ExerciseLibraryPage() {
                           {exercise.default_sets !== undefined &&
                             exercise.default_reps !== undefined && (
                               <Badge variant="outline" className="text-xs">
-                                {exercise.default_sets} x {exercise.default_reps}
+                                {exercise.default_sets} x{' '}
+                                {exercise.default_reps}
                               </Badge>
                             )}
                           {exercise.default_load && (
@@ -444,7 +461,9 @@ export default function ExerciseLibraryPage() {
                             )}
                           </div>
                           <span className="text-[10px] text-muted-foreground">
-                            {exercise.status === 'archived' ? 'Archived' : 'Active'}
+                            {exercise.status === 'archived'
+                              ? 'Archived'
+                              : 'Active'}
                           </span>
                         </div>
                       </CardContent>
@@ -455,10 +474,9 @@ export default function ExerciseLibraryPage() {
               {filteredExercises.length > 0 && (
                 <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
                   <span>
-                    Showing{' '}
-                    {startIndex + 1}–
-                    {Math.min(startIndex + PAGE_SIZE, totalItems)} of {totalItems}{' '}
-                    exercises
+                    Showing {startIndex + 1}–
+                    {Math.min(startIndex + PAGE_SIZE, totalItems)} of{' '}
+                    {totalItems} exercises
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -522,7 +540,9 @@ export default function ExerciseLibraryPage() {
                   <Input
                     id="equipment"
                     value={formState.equipment}
-                    onChange={(e) => handleFormChange('equipment', e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange('equipment', e.target.value)
+                    }
                     placeholder="e.g., Barbell, Dumbbell"
                   />
                 </div>
@@ -546,7 +566,9 @@ export default function ExerciseLibraryPage() {
                     type="number"
                     min="0"
                     value={formState.default_sets}
-                    onChange={(e) => handleFormChange('default_sets', e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange('default_sets', e.target.value)
+                    }
                     placeholder="e.g., 3"
                   />
                 </div>
@@ -555,7 +577,9 @@ export default function ExerciseLibraryPage() {
                   <Input
                     id="default-reps"
                     value={formState.default_reps}
-                    onChange={(e) => handleFormChange('default_reps', e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange('default_reps', e.target.value)
+                    }
                     placeholder="e.g., 8-10"
                   />
                 </div>
@@ -567,7 +591,9 @@ export default function ExerciseLibraryPage() {
                   <Input
                     id="default-load"
                     value={formState.default_load}
-                    onChange={(e) => handleFormChange('default_load', e.target.value)}
+                    onChange={(e) =>
+                      handleFormChange('default_load', e.target.value)
+                    }
                     placeholder="e.g., RIR 2 or 70% 1RM"
                   />
                 </div>
@@ -591,7 +617,9 @@ export default function ExerciseLibraryPage() {
                 <Input
                   id="default-tempo"
                   value={formState.default_tempo}
-                  onChange={(e) => handleFormChange('default_tempo', e.target.value)}
+                  onChange={(e) =>
+                    handleFormChange('default_tempo', e.target.value)
+                  }
                   placeholder="e.g., 3-1-1-0"
                 />
               </div>
@@ -626,4 +654,3 @@ export default function ExerciseLibraryPage() {
     </ProtectedRoute>
   );
 }
-

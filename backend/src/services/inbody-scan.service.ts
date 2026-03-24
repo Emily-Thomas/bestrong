@@ -1,7 +1,7 @@
 import pool from '../config/database';
 import type {
-  InBodyScan,
   CreateInBodyScanInput,
+  InBodyScan,
   UpdateInBodyScanInput,
 } from '../types';
 
@@ -21,13 +21,22 @@ export async function createInBodyScan(
     `INSERT INTO inbody_scans (client_id, uploaded_by, file_path, file_name, file_size_bytes, mime_type)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [client_id, uploadedBy, file_path, file_name, file_size_bytes || null, mime_type]
+    [
+      client_id,
+      uploadedBy,
+      file_path,
+      file_name,
+      file_size_bytes || null,
+      mime_type,
+    ]
   );
 
   return result.rows[0];
 }
 
-export async function getInBodyScanById(id: number): Promise<InBodyScan | null> {
+export async function getInBodyScanById(
+  id: number
+): Promise<InBodyScan | null> {
   const result = await pool.query<InBodyScan>(
     'SELECT * FROM inbody_scans WHERE id = $1',
     [id]
@@ -224,7 +233,8 @@ export async function updateExtractionResult(
 }
 
 export async function deleteInBodyScan(id: number): Promise<boolean> {
-  const result = await pool.query('DELETE FROM inbody_scans WHERE id = $1', [id]);
+  const result = await pool.query('DELETE FROM inbody_scans WHERE id = $1', [
+    id,
+  ]);
   return (result.rowCount ?? 0) > 0;
 }
-

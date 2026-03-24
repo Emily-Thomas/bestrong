@@ -54,7 +54,9 @@ function injurySummary(d: QuestionnaireData): string | undefined {
   if (d.injury_red_flags === true) {
     parts.push('Red-flag symptoms reported.');
   }
-  return parts.length ? parts.join(' | ') : 'Current pain or injury (details in questionnaire JSON).';
+  return parts.length
+    ? parts.join(' | ')
+    : 'Current pain or injury (details in questionnaire JSON).';
 }
 
 function nutritionHabitsSummary(d: QuestionnaireData): string | undefined {
@@ -131,7 +133,9 @@ export function buildQuestionnaireApiInput(
     client_id: clientId,
     notes: JSON.stringify({ ...d, schema_version: 2 as const }),
     primary_goal: primaryGoal,
-    secondary_goals: d.goal_categories?.length ? [...d.goal_categories] : undefined,
+    secondary_goals: d.goal_categories?.length
+      ? [...d.goal_categories]
+      : undefined,
     available_days_per_week: d.available_days_per_week,
     preferred_session_length: preferred,
     fitness_equipment_access: ['trainer_gym'],

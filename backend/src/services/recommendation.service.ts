@@ -2,10 +2,10 @@ import pool from '../config/database';
 import type {
   Client,
   CreateRecommendationInput,
+  CreateWorkoutInput,
   Recommendation,
   Trainer,
   UpdateRecommendationInput,
-  CreateWorkoutInput,
 } from '../types';
 import * as trainerService from './trainer.service';
 import * as workoutService from './workout.service';
@@ -305,7 +305,7 @@ export async function activateClientAndRecommendation(
   recommendationId: number
 ): Promise<{ client: Client; recommendation: Recommendation }> {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 

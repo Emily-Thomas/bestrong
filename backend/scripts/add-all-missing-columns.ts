@@ -29,9 +29,15 @@ async function main() {
       );
     `);
     if (!checkClientStatus.rows[0].exists) {
-      await client.query(`ALTER TABLE clients ADD COLUMN status VARCHAR(50) DEFAULT 'prospect';`);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);`);
-      await client.query(`UPDATE clients SET status = 'prospect' WHERE status IS NULL;`);
+      await client.query(
+        `ALTER TABLE clients ADD COLUMN status VARCHAR(50) DEFAULT 'prospect';`
+      );
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);`
+      );
+      await client.query(
+        `UPDATE clients SET status = 'prospect' WHERE status IS NULL;`
+      );
       console.log('   ✅ Added clients.status');
     } else {
       console.log('   ℹ️  clients.status already exists');
@@ -46,32 +52,42 @@ async function main() {
       AND table_name = 'recommendations'
       AND column_name IN ('current_week', 'started_at', 'completed_at');
     `);
-    const existingRecColumns = checkRecColumns.rows.map(r => r.column_name);
+    const existingRecColumns = checkRecColumns.rows.map((r) => r.column_name);
 
     if (!existingRecColumns.includes('current_week')) {
-      await client.query(`ALTER TABLE recommendations ADD COLUMN current_week INTEGER DEFAULT 1;`);
-      await client.query(`UPDATE recommendations SET current_week = 1 WHERE current_week IS NULL;`);
+      await client.query(
+        `ALTER TABLE recommendations ADD COLUMN current_week INTEGER DEFAULT 1;`
+      );
+      await client.query(
+        `UPDATE recommendations SET current_week = 1 WHERE current_week IS NULL;`
+      );
       console.log('   ✅ Added recommendations.current_week');
     } else {
       console.log('   ℹ️  recommendations.current_week already exists');
     }
 
     if (!existingRecColumns.includes('started_at')) {
-      await client.query(`ALTER TABLE recommendations ADD COLUMN started_at TIMESTAMP;`);
+      await client.query(
+        `ALTER TABLE recommendations ADD COLUMN started_at TIMESTAMP;`
+      );
       console.log('   ✅ Added recommendations.started_at');
     } else {
       console.log('   ℹ️  recommendations.started_at already exists');
     }
 
     if (!existingRecColumns.includes('completed_at')) {
-      await client.query(`ALTER TABLE recommendations ADD COLUMN completed_at TIMESTAMP;`);
+      await client.query(
+        `ALTER TABLE recommendations ADD COLUMN completed_at TIMESTAMP;`
+      );
       console.log('   ✅ Added recommendations.completed_at');
     } else {
       console.log('   ℹ️  recommendations.completed_at already exists');
     }
 
     if (!existingRecColumns.includes('current_week')) {
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_recommendations_current_week ON recommendations(current_week);`);
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_recommendations_current_week ON recommendations(current_week);`
+      );
     }
 
     // 3. Add columns to workouts
@@ -83,25 +99,35 @@ async function main() {
       AND table_name = 'workouts'
       AND column_name IN ('status', 'scheduled_date', 'completed_at');
     `);
-    const existingWorkoutColumns = checkWorkoutColumns.rows.map(r => r.column_name);
+    const existingWorkoutColumns = checkWorkoutColumns.rows.map(
+      (r) => r.column_name
+    );
 
     if (!existingWorkoutColumns.includes('status')) {
-      await client.query(`ALTER TABLE workouts ADD COLUMN status VARCHAR(50) DEFAULT 'scheduled';`);
-      await client.query(`UPDATE workouts SET status = 'scheduled' WHERE status IS NULL;`);
+      await client.query(
+        `ALTER TABLE workouts ADD COLUMN status VARCHAR(50) DEFAULT 'scheduled';`
+      );
+      await client.query(
+        `UPDATE workouts SET status = 'scheduled' WHERE status IS NULL;`
+      );
       console.log('   ✅ Added workouts.status');
     } else {
       console.log('   ℹ️  workouts.status already exists');
     }
 
     if (!existingWorkoutColumns.includes('scheduled_date')) {
-      await client.query(`ALTER TABLE workouts ADD COLUMN scheduled_date DATE;`);
+      await client.query(
+        `ALTER TABLE workouts ADD COLUMN scheduled_date DATE;`
+      );
       console.log('   ✅ Added workouts.scheduled_date');
     } else {
       console.log('   ℹ️  workouts.scheduled_date already exists');
     }
 
     if (!existingWorkoutColumns.includes('completed_at')) {
-      await client.query(`ALTER TABLE workouts ADD COLUMN completed_at TIMESTAMP;`);
+      await client.query(
+        `ALTER TABLE workouts ADD COLUMN completed_at TIMESTAMP;`
+      );
       console.log('   ✅ Added workouts.completed_at');
     } else {
       console.log('   ℹ️  workouts.completed_at already exists');
@@ -109,8 +135,12 @@ async function main() {
 
     // Create indexes for workouts
     if (!existingWorkoutColumns.includes('status')) {
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_workouts_status ON workouts(status);`);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_workouts_scheduled_date ON workouts(scheduled_date);`);
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_workouts_status ON workouts(status);`
+      );
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_workouts_scheduled_date ON workouts(scheduled_date);`
+      );
     }
 
     // 4. Check if actual_workouts table exists
@@ -140,10 +170,16 @@ async function main() {
           UNIQUE(workout_id)
         );
       `);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_actual_workouts_workout_id ON actual_workouts(workout_id);`);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_actual_workouts_completed_by ON actual_workouts(completed_by);`);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_actual_workouts_completed_at ON actual_workouts(completed_at);`);
-      
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_actual_workouts_workout_id ON actual_workouts(workout_id);`
+      );
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_actual_workouts_completed_by ON actual_workouts(completed_by);`
+      );
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_actual_workouts_completed_at ON actual_workouts(completed_at);`
+      );
+
       // Add trigger
       await client.query(`
         DO $$
@@ -186,10 +222,16 @@ async function main() {
           UNIQUE(recommendation_id, week_number)
         );
       `);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_status ON week_generation_jobs(status);`);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_recommendation_id ON week_generation_jobs(recommendation_id);`);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_week_number ON week_generation_jobs(week_number);`);
-      
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_status ON week_generation_jobs(status);`
+      );
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_recommendation_id ON week_generation_jobs(recommendation_id);`
+      );
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_week_generation_jobs_week_number ON week_generation_jobs(week_number);`
+      );
+
       // Add trigger
       await client.query(`
         DO $$
@@ -217,4 +259,3 @@ async function main() {
 }
 
 main();
-

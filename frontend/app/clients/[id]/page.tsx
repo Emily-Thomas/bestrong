@@ -1,5 +1,11 @@
 'use client';
 
+import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { AppShell } from '@/components/AppShell';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,12 +17,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
-import { AppShell } from '@/components/AppShell';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -66,14 +66,14 @@ export default function ClientDetailPage() {
 
       // Get recommendation for this questionnaire (1:1 relationship)
       try {
-        const recResponse =
-          await recommendationsApi.getByQuestionnaireId(q.id);
+        const recResponse = await recommendationsApi.getByQuestionnaireId(q.id);
         if (recResponse.success && recResponse.data) {
           setRecommendation(recResponse.data);
         } else {
           // 404 is expected if no recommendation exists yet
           // Try fallback: get all recommendations for client and find matching one
-          const allRecsResponse = await recommendationsApi.getByClientId(clientId);
+          const allRecsResponse =
+            await recommendationsApi.getByClientId(clientId);
           if (allRecsResponse.success && allRecsResponse.data) {
             const matchingRec = allRecsResponse.data.find(
               (rec) => rec.questionnaire_id === q.id
@@ -87,7 +87,7 @@ export default function ClientDetailPage() {
             setRecommendation(null);
           }
         }
-      } catch (err) {
+      } catch (_err) {
         setRecommendation(null);
       }
     } else {
@@ -119,7 +119,9 @@ export default function ClientDetailPage() {
     setClient(updatedClient);
   };
 
-  const handleRecommendationUpdate = (updatedRecommendation: Recommendation | null) => {
+  const handleRecommendationUpdate = (
+    updatedRecommendation: Recommendation | null
+  ) => {
     setRecommendation(updatedRecommendation);
   };
 

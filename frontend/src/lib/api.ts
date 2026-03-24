@@ -2,7 +2,8 @@
 // In development, use the local backend URL
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== 'undefined' && window.location.origin === 'http://localhost:3000'
+  (typeof window !== 'undefined' &&
+  window.location.origin === 'http://localhost:3000'
     ? 'http://localhost:3001/api'
     : '/api');
 
@@ -145,7 +146,7 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const formData = new FormData();
     formData.append('file', file);
-    
+
     // Add additional form data
     Object.entries(additionalData).forEach(([key, value]) => {
       formData.append(key, value);
@@ -224,8 +225,10 @@ export const clientsApi = {
   getAll: () => apiClient.get<Client[]>('/clients'),
   getById: (id: number) => apiClient.get<Client>(`/clients/${id}`),
   create: (data: CreateClientInput) => apiClient.post<Client>('/clients', data),
-  update: (id: number, data: Partial<CreateClientInput & { status?: Client['status'] }>) =>
-    apiClient.put<Client>(`/clients/${id}`, data),
+  update: (
+    id: number,
+    data: Partial<CreateClientInput & { status?: Client['status'] }>
+  ) => apiClient.put<Client>(`/clients/${id}`, data),
   delete: (id: number) => apiClient.delete(`/clients/${id}`),
 };
 
@@ -265,10 +268,15 @@ export const recommendationsApi = {
   getJobStatus: (jobId: number) =>
     apiClient.get<RecommendationJob>(`/recommendations/generate/job/${jobId}`),
   getLatestJobByQuestionnaireId: (questionnaireId: number) =>
-    apiClient.get<RecommendationJob>(`/recommendations/generate/questionnaire/${questionnaireId}/job`),
+    apiClient.get<RecommendationJob>(
+      `/recommendations/generate/questionnaire/${questionnaireId}/job`
+    ),
   cancelJob: (jobId: number, reason?: string) =>
-    apiClient.post<RecommendationJob>(`/recommendations/generate/job/${jobId}/cancel`, { reason }),
-  
+    apiClient.post<RecommendationJob>(
+      `/recommendations/generate/job/${jobId}/cancel`,
+      { reason }
+    ),
+
   // Legacy blocking generation (deprecated, kept for backward compatibility)
   generateFromQuestionnaire: (questionnaireId: number) =>
     apiClient.post<Recommendation>(
@@ -278,7 +286,7 @@ export const recommendationsApi = {
     apiClient.post<Recommendation>(
       `/recommendations/generate/client/${clientId}`
     ),
-  
+
   // Standard CRUD operations
   getById: (id: number) =>
     apiClient.get<Recommendation>(`/recommendations/${id}`),
@@ -294,7 +302,9 @@ export const recommendationsApi = {
   getWorkouts: (id: number) =>
     apiClient.get<Workout[]>(`/recommendations/${id}/workouts`),
   getWorkoutsByWeek: (id: number, weekNumber: number) =>
-    apiClient.get<Workout[]>(`/recommendations/${id}/week/${weekNumber}/workouts`),
+    apiClient.get<Workout[]>(
+      `/recommendations/${id}/week/${weekNumber}/workouts`
+    ),
   getWeekStatus: (id: number, weekNumber: number) =>
     apiClient.get<{
       week_number: number;
@@ -323,9 +333,9 @@ export const recommendationsApi = {
     apiClient.get<WeekGenerationJob[]>(`/recommendations/${id}/week-jobs`),
 
   getComparisonBatch: (batchId: string) =>
-    apiClient.get<{ plans: { recommendation: Recommendation; trainer: Trainer | null }[] }>(
-      `/recommendations/comparison-batch/${encodeURIComponent(batchId)}`
-    ),
+    apiClient.get<{
+      plans: { recommendation: Recommendation; trainer: Trainer | null }[];
+    }>(`/recommendations/comparison-batch/${encodeURIComponent(batchId)}`),
 
   selectComparisonPlan: (batchId: string, recommendationId: number) =>
     apiClient.post<Recommendation>(
@@ -383,12 +393,17 @@ export interface CreateExerciseLibraryExerciseInput {
 }
 
 export const exerciseLibraryApi = {
-  getAll: (params?: { search?: string; status?: 'active' | 'archived' | 'all' }) => {
+  getAll: (params?: {
+    search?: string;
+    status?: 'active' | 'archived' | 'all';
+  }) => {
     const q = new URLSearchParams();
     if (params?.search) q.set('search', params.search);
     if (params?.status) q.set('status', params.status);
     const suffix = q.toString() ? `?${q}` : '';
-    return apiClient.get<ExerciseLibraryExercise[]>(`/exercise-library${suffix}`);
+    return apiClient.get<ExerciseLibraryExercise[]>(
+      `/exercise-library${suffix}`
+    );
   },
   getById: (id: number) =>
     apiClient.get<ExerciseLibraryExercise>(`/exercise-library/${id}`),
@@ -429,7 +444,8 @@ export const inbodyScansApi = {
   delete: (id: number) => apiClient.delete(`/inbody-scans/${id}`),
   download: (id: number) => {
     // Download redirects, so we return the URL
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     return `/api/inbody-scans/${id}/download${token ? `?token=${token}` : ''}`;
   },
 };

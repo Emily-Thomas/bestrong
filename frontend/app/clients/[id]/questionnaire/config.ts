@@ -95,7 +95,8 @@ export const QUESTIONNAIRE_SECTIONS: Section[] = [
       {
         type: 'textarea',
         fieldName: 'other_sports_text',
-        label: 'Other sports, classes, or cardio you do outside the gym (optional)',
+        label:
+          'Other sports, classes, or cardio you do outside the gym (optional)',
         placeholder: 'e.g. running 2x/week, rec league soccer…',
         rows: 2,
       },
@@ -103,7 +104,8 @@ export const QUESTIONNAIRE_SECTIONS: Section[] = [
         type: 'textarea',
         fieldName: 'training_background',
         label: 'Training history (experience with lifting, sports, etc.)',
-        placeholder: 'Beginner / returning after a break / competitive background…',
+        placeholder:
+          'Beginner / returning after a break / competitive background…',
         rows: 3,
       },
     ],
@@ -115,7 +117,8 @@ export const QUESTIONNAIRE_SECTIONS: Section[] = [
       {
         type: 'single_choice',
         fieldName: 'motivation_adherence',
-        label: 'In the last month, how often did you stick to planned workouts?',
+        label:
+          'In the last month, how often did you stick to planned workouts?',
         options: [
           { value: 'never', label: 'Never' },
           { value: 'rarely', label: 'Rarely' },
@@ -127,7 +130,8 @@ export const QUESTIONNAIRE_SECTIONS: Section[] = [
       {
         type: 'textarea',
         fieldName: 'motivation_barriers',
-        label: 'Biggest barriers to consistency (time, stress, motivation, etc.)',
+        label:
+          'Biggest barriers to consistency (time, stress, motivation, etc.)',
         placeholder: 'Be honest — this helps us program realistically.',
         rows: 3,
       },
@@ -140,7 +144,8 @@ export const QUESTIONNAIRE_SECTIONS: Section[] = [
       {
         type: 'yes_no',
         fieldName: 'has_pain_or_injury',
-        label: 'Do you currently have pain, an injury, or a movement limitation we should know about?',
+        label:
+          'Do you currently have pain, an injury, or a movement limitation we should know about?',
       },
     ],
   },
@@ -196,7 +201,8 @@ export const QUESTIONNAIRE_SECTIONS: Section[] = [
       {
         type: 'textarea',
         fieldName: 'injury_notes',
-        label: 'Anything else we should know (diagnosis, imaging, prior rehab)?',
+        label:
+          'Anything else we should know (diagnosis, imaging, prior rehab)?',
         placeholder: 'Optional details…',
         rows: 3,
       },
@@ -249,7 +255,8 @@ export const QUESTIONNAIRE_SECTIONS: Section[] = [
       {
         type: 'textarea',
         fieldName: 'nutrition_notes',
-        label: 'Typical weekday eating or biggest nutrition struggle (optional)',
+        label:
+          'Typical weekday eating or biggest nutrition struggle (optional)',
         placeholder: 'Optional…',
         rows: 2,
       },

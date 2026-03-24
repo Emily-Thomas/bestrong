@@ -1,14 +1,18 @@
-import { writeFileSync } from 'fs';
-import { join } from 'path';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import pool from '../src/config/database';
 import * as clientService from '../src/services/client.service';
-import * as questionnaireService from '../src/services/questionnaire.service';
 import * as inbodyScanService from '../src/services/inbody-scan.service';
-import type { Client, Questionnaire, InBodyScan, StructuredQuestionnaireData } from '../src/types';
+import * as questionnaireService from '../src/services/questionnaire.service';
 import {
   formatQuestionnaireForPrompt,
   parseQuestionnaireData,
 } from '../src/services/questionnaire-prompt.service';
+import type {
+  Client,
+  InBodyScan,
+  StructuredQuestionnaireData,
+} from '../src/types';
 
 function formatClientInfoForPrompt(client: Client | null): string {
   if (!client) {
@@ -16,14 +20,15 @@ function formatClientInfoForPrompt(client: Client | null): string {
   }
 
   let text = `## Client Information\n\n`;
-  
+
   if (client.date_of_birth) {
-    const birthDate = typeof client.date_of_birth === 'string' 
-      ? new Date(client.date_of_birth) 
-      : client.date_of_birth;
+    const birthDate =
+      typeof client.date_of_birth === 'string'
+        ? new Date(client.date_of_birth)
+        : client.date_of_birth;
     text += `- Date of Birth: ${birthDate.toLocaleDateString()}\n`;
   }
-  
+
   text += `\nConsider the client's age (calculate from date of birth) when:
 - Selecting age-appropriate exercises and training methods
 - Setting realistic progression expectations based on age
@@ -92,7 +97,10 @@ The client's latest InBody scan shows:`;
     ];
 
     for (const segment of segments) {
-      const data = scan.segment_analysis[segment.key as keyof typeof scan.segment_analysis];
+      const data =
+        scan.segment_analysis[
+          segment.key as keyof typeof scan.segment_analysis
+        ];
       if (data && typeof data === 'object') {
         const parts: string[] = [];
         const muscleMass = formatNumber(data.muscle_mass_lbs);
@@ -128,21 +136,34 @@ async function showPrompts() {
   try {
     // Find John Doe client
     const clients = await clientService.getAllClients();
-    const johnDoe = clients.find(c => {
+    const johnDoe = clients.find((c) => {
       const name = (c.first_name || c.name || '').toLowerCase();
-      return name.includes('john') && (name.includes('doe') || c.last_name?.toLowerCase().includes('doe'));
+      return (
+        name.includes('john') &&
+        (name.includes('doe') || c.last_name?.toLowerCase().includes('doe'))
+      );
     });
-    
+
     if (!johnDoe) {
       console.log('❌ John Doe client not found in database');
-      console.log('Available clients:', clients.map(c => ({ id: c.id, name: c.name || c.first_name || 'N/A' })));
+      console.log(
+        'Available clients:',
+        clients.map((c) => ({
+          id: c.id,
+          name: c.name || c.first_name || 'N/A',
+        }))
+      );
       process.exit(1);
     }
 
-    console.log(`✅ Found client: ${johnDoe.name || johnDoe.first_name || 'Unknown'} (ID: ${johnDoe.id})\n`);
+    console.log(
+      `✅ Found client: ${johnDoe.name || johnDoe.first_name || 'Unknown'} (ID: ${johnDoe.id})\n`
+    );
 
     // Get questionnaire
-    const questionnaire = await questionnaireService.getQuestionnaireByClientId(johnDoe.id);
+    const questionnaire = await questionnaireService.getQuestionnaireByClientId(
+      johnDoe.id
+    );
     if (!questionnaire) {
       console.log('❌ No questionnaire found for John Doe');
       process.exit(1);
@@ -154,8 +175,11 @@ async function showPrompts() {
       parseQuestionnaireData(questionnaire);
 
     // Get InBody scan
-    const inbodyScan = await inbodyScanService.getLatestVerifiedInBodyScanByClientId(johnDoe.id);
-    const latestScan = inbodyScan || await inbodyScanService.getLatestInBodyScanByClientId(johnDoe.id);
+    const inbodyScan =
+      await inbodyScanService.getLatestVerifiedInBodyScanByClientId(johnDoe.id);
+    const latestScan =
+      inbodyScan ||
+      (await inbodyScanService.getLatestInBodyScanByClientId(johnDoe.id));
 
     if (latestScan) {
       console.log(`✅ Found InBody scan (ID: ${latestScan.id})\n`);
@@ -164,7 +188,10 @@ async function showPrompts() {
     }
 
     // Format the data
-    const questionnaireText = formatQuestionnaireForPrompt(questionnaire, structuredData);
+    const questionnaireText = formatQuestionnaireForPrompt(
+      questionnaire,
+      structuredData
+    );
     const inbodyText = formatInBodyScanForPrompt(latestScan);
     const clientInfoText = formatClientInfoForPrompt(johnDoe);
 
@@ -279,15 +306,15 @@ CRITICAL: Respond with ONLY valid JSON, no markdown, no additional text.`;
     // Build workout generation prompt (example with placeholder recommendation structure)
     // In reality, this would use the actual recommendation structure from step 1
     const exampleRecommendationStructure = {
-      client_type: "The [Selected Persona]",
+      client_type: 'The [Selected Persona]',
       sessions_per_week: 3,
       session_length_minutes: 45,
-      training_style: "Example training style",
+      training_style: 'Example training style',
       plan_structure: {
-        archetype: "The [Selected Persona]",
+        archetype: 'The [Selected Persona]',
         weeks: 6,
-        training_methods: ["Method 1", "Method 2", "Method 3"]
-      }
+        training_methods: ['Method 1', 'Method 2', 'Method 3'],
+      },
     };
 
     const week1Workouts = exampleRecommendationStructure.sessions_per_week;
@@ -413,4 +440,3 @@ ${workoutPrompt}
 }
 
 showPrompts();
-

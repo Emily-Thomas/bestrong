@@ -6,7 +6,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -44,7 +43,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background">
       {/* Header with App Name */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Elevate Trainer AI</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Elevate Trainer AI
+        </h1>
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader>

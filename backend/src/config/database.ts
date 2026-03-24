@@ -1,5 +1,5 @@
-import path from 'node:path';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { config } from 'dotenv';
 import { Pool, type PoolConfig } from 'pg';
 
@@ -8,7 +8,10 @@ import { Pool, type PoolConfig } from 'pg';
 // Never try to load .env in Vercel environment (VERCEL env var is automatically set)
 if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
   // Only try to load .env if we don't have database connection info
-  const hasConnectionString = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+  const hasConnectionString =
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING;
   if (!hasConnectionString && !process.env.POSTGRES_PASSWORD) {
     const envPath = path.join(__dirname, '../../.env');
     if (existsSync(envPath)) {
@@ -28,16 +31,18 @@ if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
 // Supabase provides POSTGRES_URL, POSTGRES_PRISMA_URL, or POSTGRES_URL_NON_POOLING
 const getPoolConfig = (): PoolConfig => {
   // Check for connection strings (in order of preference - Supabase standard)
-  const databaseUrl = 
-    process.env.POSTGRES_URL || 
-    process.env.POSTGRES_PRISMA_URL || 
+  const databaseUrl =
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
     process.env.POSTGRES_URL_NON_POOLING;
-  
+
   // If connection string is provided, use it directly
   if (databaseUrl) {
     const isSupabase = databaseUrl.includes('supabase.co');
-    const isVercel = databaseUrl.includes('vercel-storage.com') || databaseUrl.includes('vercel-dbs.com');
-    
+    const isVercel =
+      databaseUrl.includes('vercel-storage.com') ||
+      databaseUrl.includes('vercel-dbs.com');
+
     if (isSupabase) {
       console.log('📦 Using Supabase connection string');
       console.log('   Configuring SSL to accept self-signed certificates');
@@ -46,7 +51,7 @@ const getPoolConfig = (): PoolConfig => {
     } else {
       console.log('📦 Using PostgreSQL connection string');
     }
-    
+
     // For Supabase, parse connection string to ensure SSL is handled correctly
     // Sometimes pg library doesn't respect ssl option with connection strings
     if (isSupabase) {
@@ -66,12 +71,14 @@ const getPoolConfig = (): PoolConfig => {
           // Set rejectUnauthorized: false to accept self-signed certificates
           ssl: { rejectUnauthorized: false },
         };
-      } catch (error) {
+      } catch (_error) {
         // If URL parsing fails, fall back to connection string with SSL config
-        console.warn('   Could not parse connection string, using as-is with SSL config');
+        console.warn(
+          '   Could not parse connection string, using as-is with SSL config'
+        );
       }
     }
-    
+
     // For non-Supabase or if parsing failed, use connection string with SSL config
     return {
       connectionString: databaseUrl,
@@ -83,12 +90,14 @@ const getPoolConfig = (): PoolConfig => {
       ssl: isSupabase
         ? { rejectUnauthorized: false }
         : isVercel
-        ? { rejectUnauthorized: false }
-        : undefined,
+          ? { rejectUnauthorized: false }
+          : undefined,
     };
   }
-  
-  console.log('⚠️  POSTGRES_URL not found, falling back to individual connection parameters');
+
+  console.log(
+    '⚠️  POSTGRES_URL not found, falling back to individual connection parameters'
+  );
 
   // Fallback to individual connection parameters (Supabase standard format)
   // Ensure password is always a string (PostgreSQL requires this)
@@ -125,7 +134,10 @@ const getPoolConfig = (): PoolConfig => {
 const poolConfig = getPoolConfig();
 
 // Validate password is a string before creating pool (only for non-connection-string configs)
-const databaseUrl = process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+const databaseUrl =
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.POSTGRES_URL_NON_POOLING;
 if (!databaseUrl && typeof poolConfig.password !== 'string') {
   throw new Error(
     `Database password must be a string, got ${typeof poolConfig.password}`

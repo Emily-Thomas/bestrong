@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -10,18 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  exerciseLibraryApi,
-  type ExerciseLibraryExercise,
-} from '@/lib/api';
+import { Input } from '@/components/ui/input';
+import { type ExerciseLibraryExercise, exerciseLibraryApi } from '@/lib/api';
 
 interface ExerciseLibraryPickerProps {
   open: boolean;
@@ -101,9 +98,7 @@ export function ExerciseLibraryPicker({
               {filteredExercises.map((exercise) => (
                 <Card key={exercise.id} className="flex flex-col">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">
-                      {exercise.name}
-                    </CardTitle>
+                    <CardTitle className="text-base">{exercise.name}</CardTitle>
                     <CardDescription>
                       {exercise.primary_muscle_group || 'Muscle group not set'}
                     </CardDescription>
@@ -156,4 +151,3 @@ export function ExerciseLibraryPicker({
     </Dialog>
   );
 }
-

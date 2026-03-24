@@ -1,19 +1,19 @@
 'use client';
 
+import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 
 export interface PreWorkoutSurveyResponse {
   recovery: 'fully_recovered' | 'mostly_recovered' | 'still_sore' | 'very_sore';
@@ -35,10 +35,14 @@ export function PreWorkoutSurvey({
   onComplete,
   clientName,
 }: PreWorkoutSurveyProps) {
-  const [recovery, setRecovery] = useState<PreWorkoutSurveyResponse['recovery'] | ''>('');
+  const [recovery, setRecovery] = useState<
+    PreWorkoutSurveyResponse['recovery'] | ''
+  >('');
   const [rest, setRest] = useState<PreWorkoutSurveyResponse['rest'] | ''>('');
   const [mood, setMood] = useState<PreWorkoutSurveyResponse['mood'] | ''>('');
-  const [injuries, setInjuries] = useState<PreWorkoutSurveyResponse['injuries'] | ''>('');
+  const [injuries, setInjuries] = useState<
+    PreWorkoutSurveyResponse['injuries'] | ''
+  >('');
   const [injuryDetails, setInjuryDetails] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -60,8 +64,8 @@ export function PreWorkoutSurvey({
   };
 
   const isComplete = recovery && rest && mood && injuries;
-  const hasConcerns = 
-    recovery === 'still_sore' || 
+  const hasConcerns =
+    recovery === 'still_sore' ||
     recovery === 'very_sore' ||
     rest === 'tired' ||
     rest === 'very_tired' ||
@@ -75,7 +79,9 @@ export function PreWorkoutSurvey({
         <DialogHeader>
           <DialogTitle className="text-2xl">Pre-Workout Check-In</DialogTitle>
           <DialogDescription>
-            {clientName ? `Quick assessment for ${clientName}` : 'Quick assessment before starting the workout'}
+            {clientName
+              ? `Quick assessment for ${clientName}`
+              : 'Quick assessment before starting the workout'}
           </DialogDescription>
         </DialogHeader>
 
@@ -85,28 +91,45 @@ export function PreWorkoutSurvey({
             <Label className="text-base font-semibold">
               How recovered is the client from the previous workout?
             </Label>
-            <RadioGroup value={recovery} onValueChange={(value) => setRecovery(value as PreWorkoutSurveyResponse['recovery'])}>
+            <RadioGroup
+              value={recovery}
+              onValueChange={(value) =>
+                setRecovery(value as PreWorkoutSurveyResponse['recovery'])
+              }
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="fully_recovered" id="recovery-1" />
-                <Label htmlFor="recovery-1" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="recovery-1"
+                  className="font-normal cursor-pointer"
+                >
                   Fully recovered
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="mostly_recovered" id="recovery-2" />
-                <Label htmlFor="recovery-2" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="recovery-2"
+                  className="font-normal cursor-pointer"
+                >
                   Mostly recovered
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="still_sore" id="recovery-3" />
-                <Label htmlFor="recovery-3" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="recovery-3"
+                  className="font-normal cursor-pointer"
+                >
                   Still sore
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="very_sore" id="recovery-4" />
-                <Label htmlFor="recovery-4" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="recovery-4"
+                  className="font-normal cursor-pointer"
+                >
                   Very sore
                 </Label>
               </div>
@@ -118,7 +141,12 @@ export function PreWorkoutSurvey({
             <Label className="text-base font-semibold">
               How well rested is the client?
             </Label>
-            <RadioGroup value={rest} onValueChange={(value) => setRest(value as PreWorkoutSurveyResponse['rest'])}>
+            <RadioGroup
+              value={rest}
+              onValueChange={(value) =>
+                setRest(value as PreWorkoutSurveyResponse['rest'])
+              }
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="well_rested" id="rest-1" />
                 <Label htmlFor="rest-1" className="font-normal cursor-pointer">
@@ -151,7 +179,12 @@ export function PreWorkoutSurvey({
             <Label className="text-base font-semibold">
               How is the client feeling about the workout today?
             </Label>
-            <RadioGroup value={mood} onValueChange={(value) => setMood(value as PreWorkoutSurveyResponse['mood'])}>
+            <RadioGroup
+              value={mood}
+              onValueChange={(value) =>
+                setMood(value as PreWorkoutSurveyResponse['mood'])
+              }
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="excited" id="mood-1" />
                 <Label htmlFor="mood-1" className="font-normal cursor-pointer">
@@ -184,22 +217,36 @@ export function PreWorkoutSurvey({
             <Label className="text-base font-semibold">
               Any new injuries or pain?
             </Label>
-            <RadioGroup value={injuries} onValueChange={(value) => setInjuries(value as PreWorkoutSurveyResponse['injuries'])}>
+            <RadioGroup
+              value={injuries}
+              onValueChange={(value) =>
+                setInjuries(value as PreWorkoutSurveyResponse['injuries'])
+              }
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="none" id="injuries-1" />
-                <Label htmlFor="injuries-1" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="injuries-1"
+                  className="font-normal cursor-pointer"
+                >
                   None
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="minor" id="injuries-2" />
-                <Label htmlFor="injuries-2" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="injuries-2"
+                  className="font-normal cursor-pointer"
+                >
                   Minor issue
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="significant" id="injuries-3" />
-                <Label htmlFor="injuries-3" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="injuries-3"
+                  className="font-normal cursor-pointer"
+                >
                   Significant concern
                 </Label>
               </div>
@@ -209,7 +256,10 @@ export function PreWorkoutSurvey({
           {/* Injury Details */}
           {(injuries === 'minor' || injuries === 'significant') && (
             <div className="space-y-2">
-              <Label htmlFor="injury-details" className="text-base font-semibold">
+              <Label
+                htmlFor="injury-details"
+                className="text-base font-semibold"
+              >
                 Please describe the injury or pain
               </Label>
               <Textarea
@@ -243,7 +293,10 @@ export function PreWorkoutSurvey({
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Consider modifying the workout:</strong> The client may need adjustments based on their current state. Review the responses and consider reducing intensity, volume, or changing exercises.
+                <strong>Consider modifying the workout:</strong> The client may
+                need adjustments based on their current state. Review the
+                responses and consider reducing intensity, volume, or changing
+                exercises.
               </AlertDescription>
             </Alert>
           )}

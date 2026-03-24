@@ -1,5 +1,5 @@
 import pool from '../config/database';
-import type { Workout, CreateWorkoutInput, UpdateWorkoutInput } from '../types';
+import type { CreateWorkoutInput, UpdateWorkoutInput, Workout } from '../types';
 
 export async function createWorkout(
   input: CreateWorkoutInput
@@ -245,9 +245,10 @@ export async function getWorkoutByIdWithActual(
     week_number: row.week_number,
     session_number: row.session_number,
     workout_name: row.workout_name,
-    workout_data: typeof row.workout_data === 'string' 
-      ? JSON.parse(row.workout_data) 
-      : row.workout_data,
+    workout_data:
+      typeof row.workout_data === 'string'
+        ? JSON.parse(row.workout_data)
+        : row.workout_data,
     workout_reasoning: row.workout_reasoning,
     status: row.status,
     scheduled_date: row.scheduled_date,
@@ -262,22 +263,24 @@ export async function getWorkoutByIdWithActual(
       id: row.actual_workout_id,
       workout_id: row.id,
       completed_by: row.actual_workout_completed_by || undefined,
-      actual_performance: typeof row.actual_workout_performance === 'string'
-        ? JSON.parse(row.actual_workout_performance)
-        : (row.actual_workout_performance as {
-            exercises: Array<{
-              exercise_name: string;
-              sets_completed?: number;
-              reps_completed?: number | string;
-              weight_used?: string;
-              rir?: number;
-              notes?: string;
-            }>;
-          }),
+      actual_performance:
+        typeof row.actual_workout_performance === 'string'
+          ? JSON.parse(row.actual_workout_performance)
+          : (row.actual_workout_performance as {
+              exercises: Array<{
+                exercise_name: string;
+                sets_completed?: number;
+                reps_completed?: number | string;
+                weight_used?: string;
+                rir?: number;
+                notes?: string;
+              }>;
+            }),
       session_notes: row.actual_workout_session_notes || undefined,
       overall_rir: row.actual_workout_overall_rir || undefined,
       client_energy_level: row.actual_workout_client_energy_level || undefined,
-      trainer_observations: row.actual_workout_trainer_observations || undefined,
+      trainer_observations:
+        row.actual_workout_trainer_observations || undefined,
       started_at: row.actual_workout_started_at || undefined,
       completed_at: row.actual_workout_completed_at || new Date(),
       created_at: row.actual_workout_created_at || new Date(),
@@ -312,7 +315,11 @@ export async function isWeekComplete(
   recommendationId: number,
   weekNumber: number
 ): Promise<boolean> {
-  const result = await pool.query<{ total: number; completed: number; skipped: number }>(
+  const result = await pool.query<{
+    total: number;
+    completed: number;
+    skipped: number;
+  }>(
     `SELECT 
       COUNT(*) as total,
       COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
@@ -362,7 +369,7 @@ export async function getWeekCompletionStatus(
   );
 
   const status = result.rows[0];
-  
+
   if (!status) {
     return {
       total: 0,
@@ -374,7 +381,7 @@ export async function getWeekCompletionStatus(
       is_complete: false,
     };
   }
-  
+
   // Convert all counts to numbers (PostgreSQL returns strings or bigint)
   const total = parseInt(String(status.total || 0), 10);
   const completed = parseInt(String(status.completed || 0), 10);
@@ -383,15 +390,15 @@ export async function getWeekCompletionStatus(
   const nullStatus = parseInt(String(status.null_status || 0), 10);
   const inProgress = parseInt(String(status.in_progress || 0), 10);
   const scheduled = parseInt(String(status.scheduled || 0), 10);
-  
+
   // Week is complete if all workouts are either completed or skipped
   // Cancelled workouts and NULL status don't count toward completion
   const completedOrSkipped = completed + skipped;
   // Total active workouts = total minus cancelled and null status
   const totalActive = total - cancelled - nullStatus;
-  
+
   const isComplete = totalActive > 0 && totalActive === completedOrSkipped;
-  
+
   return {
     total,
     completed,
@@ -402,4 +409,3 @@ export async function getWeekCompletionStatus(
     is_complete: isComplete,
   };
 }
-

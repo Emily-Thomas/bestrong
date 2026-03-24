@@ -143,9 +143,10 @@ If a value is not found, use null. All numbers should be numeric values, not str
       }
     }
 
-    const jsonString = lastValidBrace >= 0
-      ? cleaned.substring(firstBrace, lastValidBrace + 1)
-      : cleaned.substring(firstBrace);
+    const jsonString =
+      lastValidBrace >= 0
+        ? cleaned.substring(firstBrace, lastValidBrace + 1)
+        : cleaned.substring(firstBrace);
 
     // Parse and validate
     const extracted = JSON.parse(jsonString) as ExtractedInBodyData;
@@ -160,7 +161,9 @@ If a value is not found, use null. All numbers should be numeric values, not str
       extracted.percent_body_fat != null;
 
     if (!hasValidData) {
-      throw new Error('No valid data extracted from image - all fields are null or undefined');
+      throw new Error(
+        'No valid data extracted from image - all fields are null or undefined'
+      );
     }
 
     return extracted;

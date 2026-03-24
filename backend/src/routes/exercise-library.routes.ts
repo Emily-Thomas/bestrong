@@ -19,9 +19,7 @@ router.get('/', async (req: Request, res: Response) => {
     const exercises = await exerciseLibraryService.getExercises({
       search: typeof search === 'string' ? search : undefined,
       status:
-        status === 'active' ||
-        status === 'archived' ||
-        status === 'all'
+        status === 'active' || status === 'archived' || status === 'all'
           ? status
           : undefined,
     });
@@ -153,4 +151,3 @@ router.post('/:id/archive', async (req: Request, res: Response) => {
 });
 
 export default router;
-

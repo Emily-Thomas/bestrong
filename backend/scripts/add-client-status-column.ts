@@ -50,9 +50,9 @@ async function main() {
     `);
 
     console.log('✅ Status column added successfully!');
-    console.log('   - Column: status (VARCHAR(50), DEFAULT \'prospect\')');
+    console.log("   - Column: status (VARCHAR(50), DEFAULT 'prospect')");
     console.log('   - Index: idx_clients_status');
-    console.log('   - Existing clients set to \'prospect\'\n');
+    console.log("   - Existing clients set to 'prospect'\n");
   } catch (error) {
     console.error('❌ Error adding status column:', error);
     process.exit(1);
@@ -63,4 +63,3 @@ async function main() {
 }
 
 main();
-

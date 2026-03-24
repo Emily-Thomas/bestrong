@@ -1,6 +1,6 @@
 'use client';
 
-import { Upload, X, Loader2, FileImage } from 'lucide-react';
+import { FileImage, Loader2, Upload, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -42,24 +42,7 @@ export function ScanUploadModal({
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const droppedFile = e.dataTransfer.files[0];
-      validateAndSetFile(droppedFile);
-    }
-  }, []);
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      validateAndSetFile(e.target.files[0]);
-    }
-  };
-
-  const validateAndSetFile = (fileToValidate: File) => {
+  const validateAndSetFile = useCallback((fileToValidate: File) => {
     setError('');
 
     // Check file type
@@ -76,6 +59,26 @@ export function ScanUploadModal({
     }
 
     setFile(fileToValidate);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+
+      if (e.dataTransfer.files?.[0]) {
+        const droppedFile = e.dataTransfer.files[0];
+        validateAndSetFile(droppedFile);
+      }
+    },
+    [validateAndSetFile]
+  );
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      validateAndSetFile(e.target.files[0]);
+    }
   };
 
   const handleUpload = async () => {
@@ -114,7 +117,8 @@ export function ScanUploadModal({
         <DialogHeader>
           <DialogTitle>Upload InBody Scan</DialogTitle>
           <DialogDescription>
-            Upload a PNG image of the InBody scan. The system will automatically extract the data.
+            Upload a PNG image of the InBody scan. The system will automatically
+            extract the data.
           </DialogDescription>
         </DialogHeader>
 
@@ -125,7 +129,8 @@ export function ScanUploadModal({
             </Alert>
           )}
 
-          <div
+          <section
+            aria-label="Upload InBody scan file"
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
@@ -190,15 +195,11 @@ export function ScanUploadModal({
                 </p>
               </div>
             )}
-          </div>
+          </section>
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={uploading}
-          >
+          <Button variant="outline" onClick={handleClose} disabled={uploading}>
             Cancel
           </Button>
           <Button onClick={handleUpload} disabled={!file || uploading}>
@@ -219,4 +220,3 @@ export function ScanUploadModal({
     </Dialog>
   );
 }
-

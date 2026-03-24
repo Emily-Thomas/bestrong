@@ -61,7 +61,9 @@ export async function mergeJobMetadata(
 /**
  * Get a job by ID
  */
-export async function getJobById(id: number): Promise<RecommendationJob | null> {
+export async function getJobById(
+  id: number
+): Promise<RecommendationJob | null> {
   const result = await pool.query<RecommendationJob>(
     `SELECT * FROM recommendation_jobs WHERE id = $1`,
     [id]

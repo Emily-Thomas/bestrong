@@ -1,7 +1,7 @@
+import path from 'node:path';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express, { type Express, type Request, type Response } from 'express';
-import path from 'node:path';
 import { runMigrations, testConnection } from './db/migrations';
 import authRoutes from './routes/auth.routes';
 import clientRoutes from './routes/client.routes';
@@ -44,8 +44,10 @@ app.get('/api', (_req: Request, res: Response) => {
 app.get('/api/files/*', async (req: Request, res: Response) => {
   try {
     const filePath = req.path.replace('/api/files/', '');
-    const fileBuffer = await fileStorageService.readFileFromStorage(`/api/files/${filePath}`);
-    
+    const fileBuffer = await fileStorageService.readFileFromStorage(
+      `/api/files/${filePath}`
+    );
+
     // Determine content type from file extension
     const ext = path.extname(filePath).toLowerCase();
     const contentTypeMap: Record<string, string> = {
@@ -55,13 +57,15 @@ app.get('/api/files/*', async (req: Request, res: Response) => {
       '.pdf': 'application/pdf',
     };
     const contentType = contentTypeMap[ext] || 'application/octet-stream';
-    
+
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
     res.send(fileBuffer);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(404).json({ success: false, error: `File not found: ${message}` });
+    res
+      .status(404)
+      .json({ success: false, error: `File not found: ${message}` });
   }
 });
 

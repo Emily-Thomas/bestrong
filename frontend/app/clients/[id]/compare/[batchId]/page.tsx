@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Badge } from '@/components/ui/badge';
@@ -16,8 +16,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  recommendationsApi,
   type Recommendation,
+  recommendationsApi,
   type Trainer,
 } from '@/lib/api';
 
@@ -55,7 +55,10 @@ export default function ClientCompareCoachesPage() {
   const choose = async (recommendationId: number) => {
     setSelectingId(recommendationId);
     setError('');
-    const res = await recommendationsApi.selectComparisonPlan(batchId, recommendationId);
+    const res = await recommendationsApi.selectComparisonPlan(
+      batchId,
+      recommendationId
+    );
     setSelectingId(null);
     if (res.success && res.data) {
       router.push(`/clients/${clientId}/recommendations/${recommendationId}`);
@@ -87,9 +90,7 @@ export default function ClientCompareCoachesPage() {
           <p className="text-destructive">{error}</p>
         ) : (
           <div className="space-y-6">
-            {error ? (
-              <p className="text-sm text-destructive">{error}</p>
-            ) : null}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
               {plans.map(({ recommendation: r, trainer: t }) => (
                 <Card
@@ -99,9 +100,7 @@ export default function ClientCompareCoachesPage() {
                   <CardHeader className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-lg leading-snug">
-                        {t
-                          ? `${t.first_name} ${t.last_name}`
-                          : 'Coach'}
+                        {t ? `${t.first_name} ${t.last_name}` : 'Coach'}
                       </CardTitle>
                       <Badge variant="secondary">Candidate</Badge>
                     </div>
@@ -125,11 +124,14 @@ export default function ClientCompareCoachesPage() {
                       </p>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {r.sessions_per_week} sessions/week · {r.session_length_minutes} min
+                      {r.sessions_per_week} sessions/week ·{' '}
+                      {r.session_length_minutes} min
                     </div>
                     <div className="flex flex-wrap gap-2 mt-auto pt-2">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/clients/${clientId}/recommendations/${r.id}`}>
+                        <Link
+                          href={`/clients/${clientId}/recommendations/${r.id}`}
+                        >
                           Preview full plan
                         </Link>
                       </Button>
