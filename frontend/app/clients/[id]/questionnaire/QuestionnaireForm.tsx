@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2, Save } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +46,7 @@ export function QuestionnaireForm({
   const [error, setError] = useState('');
   const [questionnaireId, setQuestionnaireId] = useState<number | null>(null);
   const [legacyBanner, setLegacyBanner] = useState(false);
+  const errorAnchorRef = useRef<HTMLDivElement>(null);
 
   const mergedDefaults = useMemo(
     () => ({
@@ -87,6 +88,14 @@ export function QuestionnaireForm({
     void loadQuestionnaire();
   }, [clientId]);
 
+  useEffect(() => {
+    if (!error) return;
+    errorAnchorRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, [error]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -97,23 +106,25 @@ export function QuestionnaireForm({
     }
     setSaving(true);
 
-    const payload: CreateQuestionnaireInput = buildQuestionnaireApiInput(
-      clientId,
-      mergedDefaults
-    );
+    try {
+      const payload: CreateQuestionnaireInput = buildQuestionnaireApiInput(
+        clientId,
+        mergedDefaults
+      );
 
-    const response = questionnaireId
-      ? await questionnairesApi.update(questionnaireId, payload)
-      : await questionnairesApi.create(payload);
+      const response = questionnaireId
+        ? await questionnairesApi.update(questionnaireId, payload)
+        : await questionnairesApi.create(payload);
 
-    if (response.success && response.data) {
-      setQuestionnaireId(response.data.id);
+      if (response.success && response.data) {
+        setQuestionnaireId(response.data.id);
+        onSuccess?.();
+        return;
+      }
+      setError(response.error || 'Failed to save questionnaire');
+    } finally {
       setSaving(false);
-      onSuccess?.();
-      return;
     }
-    setError(response.error || 'Failed to save questionnaire');
-    setSaving(false);
   };
 
   if (loading) {
@@ -128,11 +139,13 @@ export function QuestionnaireForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
+      <div ref={errorAnchorRef} className="scroll-mt-4">
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
 
       {legacyBanner ? (
         <Alert>

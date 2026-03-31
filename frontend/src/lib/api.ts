@@ -79,6 +79,8 @@ class ApiClient {
         ...options,
         headers,
         credentials: 'include',
+        // Avoid stale GET responses (e.g. cached 404 after creating a questionnaire)
+        cache: 'no-store',
       });
 
       const text = await response.text();
@@ -207,6 +209,7 @@ class ApiClient {
         headers,
         body: formData,
         credentials: 'include',
+        cache: 'no-store',
       });
 
       const text = await response.text();
