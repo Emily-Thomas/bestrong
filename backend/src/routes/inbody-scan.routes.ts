@@ -78,7 +78,7 @@ router.post(
       );
 
       // Start extraction in background (don't await)
-      extractInBodyDataAsync(scan.id, req.file.buffer, req.user.userId).catch(
+      extractInBodyDataAsync(scan.id, req.file.buffer).catch(
         (error) => {
           console.error(`Error extracting data for scan ${scan.id}:`, error);
         }
@@ -102,8 +102,7 @@ router.post(
 // Async function to extract data
 async function extractInBodyDataAsync(
   scanId: number,
-  pdfBuffer: Buffer,
-  uploaderUserId: number
+  pdfBuffer: Buffer
 ): Promise<void> {
   try {
     const extractedData =
@@ -113,14 +112,6 @@ async function extractInBodyDataAsync(
       extraction_status: 'completed',
       ...extractedData,
     });
-
-    if (inbodyExtractionService.isInBodyMockExtractionEnabled()) {
-      await inbodyScanService.updateInBodyScan(
-        scanId,
-        { verified: true, extraction_status: 'verified' },
-        uploaderUserId
-      );
-    }
   } catch (error) {
     console.error(`Extraction failed for scan ${scanId}:`, error);
     const errorMessage =
