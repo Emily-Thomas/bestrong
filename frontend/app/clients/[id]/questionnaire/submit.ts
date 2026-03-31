@@ -5,7 +5,7 @@ export const DEFAULT_QUESTIONNAIRE: QuestionnaireData = {
   schema_version: 2,
 };
 
-const PARQ_KEYS = [
+const PARQ_STORAGE_KEYS = [
   'parq_chest_pain',
   'parq_resting_bp',
   'parq_dizziness',
@@ -13,7 +13,16 @@ const PARQ_KEYS = [
   'parq_heart_meds',
   'parq_other_reason',
   'parq_extra',
+  'parq_health_note',
 ] as const satisfies readonly (keyof QuestionnaireData)[];
+
+function questionnaireDataWithoutParq(d: QuestionnaireData): QuestionnaireData {
+  const out = { ...d };
+  for (const k of PARQ_STORAGE_KEYS) {
+    delete out[k];
+  }
+  return out;
+}
 
 /** True when saved JSON is the legacy slider-based intake (v1). */
 export function isLegacyV1Notes(parsed: unknown): boolean {
@@ -81,13 +90,6 @@ function nutritionHabitsSummary(d: QuestionnaireData): string | undefined {
 
 /** Returns an error message or null when valid. */
 export function validateQuestionnaire(d: QuestionnaireData): string | null {
-  for (const key of PARQ_KEYS) {
-    const v = d[key];
-    if (v !== true && v !== false) {
-      return 'Please answer every safety screening question (Yes or No).';
-    }
-  }
-
   if (!d.goal_categories || d.goal_categories.length < 1) {
     return 'Select at least one training goal.';
   }
@@ -129,9 +131,11 @@ export function buildQuestionnaireApiInput(
     d.primary_goal_label?.trim() ||
     (d.goal_categories?.length ? d.goal_categories.join(', ') : undefined);
 
+  const stored = questionnaireDataWithoutParq({ ...d, schema_version: 2 });
+
   return {
     client_id: clientId,
-    notes: JSON.stringify({ ...d, schema_version: 2 as const }),
+    notes: JSON.stringify(stored),
     primary_goal: primaryGoal,
     secondary_goals: d.goal_categories?.length
       ? [...d.goal_categories]
@@ -140,7 +144,7 @@ export function buildQuestionnaireApiInput(
     preferred_session_length: preferred,
     fitness_equipment_access: ['trainer_gym'],
     injury_history: injurySummary(d),
-    medical_conditions: d.parq_health_note?.trim() || undefined,
+    medical_conditions: '',
     stress_level: d.stress_level_bucket,
     sleep_quality: d.sleep_quality_bucket,
     nutrition_habits: nutritionHabitsSummary(d),

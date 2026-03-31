@@ -1,7 +1,12 @@
 import path from 'node:path';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import express, { type Express, type Request, type Response } from 'express';
+import express, {
+  type Express,
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express';
 import { runMigrations, testConnection } from './db/migrations';
 import authRoutes from './routes/auth.routes';
 import clientRoutes from './routes/client.routes';
@@ -12,16 +17,23 @@ import recommendationRoutes from './routes/recommendation.routes';
 import trainerRoutes from './routes/trainer.routes';
 import workoutRoutes from './routes/workout.routes';
 import * as fileStorageService from './services/file-storage.service';
+import { clientErrorMessage } from './utils/client-error-message';
 
 dotenv.config();
 
 const app: Express = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// Middleware — in development, reflect the browser origin so direct calls from
+// http://localhost:* and http://127.0.0.1:* to :3001 succeed (avoids Next proxy).
+const corsOrigin =
+  process.env.NODE_ENV !== 'production'
+    ? true
+    : process.env.FRONTEND_URL || 'http://localhost:3000';
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: corsOrigin,
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
@@ -92,6 +104,16 @@ app.use('/api/trainers', trainerRoutes);
 
 // Workout routes
 app.use('/api/workouts', workoutRoutes);
+
+// JSON errors only — avoids Express default handler sending plain "Internal Server Error"
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err);
+  if (res.headersSent) return;
+  res.status(500).json({
+    success: false,
+    error: clientErrorMessage(err),
+  });
+});
 
 // Initialize database on startup
 async function initializeDatabase() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +25,7 @@ interface ScanReviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scan: InBodyScan;
-  onComplete: () => void;
+  onComplete: () => void | Promise<void>;
 }
 
 export function ScanReviewModal({
@@ -46,6 +46,19 @@ export function ScanReviewModal({
     verified: true,
   });
 
+  useEffect(() => {
+    setFormData({
+      scan_date: scan.scan_date || '',
+      weight_lbs: scan.weight_lbs || undefined,
+      smm_lbs: scan.smm_lbs || undefined,
+      body_fat_mass_lbs: scan.body_fat_mass_lbs || undefined,
+      bmi: scan.bmi || undefined,
+      percent_body_fat: scan.percent_body_fat || undefined,
+      verified: true,
+    });
+    setError('');
+  }, [scan.id]);
+
   const handleSave = async () => {
     setSaving(true);
     setError('');
@@ -53,7 +66,7 @@ export function ScanReviewModal({
     try {
       const response = await inbodyScansApi.update(scan.id, formData);
       if (response.success) {
-        onComplete();
+        await Promise.resolve(onComplete());
         onOpenChange(false);
       } else {
         setError(response.error || 'Failed to save scan data');

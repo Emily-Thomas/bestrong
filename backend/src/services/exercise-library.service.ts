@@ -56,6 +56,57 @@ export async function getExerciseById(
   return result.rows[0] || null;
 }
 
+/**
+ * Exercises with the same movement pattern or primary muscle group (for swap suggestions).
+ */
+export async function getSimilarExercises(
+  exerciseId: number,
+  limit = 24
+): Promise<ExerciseLibraryExercise[]> {
+  const base = await getExerciseById(exerciseId);
+  if (!base) {
+    return [];
+  }
+
+  const values: unknown[] = [exerciseId];
+  let p = 2;
+  const orParts: string[] = [];
+
+  if (base.movement_pattern?.trim()) {
+    orParts.push(`movement_pattern = $${p}`);
+    values.push(base.movement_pattern.trim());
+    p++;
+  }
+  if (base.primary_muscle_group?.trim()) {
+    orParts.push(`primary_muscle_group = $${p}`);
+    values.push(base.primary_muscle_group.trim());
+    p++;
+  }
+  if (orParts.length === 0 && base.category?.trim()) {
+    orParts.push(`category = $${p}`);
+    values.push(base.category.trim());
+    p++;
+  }
+
+  if (orParts.length === 0) {
+    return [];
+  }
+
+  values.push(limit);
+  const limitParam = p;
+
+  const result = await pool.query<ExerciseLibraryExercise>(
+    `SELECT * FROM exercise_library_exercises
+     WHERE status = 'active' AND id != $1
+       AND (${orParts.join(' OR ')})
+     ORDER BY LOWER(name) ASC
+     LIMIT $${limitParam}`,
+    values
+  );
+
+  return result.rows;
+}
+
 export async function createExercise(
   input: CreateExerciseLibraryExerciseInput,
   createdBy?: number

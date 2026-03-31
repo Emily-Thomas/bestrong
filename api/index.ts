@@ -4,9 +4,11 @@ import cors from 'cors';
 import { runMigrations, testConnection } from '../backend/src/db/migrations';
 import authRoutes from '../backend/src/routes/auth.routes';
 import clientRoutes from '../backend/src/routes/client.routes';
+import exerciseLibraryRoutes from '../backend/src/routes/exercise-library.routes';
 import inbodyScanRoutes from '../backend/src/routes/inbody-scan.routes';
 import questionnaireRoutes from '../backend/src/routes/questionnaire.routes';
 import recommendationRoutes from '../backend/src/routes/recommendation.routes';
+import trainerRoutes from '../backend/src/routes/trainer.routes';
 import workoutRoutes from '../backend/src/routes/workout.routes';
 
 // Create Express app
@@ -105,12 +107,14 @@ app.get('/api', (_req, res) => {
   res.json({ message: 'Backend API is working' });
 });
 
-// Mount routes
+// Mount routes (keep in sync with backend/src/index.ts)
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
+app.use('/api/exercise-library', exerciseLibraryRoutes);
 app.use('/api/inbody-scans', inbodyScanRoutes);
 app.use('/api/questionnaires', questionnaireRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/trainers', trainerRoutes);
 app.use('/api/workouts', workoutRoutes);
 
 // Initialize database on first request (only once)

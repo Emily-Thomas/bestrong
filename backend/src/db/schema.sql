@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS questionnaires (
   
   -- Additional notes
   notes TEXT,
+
+  -- Last AI coach-fit (suggested trainer + rationale); see QuestionnaireCoachFitStored
+  coach_fit JSONB,
   
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

@@ -77,7 +77,7 @@ export async function getLatestVerifiedInBodyScanByClientId(
 ): Promise<InBodyScan | null> {
   const result = await pool.query<InBodyScan>(
     `SELECT * FROM inbody_scans 
-     WHERE client_id = $1 AND verified = true
+     WHERE client_id = $1 AND (verified IS TRUE OR extraction_status = 'verified')
      ORDER BY scan_date DESC NULLS LAST, created_at DESC 
      LIMIT 1`,
     [clientId]
@@ -105,6 +105,17 @@ export async function getLatestInBodyScanByClientIdWithFallback(
 export async function hasInBodyScan(clientId: number): Promise<boolean> {
   const result = await pool.query<{ count: string }>(
     'SELECT COUNT(*) as count FROM inbody_scans WHERE client_id = $1',
+    [clientId]
+  );
+
+  return parseInt(result.rows[0].count, 10) > 0;
+}
+
+export async function hasVerifiedInBodyScan(clientId: number): Promise<boolean> {
+  const result = await pool.query<{ count: string }>(
+    `SELECT COUNT(*) as count FROM inbody_scans
+     WHERE client_id = $1
+       AND (verified IS TRUE OR extraction_status = 'verified')`,
     [clientId]
   );
 
@@ -161,6 +172,11 @@ export async function updateInBodyScan(
       if (verifiedBy) {
         fields.push(`verified_by = $${paramCount++}`);
         values.push(verifiedBy);
+      }
+      // Keep extraction_status aligned so has-scan and list views stay consistent
+      if (input.extraction_status === undefined) {
+        fields.push(`extraction_status = $${paramCount++}`);
+        values.push('verified');
       }
     }
   }

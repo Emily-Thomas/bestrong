@@ -30,7 +30,7 @@ interface ScanDetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scan: InBodyScan;
-  onUpdate: () => void;
+  onUpdate: () => void | Promise<void>;
 }
 
 export function ScanDetailsModal({
@@ -68,8 +68,8 @@ export function ScanDetailsModal({
     window.open(inbodyScansApi.download(scan.id), '_blank');
   };
 
-  const handleReviewComplete = () => {
-    onUpdate();
+  const handleReviewComplete = async () => {
+    await onUpdate();
     setReviewModalOpen(false);
   };
 

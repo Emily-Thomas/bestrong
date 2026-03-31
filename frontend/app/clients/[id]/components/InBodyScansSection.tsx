@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { type InBodyScan, inbodyScansApi } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { ScanDetailsModal } from './ScanDetailsModal';
 import { ScanReviewModal } from './ScanReviewModal';
 import { ScanUploadModal } from './ScanUploadModal';
@@ -20,9 +21,17 @@ import { formatNumber } from './utils';
 
 interface InBodyScansSectionProps {
   clientId: number;
+  /** Softer frame when nested in setup accordion */
+  embedded?: boolean;
+  /** Called after scans list changes (upload, review, load) */
+  onUpdate?: () => void | Promise<void>;
 }
 
-export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
+export function InBodyScansSection({
+  clientId,
+  embedded = false,
+  onUpdate,
+}: InBodyScansSectionProps) {
   const [scans, setScans] = useState<InBodyScan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,8 +54,9 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
       setError(err instanceof Error ? err.message : 'Failed to load scans');
     } finally {
       setLoading(false);
+      await Promise.resolve(onUpdate?.());
     }
-  }, [clientId]);
+  }, [clientId, onUpdate]);
 
   useEffect(() => {
     loadScans();
@@ -111,8 +121,8 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
     setPollingScans((prev) => new Set(prev).add(scanId));
   };
 
-  const handleReviewComplete = () => {
-    loadScans();
+  const handleReviewComplete = async () => {
+    await loadScans();
     setReviewModalOpen(false);
     setSelectedScan(null);
   };
@@ -170,12 +180,23 @@ export function InBodyScansSection({ clientId }: InBodyScansSectionProps) {
 
   return (
     <>
-      <Card id="inbody-scans-section">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>InBody Scans</CardTitle>
-            <CardDescription>Body composition analysis</CardDescription>
-          </div>
+      <Card
+        id="inbody-scans-section"
+        className={cn(
+          embedded && 'border-0 bg-muted/15 shadow-none'
+        )}
+      >
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          {!embedded ? (
+            <div>
+              <CardTitle>InBody</CardTitle>
+              <CardDescription>Body composition scans</CardDescription>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Upload at least one scan for AI planning.
+            </p>
+          )}
           <Button size="sm" onClick={() => setUploadModalOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
             Upload Scan

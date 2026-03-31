@@ -3,27 +3,573 @@ import { type Request, type Response, Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import * as aiService from '../services/ai.service';
 import * as clientService from '../services/client.service';
+import * as exerciseLibraryService from '../services/exercise-library.service';
 import * as inbodyScanService from '../services/inbody-scan.service';
+import { refineLibraryTemplateLoads } from '../services/library-load-refinement-ai.service';
 import * as jobService from '../services/job.service';
+import { buildWorkoutInputsFromPlanTemplate } from '../services/plan-template-workout-builder.service';
 import * as questionnaireService from '../services/questionnaire.service';
 import * as recommendationService from '../services/recommendation.service';
 import * as trainerService from '../services/trainer.service';
 import * as weekGenerationJobService from '../services/week-generation-job.service';
 import * as workoutService from '../services/workout.service';
+import {
+  getPlanTemplateById,
+  getPlanTemplateSummaries,
+} from '../data/plan-template-library';
+import { clientErrorMessage } from '../utils/client-error-message';
 import type {
   Client,
   CreateRecommendationInput,
   CreateWorkoutInput,
   InBodyScan,
+  LLMRecommendationResponse,
   LLMWorkoutResponse,
+  PlanGuidanceStructure,
   Questionnaire,
   UpdateRecommendationInput,
 } from '../types';
 
 const router = Router();
 
+/** Fields saved from the manual plan builder (before client / questionnaire ids are applied). */
+type ManualPlanFields = Omit<
+  CreateRecommendationInput,
+  'client_id' | 'questionnaire_id' | 'inbody_scan_id' | 'comparison_batch_id'
+>;
+
+function isWeeklyDay(
+  x: unknown
+): x is PlanGuidanceStructure['weekly_repeating_schedule'][number] {
+  if (!x || typeof x !== 'object') return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.day === 'string' &&
+    typeof o.session_label === 'string' &&
+    typeof o.focus_theme === 'string'
+  );
+}
+
+function parseManualPlanPayload(
+  body: Record<string, unknown>
+): ManualPlanFields | null {
+  const client_type = body.client_type;
+  const sessions_per_week = body.sessions_per_week;
+  const session_length_minutes = body.session_length_minutes;
+  const training_style = body.training_style;
+  const plan_structure = body.plan_structure;
+  const ai_reasoning = body.ai_reasoning;
+
+  if (typeof client_type !== 'string' || !client_type.trim()) return null;
+  const spw =
+    typeof sessions_per_week === 'number'
+      ? sessions_per_week
+      : parseInt(String(sessions_per_week ?? ''), 10);
+  if (Number.isNaN(spw) || spw < 1 || spw > 6) return null;
+  const slen =
+    typeof session_length_minutes === 'number'
+      ? session_length_minutes
+      : parseInt(String(session_length_minutes ?? ''), 10);
+  if (Number.isNaN(slen) || slen < 15 || slen > 180) return null;
+  if (typeof training_style !== 'string' || !training_style.trim()) return null;
+  if (!plan_structure || typeof plan_structure !== 'object') return null;
+  const ps = plan_structure as Record<string, unknown>;
+  const phaseWeeks = ps.phase_1_weeks;
+  const pw =
+    typeof phaseWeeks === 'number'
+      ? phaseWeeks
+      : parseInt(String(phaseWeeks ?? ''), 10);
+  if (Number.isNaN(pw) || pw < 1 || pw > 12) return null;
+  const sched = ps.weekly_repeating_schedule;
+  if (!Array.isArray(sched) || sched.length < 1) return null;
+  if (!sched.every(isWeeklyDay)) return null;
+  if (sched.length !== spw) return null;
+
+  const archetype = ps.archetype;
+  const description = ps.description;
+  const training_methods = ps.training_methods;
+  const progression_guidelines = ps.progression_guidelines;
+  const intensity_load_progression = ps.intensity_load_progression;
+  if (typeof archetype !== 'string' || !archetype.trim()) return null;
+  if (typeof description !== 'string') return null;
+  if (
+    !Array.isArray(training_methods) ||
+    !training_methods.every((t) => typeof t === 'string')
+  ) {
+    return null;
+  }
+  if (typeof progression_guidelines !== 'string') return null;
+  if (typeof intensity_load_progression !== 'string') return null;
+
+  const fullStructure: PlanGuidanceStructure = {
+    archetype: archetype.trim(),
+    description: description.trim(),
+    phase_1_weeks: pw,
+    training_methods: training_methods as string[],
+    weekly_repeating_schedule: sched,
+    progression_guidelines: progression_guidelines.trim(),
+    intensity_load_progression: intensity_load_progression.trim(),
+    ...(typeof ps.periodization_approach === 'string'
+      ? { periodization_approach: ps.periodization_approach }
+      : {}),
+  };
+
+  return {
+    client_type: client_type.trim(),
+    sessions_per_week: spw,
+    session_length_minutes: slen,
+    training_style: training_style.trim(),
+    plan_structure: fullStructure,
+    ...(typeof ai_reasoning === 'string' && ai_reasoning.trim()
+      ? { ai_reasoning: ai_reasoning.trim() }
+      : {}),
+  };
+}
+
 // All routes require authentication
 router.use(authenticateToken);
+
+// Prebuilt plan library — register before any /:id routes so "plan-templates" is never parsed as an ID
+router.get('/plan-templates', (_req: Request, res: Response) => {
+  try {
+    res.json({ success: true, data: getPlanTemplateSummaries() });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/** Full template (plan structure, blueprints, progression) for UI detail modal */
+router.get('/plan-templates/:templateId', (req: Request, res: Response) => {
+  try {
+    const templateId = req.params.templateId;
+    const template = getPlanTemplateById(templateId);
+    if (!template) {
+      res.status(404).json({
+        success: false,
+        error: 'Plan template not found',
+      });
+      return;
+    }
+    res.json({ success: true, data: template });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+router.post(
+  '/plan-templates/:templateId/apply',
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Not authenticated' });
+        return;
+      }
+
+      const templateId = req.params.templateId;
+      const template = getPlanTemplateById(templateId);
+      if (!template) {
+        res.status(404).json({
+          success: false,
+          error: 'Plan template not found',
+        });
+        return;
+      }
+
+      const rawQid = (req.body as { questionnaire_id?: unknown })
+        ?.questionnaire_id;
+      const questionnaireId =
+        typeof rawQid === 'number' ? rawQid : parseInt(String(rawQid ?? ''), 10);
+      if (Number.isNaN(questionnaireId)) {
+        res.status(400).json({
+          success: false,
+          error: 'questionnaire_id is required',
+        });
+        return;
+      }
+
+      const questionnaire =
+        await questionnaireService.getQuestionnaireById(questionnaireId);
+      if (!questionnaire) {
+        res
+          .status(404)
+          .json({ success: false, error: 'Questionnaire not found' });
+        return;
+      }
+
+      const client = await clientService.getClientById(questionnaire.client_id);
+      if (!client || client.created_by !== req.user.userId) {
+        res.status(403).json({
+          success: false,
+          error: 'You do not have access to this client',
+        });
+        return;
+      }
+
+      const hasVerifiedScan =
+        await inbodyScanService.hasVerifiedInBodyScan(questionnaire.client_id);
+      if (!hasVerifiedScan) {
+        res.status(400).json({
+          success: false,
+          error:
+            'Upload and verify at least one InBody scan before applying a plan',
+        });
+        return;
+      }
+
+      const trainersWithPersonas = (
+        await trainerService.getTrainersByAdmin(req.user.userId)
+      ).filter((t) => t.structured_persona?.ai_prompt_injection?.trim());
+      if (trainersWithPersonas.length > 0) {
+        try {
+          const resolved = await resolveTrainerInjectionForGeneration(
+            req.body,
+            req.user.userId
+          );
+          if (resolved.trainerId === undefined) {
+            res.status(400).json({
+              success: false,
+              error:
+                'Select a coach with a generated persona before applying a library plan.',
+            });
+            return;
+          }
+        } catch {
+          res.status(400).json({
+            success: false,
+            error:
+              'Invalid trainer_id, or that trainer does not have a generated persona yet.',
+          });
+          return;
+        }
+      } else {
+        try {
+          await resolveTrainerInjectionForGeneration(req.body, req.user.userId);
+        } catch {
+          res.status(400).json({
+            success: false,
+            error:
+              'Invalid trainer_id, or that trainer does not have a generated persona yet.',
+          });
+          return;
+        }
+      }
+
+      const existingJob =
+        await jobService.getLatestJobByQuestionnaireId(questionnaireId);
+      if (
+        existingJob &&
+        (existingJob.status === 'pending' ||
+          existingJob.status === 'processing')
+      ) {
+        res.status(202).json({
+          success: true,
+          data: { job_id: existingJob.id },
+          message: 'Job already in progress',
+        });
+        return;
+      }
+
+      let trainerMeta: Record<string, unknown>;
+      try {
+        const resolved = await resolveTrainerInjectionForGeneration(
+          req.body,
+          req.user.userId
+        );
+        trainerMeta = {
+          mode: 'library_template',
+          template_id: templateId,
+          ...(resolved.trainerId !== undefined
+            ? { trainer_id: resolved.trainerId }
+            : {}),
+        };
+      } catch {
+        res.status(400).json({
+          success: false,
+          error:
+            'Invalid trainer_id, or that trainer does not have a generated persona yet.',
+        });
+        return;
+      }
+
+      const job = await jobService.createJob({
+        questionnaire_id: questionnaireId,
+        client_id: questionnaire.client_id,
+        created_by: req.user.userId,
+        metadata: trainerMeta,
+      });
+
+      res.status(202).json({
+        success: true,
+        data: { job_id: job.id },
+        message:
+          'Mesocycle plan is being saved. Generate workouts from the Workouts tab when ready.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ success: false, error: message });
+    }
+  }
+);
+
+/** Manual mesocycle definition — async job saves plan + optional AI workouts */
+router.post('/manual-plan/start', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    const body = req.body as Record<string, unknown>;
+    const rawQid = body.questionnaire_id;
+    const questionnaireId =
+      typeof rawQid === 'number' ? rawQid : parseInt(String(rawQid ?? ''), 10);
+    if (Number.isNaN(questionnaireId)) {
+      res.status(400).json({
+        success: false,
+        error: 'questionnaire_id is required',
+      });
+      return;
+    }
+
+    const questionnaire =
+      await questionnaireService.getQuestionnaireById(questionnaireId);
+    if (!questionnaire) {
+      res.status(404).json({ success: false, error: 'Questionnaire not found' });
+      return;
+    }
+
+    const client = await clientService.getClientById(questionnaire.client_id);
+    if (!client || client.created_by !== req.user.userId) {
+      res.status(403).json({
+        success: false,
+        error: 'You do not have access to this client',
+      });
+      return;
+    }
+
+    const hasVerifiedScan =
+      await inbodyScanService.hasVerifiedInBodyScan(questionnaire.client_id);
+    if (!hasVerifiedScan) {
+      res.status(400).json({
+        success: false,
+        error:
+          'Upload and verify at least one InBody scan before saving a manual plan',
+      });
+      return;
+    }
+
+    const trainersWithPersonas = (
+      await trainerService.getTrainersByAdmin(req.user.userId)
+    ).filter((t) => t.structured_persona?.ai_prompt_injection?.trim());
+    if (trainersWithPersonas.length > 0) {
+      try {
+        const resolved = await resolveTrainerInjectionForGeneration(
+          body,
+          req.user.userId
+        );
+        if (resolved.trainerId === undefined) {
+          res.status(400).json({
+            success: false,
+            error:
+              'Select a coach with a generated persona before saving a manual plan.',
+          });
+          return;
+        }
+      } catch {
+        res.status(400).json({
+          success: false,
+          error:
+            'Invalid trainer_id, or that trainer does not have a generated persona yet.',
+        });
+        return;
+      }
+    } else {
+      try {
+        await resolveTrainerInjectionForGeneration(body, req.user.userId);
+      } catch {
+        res.status(400).json({
+          success: false,
+          error:
+            'Invalid trainer_id, or that trainer does not have a generated persona yet.',
+        });
+        return;
+      }
+    }
+
+    const parsed = parseManualPlanPayload(body);
+    if (!parsed) {
+      res.status(400).json({
+        success: false,
+        error:
+          'Invalid manual plan: need client_type, sessions_per_week (1–6), session_length_minutes, training_style, and plan_structure with phase_1_weeks and weekly_repeating_schedule.',
+      });
+      return;
+    }
+
+    const existingJob =
+      await jobService.getLatestJobByQuestionnaireId(questionnaireId);
+    if (
+      existingJob &&
+      (existingJob.status === 'pending' || existingJob.status === 'processing')
+    ) {
+      res.status(202).json({
+        success: true,
+        data: { job_id: existingJob.id },
+        message: 'Job already in progress',
+      });
+      return;
+    }
+
+    let trainerMeta: Record<string, unknown>;
+    try {
+      const resolved = await resolveTrainerInjectionForGeneration(
+        body,
+        req.user.userId
+      );
+      trainerMeta = {
+        mode: 'manual_plan',
+        manual_plan: parsed,
+        ...(resolved.trainerId !== undefined
+          ? { trainer_id: resolved.trainerId }
+          : {}),
+      };
+    } catch {
+      res.status(400).json({
+        success: false,
+        error:
+          'Invalid trainer_id, or that trainer does not have a generated persona yet.',
+      });
+      return;
+    }
+
+    const job = await jobService.createJob({
+      questionnaire_id: questionnaireId,
+      client_id: questionnaire.client_id,
+      created_by: req.user.userId,
+      metadata: trainerMeta,
+    });
+
+    res.status(202).json({
+      success: true,
+      data: { job_id: job.id },
+      message:
+        'Manual mesocycle is being saved. Generate workouts from the Workouts tab when ready.',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/** Quick AI: best coach among three roster trainers + structured rationale (no full plans) */
+router.post(
+  '/questionnaire/:questionnaireId/coach-fit',
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Not authenticated' });
+        return;
+      }
+
+      const questionnaireId = parseInt(req.params.questionnaireId, 10);
+      if (Number.isNaN(questionnaireId)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid questionnaire ID',
+        });
+        return;
+      }
+
+      const questionnaire =
+        await questionnaireService.getQuestionnaireById(questionnaireId);
+      if (!questionnaire) {
+        res
+          .status(404)
+          .json({ success: false, error: 'Questionnaire not found' });
+        return;
+      }
+
+      const client = await clientService.getClientById(questionnaire.client_id);
+      if (!client || client.created_by !== req.user.userId) {
+        res.status(403).json({
+          success: false,
+          error: 'You do not have access to this client',
+        });
+        return;
+      }
+
+      const hasVerifiedScan =
+        await inbodyScanService.hasVerifiedInBodyScan(questionnaire.client_id);
+      if (!hasVerifiedScan) {
+        res.status(400).json({
+          success: false,
+          error:
+            'Upload and verify at least one InBody scan before running coach fit analysis',
+        });
+        return;
+      }
+
+      const allTrainers = await trainerService.getTrainersByAdmin(
+        req.user.userId
+      );
+      const withPersona = allTrainers.filter((t) =>
+        Boolean(t.structured_persona?.ai_prompt_injection?.trim())
+      );
+      const three = withPersona.slice(0, 3);
+      if (three.length < 3) {
+        res.status(400).json({
+          success: false,
+          error:
+            'Coach fit needs at least three trainers with generated personas. Add coaches or generate personas in Trainers.',
+        });
+        return;
+      }
+
+      const structuredData = aiService.parseQuestionnaireData(questionnaire);
+      const latestScan =
+        await inbodyScanService.getLatestVerifiedInBodyScanByClientId(
+          questionnaire.client_id
+        );
+
+      const analysis = await aiService.generateCoachFitAnalysis(
+        questionnaire,
+        structuredData,
+        latestScan,
+        client,
+        three
+      );
+
+      const trainerIdsEvaluated = three.map((t) => t.id);
+      await questionnaireService.setQuestionnaireCoachFit(
+        questionnaireId,
+        analysis,
+        trainerIdsEvaluated
+      );
+
+      try {
+        res.json({
+          success: true,
+          data: {
+            analysis,
+            trainer_ids_evaluated: trainerIdsEvaluated,
+          },
+        });
+      } catch (serializeErr) {
+        console.error('[coach-fit] response serialization failed', serializeErr);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to send coach fit result. Try again.',
+        });
+      }
+    } catch (error) {
+      const message = clientErrorMessage(error);
+      console.error('[coach-fit]', error);
+      res.status(500).json({ success: false, error: message });
+    }
+  }
+);
 
 function mapLlmWorkoutsToInputs(
   workouts: LLMWorkoutResponse[],
@@ -60,6 +606,247 @@ async function resolveTrainerInjectionForGeneration(
     adminId
   );
   return { trainerId: n, injection };
+}
+
+async function processLibraryTemplateJob(
+  jobId: number,
+  job: jobService.RecommendationJob,
+  questionnaire: Questionnaire,
+  client: Client,
+  latestScan: InBodyScan | null,
+  meta: Record<string, unknown>
+): Promise<void> {
+  if (job.created_by == null) {
+    await jobService.failJob(jobId, 'Job missing creator');
+    return;
+  }
+  const templateId = meta.template_id;
+  if (typeof templateId !== 'string') {
+    await jobService.failJob(jobId, 'Job missing template_id');
+    return;
+  }
+  const template = getPlanTemplateById(templateId);
+  if (!template) {
+    await jobService.failJob(jobId, 'Plan template not found');
+    return;
+  }
+  const trainerId =
+    typeof meta.trainer_id === 'number' && meta.trainer_id > 0
+      ? meta.trainer_id
+      : null;
+
+  let coachInjection: string | undefined;
+  if (trainerId != null) {
+    try {
+      coachInjection = await trainerService.getCoachPromptInjectionForPlan(
+        trainerId,
+        job.created_by
+      );
+    } catch {
+      coachInjection = undefined;
+    }
+  }
+
+  await jobService.updateJobStatus(jobId, 'processing', 'Saving mesocycle plan…');
+
+  let workoutsForCreate: CreateWorkoutInput[] = [];
+
+  if (template.session_blueprints?.length) {
+    await jobService.updateJobStatus(
+      jobId,
+      'processing',
+      'Building workouts from template…'
+    );
+    const libraryExercises = await exerciseLibraryService.getExercises({
+      status: 'active',
+    });
+    let built = buildWorkoutInputsFromPlanTemplate(template, libraryExercises);
+    if (built.length > 0 && process.env.OPENAI_API_KEY) {
+      await jobService.updateJobStatus(
+        jobId,
+        'processing',
+        'Refining loads for client and coach…'
+      );
+      built = await refineLibraryTemplateLoads(
+        built,
+        questionnaire,
+        client,
+        latestScan,
+        coachInjection
+      );
+    }
+    workoutsForCreate = built.map((w) => ({
+      ...w,
+      recommendation_id: 0,
+    }));
+  }
+
+  const libraryBuilt =
+    Boolean(template.session_blueprints?.length) && workoutsForCreate.length > 0;
+
+  const input: CreateRecommendationInput = {
+    client_id: questionnaire.client_id,
+    questionnaire_id: questionnaire.id,
+    client_type: template.client_type,
+    sessions_per_week: template.sessions_per_week,
+    session_length_minutes: template.session_length_minutes,
+    training_style: template.training_style,
+    plan_structure: {
+      ...(template.plan_structure as unknown as Record<string, unknown>),
+      plan_origin: 'library',
+      plan_template_id: templateId,
+      plan_template_name: template.name,
+      library_built_workouts: libraryBuilt,
+    },
+    ai_reasoning: template.ai_reasoning,
+    inbody_scan_id: latestScan?.id,
+    trainer_id: trainerId,
+    comparison_batch_id: null,
+  };
+
+  const rec =
+    await recommendationService.createOrUpdateRecommendationForQuestionnaire(
+      input,
+      job.created_by,
+      workoutsForCreate
+    );
+
+  if (template.session_blueprints?.length && workoutsForCreate.length > 0) {
+    await jobService.mergeJobMetadata(jobId, {
+      template_library_built_workouts: true,
+    });
+  }
+
+  await jobService.completeJob(jobId, rec.id);
+}
+
+async function processManualPlanJob(
+  jobId: number,
+  job: jobService.RecommendationJob,
+  questionnaire: Questionnaire,
+  _client: Client,
+  latestScan: InBodyScan | null,
+  meta: Record<string, unknown>
+): Promise<void> {
+  if (job.created_by == null) {
+    await jobService.failJob(jobId, 'Job missing creator');
+    return;
+  }
+  const manual = meta.manual_plan as ManualPlanFields | undefined;
+  if (!manual || typeof manual !== 'object') {
+    await jobService.failJob(jobId, 'Invalid manual plan');
+    return;
+  }
+  const trainerId =
+    typeof meta.trainer_id === 'number' && meta.trainer_id > 0
+      ? meta.trainer_id
+      : null;
+
+  const input: CreateRecommendationInput = {
+    client_id: questionnaire.client_id,
+    questionnaire_id: questionnaire.id,
+    client_type: manual.client_type,
+    sessions_per_week: manual.sessions_per_week,
+    session_length_minutes: manual.session_length_minutes,
+    training_style: manual.training_style,
+    plan_structure: {
+      ...(manual.plan_structure as Record<string, unknown>),
+      plan_origin: 'manual',
+    },
+    ai_reasoning: manual.ai_reasoning,
+    inbody_scan_id: latestScan?.id,
+    trainer_id: trainerId,
+    comparison_batch_id: null,
+  };
+
+  await jobService.updateJobStatus(jobId, 'processing', 'Saving mesocycle plan…');
+  const rec =
+    await recommendationService.createOrUpdateRecommendationForQuestionnaire(
+      input,
+      job.created_by,
+      []
+    );
+  await jobService.completeJob(jobId, rec.id);
+}
+
+async function processWorkoutGenerationJob(
+  jobId: number,
+  job: jobService.RecommendationJob,
+  questionnaire: Questionnaire,
+  client: Client,
+  latestScan: InBodyScan | null,
+  meta: Record<string, unknown>
+): Promise<void> {
+  if (job.created_by == null) {
+    await jobService.failJob(jobId, 'Job missing creator');
+    return;
+  }
+  const recommendationId = meta.recommendation_id;
+  if (typeof recommendationId !== 'number' || recommendationId <= 0) {
+    await jobService.failJob(jobId, 'Invalid recommendation_id');
+    return;
+  }
+  const recommendation =
+    await recommendationService.getRecommendationById(recommendationId);
+  if (
+    !recommendation ||
+    recommendation.questionnaire_id !== questionnaire.id ||
+    recommendation.client_id !== questionnaire.client_id
+  ) {
+    await jobService.failJob(jobId, 'Recommendation not found');
+    return;
+  }
+
+  let coachInjection: string | undefined;
+  if (recommendation.trainer_id != null) {
+    try {
+      coachInjection = await trainerService.getCoachPromptInjectionForPlan(
+        recommendation.trainer_id,
+        job.created_by
+      );
+    } catch (e) {
+      await jobService.failJob(
+        jobId,
+        e instanceof Error ? e.message : 'Trainer persona not available'
+      );
+      return;
+    }
+  }
+
+  const structuredData = aiService.parseQuestionnaireData(questionnaire);
+  const recStructure: Omit<LLMRecommendationResponse, 'workouts'> = {
+    client_type: recommendation.client_type,
+    client_type_reasoning: '',
+    sessions_per_week: recommendation.sessions_per_week,
+    session_length_minutes: recommendation.session_length_minutes,
+    training_style: recommendation.training_style,
+    plan_structure: recommendation.plan_structure as LLMRecommendationResponse['plan_structure'],
+    ai_reasoning: recommendation.ai_reasoning ?? '',
+  };
+
+  await jobService.updateJobStatus(
+    jobId,
+    'processing',
+    'Generating mesocycle workouts (preview)…'
+  );
+  const check = await jobService.getJobById(jobId);
+  if (check?.status === 'cancelled') {
+    return;
+  }
+
+  const llmWorkouts = await aiService.generateMesocycleWorkouts(
+    recStructure,
+    questionnaire,
+    structuredData,
+    latestScan,
+    client,
+    coachInjection
+  );
+
+  await jobService.mergeJobMetadata(jobId, {
+    preview_workouts: llmWorkouts,
+  });
+  await jobService.completeJob(jobId, recommendation.id);
 }
 
 interface TrainerComparisonJobMeta {
@@ -115,27 +902,12 @@ async function processTrainerComparisonJob(
     await jobService.updateJobStatus(
       jobId,
       'processing',
-      `Generating workouts for coach ${i + 1} of ${total}…`
+      `Saving plan ${i + 1} of ${total}…`
     );
     const checkW = await jobService.getJobById(jobId);
     if (checkW?.status === 'cancelled') {
       return;
     }
-
-    const llmWorkouts = await aiService.generateWorkouts(
-      structure,
-      questionnaire,
-      structuredData,
-      latestScan,
-      client,
-      injection
-    );
-
-    await jobService.updateJobStatus(
-      jobId,
-      'processing',
-      `Saving plan ${i + 1} of ${total}…`
-    );
 
     const recommendationInput: CreateRecommendationInput = {
       client_id: questionnaire.client_id,
@@ -154,9 +926,6 @@ async function processTrainerComparisonJob(
     const rec = await recommendationService.createRecommendation(
       recommendationInput,
       createdBy
-    );
-    await workoutService.createWorkouts(
-      mapLlmWorkoutsToInputs(llmWorkouts, rec.id)
     );
     recommendationIds.push(rec.id);
   }
@@ -254,21 +1023,71 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
         : null;
 
     if (comparisonMeta && comparisonMeta.trainer_ids.length >= 2) {
-      try {
-        await processTrainerComparisonJob(
-          jobId,
-          job,
-          questionnaire,
-          client,
-          latestScan,
-          comparisonMeta
-        );
-        console.log(`✅ Trainer comparison job ${jobId} completed`);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : 'Unknown error';
-        await jobService.failJob(jobId, message);
-      }
+      await jobService.failJob(
+        jobId,
+        'Multi-plan coach comparison is no longer supported. Use Coach fit analysis on the client page, then generate a single plan.'
+      );
       return;
+    }
+
+    const metaMode =
+      rawMeta && typeof rawMeta === 'object'
+        ? (rawMeta as { mode?: string }).mode
+        : undefined;
+
+    if (metaMode === 'library_template') {
+      await processLibraryTemplateJob(
+        jobId,
+        job,
+        questionnaire,
+        client,
+        latestScan,
+        rawMeta as Record<string, unknown>
+      );
+      return;
+    }
+
+    if (metaMode === 'manual_plan') {
+      await processManualPlanJob(
+        jobId,
+        job,
+        questionnaire,
+        client,
+        latestScan,
+        rawMeta as Record<string, unknown>
+      );
+      return;
+    }
+
+    if (metaMode === 'generate_workouts') {
+      await processWorkoutGenerationJob(
+        jobId,
+        job,
+        questionnaire,
+        client,
+        latestScan,
+        rawMeta as Record<string, unknown>
+      );
+      return;
+    }
+
+    const trainersWithPersonas = (
+      await trainerService.getTrainersByAdmin(job.created_by)
+    ).filter((t) => t.structured_persona?.ai_prompt_injection?.trim());
+    if (trainersWithPersonas.length > 0) {
+      const tid =
+        rawMeta &&
+        typeof rawMeta === 'object' &&
+        typeof (rawMeta as { trainer_id?: number }).trainer_id === 'number'
+          ? (rawMeta as { trainer_id: number }).trainer_id
+          : undefined;
+      if (tid === undefined) {
+        await jobService.failJob(
+          jobId,
+          'Select a coach before generating an AI plan.'
+        );
+        return;
+      }
     }
 
     // Step 1: Generate recommendation structure
@@ -325,27 +1144,12 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
     await jobService.updateJobStatus(
       jobId,
       'processing',
-      'Generating workouts...'
+      'Saving recommendation (workouts: use Generate workouts when ready)…'
     );
     const checkJobW = await jobService.getJobById(jobId);
     if (checkJobW?.status === 'cancelled') {
       return;
     }
-
-    const llmWorkouts = await aiService.generateWorkouts(
-      recommendationStructure,
-      questionnaire,
-      structuredData,
-      latestScan,
-      client,
-      coachInjection
-    );
-
-    await jobService.updateJobStatus(
-      jobId,
-      'processing',
-      'Saving recommendation...'
-    );
 
     const recommendationInput: CreateRecommendationInput = {
       client_id: questionnaire.client_id,
@@ -354,27 +1158,21 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
       sessions_per_week: recommendationStructure.sessions_per_week,
       session_length_minutes: recommendationStructure.session_length_minutes,
       training_style: recommendationStructure.training_style,
-      plan_structure: recommendationStructure.plan_structure,
+      plan_structure: {
+        ...(recommendationStructure.plan_structure as Record<string, unknown>),
+        plan_origin: 'ai',
+      },
       ai_reasoning: recommendationStructure.ai_reasoning,
       inbody_scan_id: latestScan?.id,
       trainer_id: singleTrainerId ?? null,
       comparison_batch_id: null,
     };
 
-    const workoutInputs: CreateWorkoutInput[] = llmWorkouts.map((w) => ({
-      recommendation_id: 0,
-      week_number: w.week_number,
-      session_number: w.session_number,
-      workout_name: w.workout_name,
-      workout_data: w.workout_data,
-      workout_reasoning: w.workout_reasoning,
-    }));
-
     const recommendation =
       await recommendationService.createOrUpdateRecommendationForQuestionnaire(
         recommendationInput,
         job.created_by,
-        workoutInputs
+        []
       );
 
     // Complete the job
@@ -420,17 +1218,30 @@ router.post(
         return;
       }
 
-      // Check if client has at least one InBody scan
-      const hasScan = await inbodyScanService.hasInBodyScan(
-        questionnaire.client_id
-      );
-      if (!hasScan) {
+      const hasVerifiedScan =
+        await inbodyScanService.hasVerifiedInBodyScan(questionnaire.client_id);
+      if (!hasVerifiedScan) {
         res.status(400).json({
           success: false,
           error:
-            'At least one InBody scan is required before generating recommendations',
+            'Upload and verify at least one InBody scan before generating recommendations',
         });
         return;
+      }
+
+      const trainersWithPersonas = (
+        await trainerService.getTrainersByAdmin(req.user.userId)
+      ).filter((t) => t.structured_persona?.ai_prompt_injection?.trim());
+      if (trainersWithPersonas.length > 0) {
+        const rawTid = (req.body as { trainer_id?: unknown })?.trainer_id;
+        if (rawTid === undefined || rawTid === null || rawTid === '') {
+          res.status(400).json({
+            success: false,
+            error:
+              'Select a coach with a generated persona before generating an AI plan.',
+          });
+          return;
+        }
       }
 
       // Check if there's already a pending/processing job for this questionnaire
@@ -487,119 +1298,15 @@ router.post(
   }
 );
 
+/** @deprecated Multi-plan comparison removed — use POST .../questionnaire/:id/coach-fit */
 router.post(
   '/generate/:questionnaireId/compare',
-  async (req: Request, res: Response) => {
-    try {
-      if (!req.user) {
-        res.status(401).json({ success: false, error: 'Not authenticated' });
-        return;
-      }
-
-      const questionnaireId = parseInt(req.params.questionnaireId, 10);
-      if (Number.isNaN(questionnaireId)) {
-        res
-          .status(400)
-          .json({ success: false, error: 'Invalid questionnaire ID' });
-        return;
-      }
-
-      const rawIds = (req.body as { trainer_ids?: unknown })?.trainer_ids;
-      if (!Array.isArray(rawIds) || rawIds.length < 2) {
-        res.status(400).json({
-          success: false,
-          error:
-            'Select at least two trainers with generated personas to compare.',
-        });
-        return;
-      }
-
-      const trainerIds = rawIds
-        .map((x) => (typeof x === 'number' ? x : parseInt(String(x), 10)))
-        .filter((n) => !Number.isNaN(n) && n > 0);
-
-      const unique = [...new Set(trainerIds)];
-      if (unique.length < 2) {
-        res.status(400).json({
-          success: false,
-          error: 'Select at least two valid trainer IDs.',
-        });
-        return;
-      }
-
-      const questionnaire =
-        await questionnaireService.getQuestionnaireById(questionnaireId);
-      if (!questionnaire) {
-        res
-          .status(404)
-          .json({ success: false, error: 'Questionnaire not found' });
-        return;
-      }
-
-      const hasScan = await inbodyScanService.hasInBodyScan(
-        questionnaire.client_id
-      );
-      if (!hasScan) {
-        res.status(400).json({
-          success: false,
-          error:
-            'At least one InBody scan is required before generating recommendations',
-        });
-        return;
-      }
-
-      for (const tid of unique) {
-        try {
-          await trainerService.getCoachPromptInjectionForPlan(
-            tid,
-            req.user.userId
-          );
-        } catch {
-          res.status(400).json({
-            success: false,
-            error: `Trainer ${tid} needs a generated persona before comparison. Open Trainers and generate one.`,
-          });
-          return;
-        }
-      }
-
-      const existingJob =
-        await jobService.getLatestJobByQuestionnaireId(questionnaireId);
-      if (
-        existingJob &&
-        (existingJob.status === 'pending' ||
-          existingJob.status === 'processing')
-      ) {
-        res.json({
-          success: true,
-          data: { job_id: existingJob.id },
-          message: 'Job already in progress',
-        });
-        return;
-      }
-
-      const batchId = randomUUID();
-      const job = await jobService.createJob({
-        questionnaire_id: questionnaireId,
-        client_id: questionnaire.client_id,
-        created_by: req.user.userId,
-        metadata: {
-          mode: 'trainer_comparison',
-          trainer_ids: unique,
-          comparison_batch_id: batchId,
-        },
-      });
-
-      res.status(202).json({
-        success: true,
-        data: { job_id: job.id, comparison_batch_id: batchId },
-        message:
-          'Coach comparison started. Plans will be ready shortly. You can leave this page and return.',
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ success: false, error: message });
-    }
+  (_req: Request, res: Response) => {
+    res.status(410).json({
+      success: false,
+      error:
+        'Multi-plan coach comparison is no longer available. Use Coach fit on the client page, pick a coach, then generate one plan.',
+    });
   }
 );
 
@@ -1077,6 +1784,242 @@ router.get(
           ...recommendation,
           workouts,
         },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ success: false, error: message });
+    }
+  }
+);
+
+/** AI mesocycle workouts (preview in job metadata; save via apply) */
+router.post(
+  '/:id/workouts/generate/start',
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Not authenticated' });
+        return;
+      }
+
+      const recommendationId = parseInt(req.params.id, 10);
+      if (Number.isNaN(recommendationId)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid recommendation ID',
+        });
+        return;
+      }
+
+      const recommendation =
+        await recommendationService.getRecommendationById(recommendationId);
+      if (!recommendation?.questionnaire_id) {
+        res.status(404).json({
+          success: false,
+          error: 'Recommendation not found',
+        });
+        return;
+      }
+
+      const client = await clientService.getClientById(
+        recommendation.client_id
+      );
+      if (!client || client.created_by !== req.user.userId) {
+        res.status(403).json({
+          success: false,
+          error: 'You do not have access to this client',
+        });
+        return;
+      }
+
+      const hasVerifiedScan =
+        await inbodyScanService.hasVerifiedInBodyScan(
+          recommendation.client_id
+        );
+      if (!hasVerifiedScan) {
+        res.status(400).json({
+          success: false,
+          error:
+            'Upload and verify at least one InBody scan before generating workouts',
+        });
+        return;
+      }
+
+      const questionnaire =
+        await questionnaireService.getQuestionnaireById(
+          recommendation.questionnaire_id
+        );
+      if (!questionnaire) {
+        res.status(404).json({
+          success: false,
+          error: 'Questionnaire not found',
+        });
+        return;
+      }
+
+      const existingJob =
+        await jobService.getLatestJobByQuestionnaireId(questionnaire.id);
+      if (
+        existingJob &&
+        (existingJob.status === 'pending' ||
+          existingJob.status === 'processing')
+      ) {
+        const mode = (existingJob.metadata as { mode?: string } | null)?.mode;
+        if (mode === 'generate_workouts') {
+          res.status(202).json({
+            success: true,
+            data: { job_id: existingJob.id },
+            message: 'Workout generation already in progress',
+          });
+          return;
+        }
+        res.status(409).json({
+          success: false,
+          error:
+            'Wait for the current plan job to finish, then generate workouts.',
+        });
+        return;
+      }
+
+      const job = await jobService.createJob({
+        questionnaire_id: questionnaire.id,
+        client_id: recommendation.client_id,
+        created_by: req.user.userId,
+        metadata: {
+          mode: 'generate_workouts',
+          recommendation_id: recommendationId,
+        },
+      });
+
+      res.status(202).json({
+        success: true,
+        data: { job_id: job.id },
+        message:
+          'Workout generation started. Poll the job; when complete, apply or edit the preview.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ success: false, error: message });
+    }
+  }
+);
+
+router.post(
+  '/:id/workouts/generate/apply',
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Not authenticated' });
+        return;
+      }
+
+      const recommendationId = parseInt(req.params.id, 10);
+      if (Number.isNaN(recommendationId)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid recommendation ID',
+        });
+        return;
+      }
+
+      const recommendation =
+        await recommendationService.getRecommendationById(recommendationId);
+      if (!recommendation) {
+        res.status(404).json({
+          success: false,
+          error: 'Recommendation not found',
+        });
+        return;
+      }
+
+      const client = await clientService.getClientById(
+        recommendation.client_id
+      );
+      if (!client || client.created_by !== req.user.userId) {
+        res.status(403).json({
+          success: false,
+          error: 'You do not have access to this client',
+        });
+        return;
+      }
+
+      const body = req.body as {
+        job_id?: unknown;
+        workouts?: LLMWorkoutResponse[] | unknown;
+      };
+      const rawJobId = body.job_id;
+      const jobId =
+        typeof rawJobId === 'number'
+          ? rawJobId
+          : parseInt(String(rawJobId ?? ''), 10);
+      if (Number.isNaN(jobId)) {
+        res.status(400).json({
+          success: false,
+          error: 'job_id is required (from the completed generate job)',
+        });
+        return;
+      }
+
+      const job = await jobService.getJobById(jobId);
+      if (!job || job.created_by !== req.user.userId) {
+        res.status(404).json({
+          success: false,
+          error: 'Job not found',
+        });
+        return;
+      }
+      if (job.status !== 'completed') {
+        res.status(400).json({
+          success: false,
+          error: 'Workout generation is not finished yet',
+        });
+        return;
+      }
+
+      const meta = job.metadata as {
+        mode?: string;
+        preview_workouts?: LLMWorkoutResponse[];
+        recommendation_id?: number;
+      } | null;
+      if (
+        !meta ||
+        meta.mode !== 'generate_workouts' ||
+        meta.recommendation_id !== recommendationId
+      ) {
+        res.status(400).json({
+          success: false,
+          error: 'This job does not contain a preview for this recommendation',
+        });
+        return;
+      }
+
+      let workouts: LLMWorkoutResponse[] | undefined;
+      if (Array.isArray(body.workouts) && body.workouts.length > 0) {
+        workouts = body.workouts as LLMWorkoutResponse[];
+      } else if (
+        Array.isArray(meta.preview_workouts) &&
+        meta.preview_workouts.length > 0
+      ) {
+        workouts = meta.preview_workouts;
+      } else {
+        res.status(400).json({
+          success: false,
+          error: 'No preview workouts on this job',
+        });
+        return;
+      }
+
+      await workoutService.deleteWorkoutsByRecommendationId(recommendationId);
+      await workoutService.createWorkouts(
+        mapLlmWorkoutsToInputs(workouts, recommendationId)
+      );
+
+      const updated =
+        await recommendationService.getRecommendationById(recommendationId);
+      res.json({
+        success: true,
+        data: updated,
+        message: 'Workouts saved for this mesocycle',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

@@ -1,11 +1,24 @@
-// In production on Vercel, use relative paths (same domain)
-// In development, use the local backend URL
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== 'undefined' &&
-  window.location.origin === 'http://localhost:3000'
-    ? 'http://localhost:3001/api'
-    : '/api');
+// NEXT_PUBLIC_API_URL wins. In the browser on local hostnames, call Express
+// directly on :3001 — Next dev rewrites to the backend often return plain-text
+// "Internal Server Error" (500) instead of JSON when the proxy hiccups.
+function resolveApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const { hostname } = window.location;
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]'
+    ) {
+      return 'http://127.0.0.1:3001/api';
+    }
+  }
+  return '/api';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -68,7 +81,8 @@ class ApiClient {
         credentials: 'include',
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      const data = this.parseJsonApiBody<T>(text, response);
 
       if (!response.ok) {
         // Only clear token on 401/403 if it's NOT the /auth/me endpoint
@@ -97,7 +111,37 @@ class ApiClient {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
-      };
+      } as ApiResponse<T>;
+    }
+  }
+
+  /** Avoids "Unexpected token '<'" when the server returns HTML (wrong URL, 404 page, etc.) */
+  private parseJsonApiBody<T>(
+    text: string,
+    response: Response
+  ): ApiResponse<T> {
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.startsWith('<')) {
+      return {
+        success: false,
+        error:
+          response.status === 404
+            ? 'API not found. If you are developing locally, run the backend (port 3001) with the frontend.'
+            : `Server returned a page instead of JSON (${response.status}). Check NEXT_PUBLIC_API_URL and that the API is running.`,
+      } as ApiResponse<T>;
+    }
+    try {
+      return JSON.parse(text) as ApiResponse<T>;
+    } catch {
+      const oneLine = trimmed.replace(/\s+/g, ' ').slice(0, 320);
+      const hint =
+        oneLine.length > 0
+          ? ` ${oneLine}${trimmed.length > 320 ? '…' : ''}`
+          : '';
+      return {
+        success: false,
+        error: `Could not read API response (${response.status}).${hint}`,
+      } as ApiResponse<T>;
     }
   }
 
@@ -165,7 +209,8 @@ class ApiClient {
         credentials: 'include',
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      const data = this.parseJsonApiBody<T>(text, response);
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
@@ -185,7 +230,7 @@ class ApiClient {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
-      };
+      } as ApiResponse<T>;
     }
   }
 }
@@ -248,19 +293,20 @@ export const questionnairesApi = {
 // Recommendations API
 export const recommendationsApi = {
   // Async job-based generation (new, recommended)
-  startGenerationFromQuestionnaire: (questionnaireId: number) =>
-    apiClient.post<{ job_id: number }>(
-      `/recommendations/generate/${questionnaireId}/start`
-    ),
-  /** Multi-coach comparison: generates one draft plan per trainer (requires personas). */
-  startComparisonFromQuestionnaire: (
+  startGenerationFromQuestionnaire: (
     questionnaireId: number,
-    trainerIds: number[]
+    body?: { trainer_id?: number }
   ) =>
-    apiClient.post<{ job_id: number; comparison_batch_id: string }>(
-      `/recommendations/generate/${questionnaireId}/compare`,
-      { trainer_ids: trainerIds }
+    apiClient.post<{ job_id: number }>(
+      `/recommendations/generate/${questionnaireId}/start`,
+      body ?? {}
     ),
+  /** Quick AI: suggested coach + structured rationale (no full plans). */
+  coachFitAnalysis: (questionnaireId: number) =>
+    apiClient.post<{
+      analysis: CoachFitAnalysis;
+      trainer_ids_evaluated: number[];
+    }>(`/recommendations/questionnaire/${questionnaireId}/coach-fit`, {}),
   startGenerationFromClient: (clientId: number) =>
     apiClient.post<{ job_id: number }>(
       `/recommendations/generate/client/${clientId}/start`
@@ -332,6 +378,20 @@ export const recommendationsApi = {
   getWeekGenerationJobs: (id: number) =>
     apiClient.get<WeekGenerationJob[]>(`/recommendations/${id}/week-jobs`),
 
+  /** AI generates mesocycle workouts (preview on job); save via applyWorkoutGenerationPreview */
+  startWorkoutGenerationFromPlan: (recommendationId: number) =>
+    apiClient.post<{ job_id: number }>(
+      `/recommendations/${recommendationId}/workouts/generate/start`
+    ),
+  applyWorkoutGenerationPreview: (
+    recommendationId: number,
+    body: { job_id: number; workouts?: LLMWorkoutPreview[] }
+  ) =>
+    apiClient.post<Recommendation>(
+      `/recommendations/${recommendationId}/workouts/generate/apply`,
+      body
+    ),
+
   getComparisonBatch: (batchId: string) =>
     apiClient.get<{
       plans: { recommendation: Recommendation; trainer: Trainer | null }[];
@@ -341,6 +401,31 @@ export const recommendationsApi = {
     apiClient.post<Recommendation>(
       `/recommendations/comparison-batch/${encodeURIComponent(batchId)}/select`,
       { recommendation_id: recommendationId }
+    ),
+
+  /** System plan library — async job applies template + generates full mesocycle workouts */
+  getPlanTemplates: () =>
+    apiClient.get<PlanTemplateSummary[]>('/recommendations/plan-templates'),
+  getPlanTemplateById: (templateId: string) =>
+    apiClient.get<PlanTemplateDetail>(
+      `/recommendations/plan-templates/${encodeURIComponent(templateId)}`
+    ),
+  applyPlanTemplate: (
+    templateId: string,
+    body: {
+      questionnaire_id: number;
+      trainer_id?: number;
+    }
+  ) =>
+    apiClient.post<{ job_id: number }>(
+      `/recommendations/plan-templates/${encodeURIComponent(templateId)}/apply`,
+      body
+    ),
+  /** Custom mesocycle from admin-defined structure — async job saves plan + optional AI workouts */
+  startManualPlan: (body: ManualPlanStartPayload) =>
+    apiClient.post<{ job_id: number }>(
+      '/recommendations/manual-plan/start',
+      body
     ),
 };
 
@@ -407,6 +492,14 @@ export const exerciseLibraryApi = {
   },
   getById: (id: number) =>
     apiClient.get<ExerciseLibraryExercise>(`/exercise-library/${id}`),
+  getSimilar: (id: number, params?: { limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set('limit', String(params.limit));
+    const suffix = q.toString() ? `?${q}` : '';
+    return apiClient.get<ExerciseLibraryExercise[]>(
+      `/exercise-library/${id}/similar${suffix}`
+    );
+  },
   create: (data: CreateExerciseLibraryExerciseInput) =>
     apiClient.post<ExerciseLibraryExercise>('/exercise-library', data),
   update: (id: number, data: Partial<CreateExerciseLibraryExerciseInput>) =>
@@ -436,6 +529,7 @@ export const inbodyScansApi = {
   hasScan: (clientId: number) =>
     apiClient.get<{
       has_scan: boolean;
+      has_verified_scan: boolean;
       scan_count: number;
       latest_scan_id: number | null;
     }>(`/inbody-scans/client/${clientId}/has-scan`),
@@ -540,6 +634,7 @@ export interface Questionnaire {
   sleep_quality?: string;
   nutrition_habits?: string;
   notes?: string;
+  coach_fit?: QuestionnaireCoachFitStored | null;
   created_at: string;
   updated_at: string;
 }
@@ -563,6 +658,14 @@ export interface CreateQuestionnaireInput {
   notes?: string;
 }
 
+export interface ExerciseLibraryMetadataSnapshot {
+  primary_muscle_group?: string | null;
+  secondary_muscle_groups?: string[] | null;
+  movement_pattern?: string | null;
+  equipment?: string | null;
+  category?: string | null;
+}
+
 export interface Exercise {
   name: string;
   sets?: number;
@@ -572,6 +675,10 @@ export interface Exercise {
   notes?: string;
   tempo?: string;
   rir?: number;
+  is_custom?: boolean;
+  library_exercise_id?: number;
+  library_exercise_name?: string;
+  library_metadata?: ExerciseLibraryMetadataSnapshot;
 }
 
 export interface WorkoutData {
@@ -665,6 +772,120 @@ export interface UpdateWorkoutInput {
   scheduled_date?: string;
 }
 
+/** AI coach fit: suggested trainer + short rationale (≤2 sentences in production) */
+export interface CoachFitRecommendation {
+  reasoning: string;
+}
+
+export interface CoachFitAnalysis {
+  recommended_trainer_id: number;
+  recommendation: CoachFitRecommendation;
+}
+
+/** Persisted on questionnaires.coach_fit JSONB */
+export interface QuestionnaireCoachFitStored {
+  analysis: CoachFitAnalysis;
+  trainer_ids_evaluated: number[];
+}
+
+function truncateCoachFitReasoningToTwoSentences(text: string): string {
+  const t = text.trim();
+  if (!t) return t;
+  const sentences = t.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
+  if (sentences.length <= 2) {
+    return sentences.join(' ').trim();
+  }
+  return `${sentences[0].trim()} ${sentences[1].trim()}`.trim();
+}
+
+function parseCoachFitTrainerId(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+    return Math.trunc(raw);
+  }
+  if (typeof raw === 'string' && /^\d+$/.test(raw.trim())) {
+    const n = parseInt(raw.trim(), 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  return null;
+}
+
+/** Unwrap `questionnaires.coach_fit` (object or occasional JSON string). */
+export function getCoachFitAnalysisFromQuestionnaire(
+  questionnaire: Questionnaire | null
+): unknown | null {
+  if (!questionnaire?.coach_fit) return null;
+  const cf = questionnaire.coach_fit;
+  if (typeof cf === 'string') {
+    try {
+      const p = JSON.parse(cf) as unknown;
+      if (p && typeof p === 'object' && p !== null && 'analysis' in p) {
+        return (p as { analysis: unknown }).analysis;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+  if (typeof cf === 'object' && cf !== null && 'analysis' in cf) {
+    return (cf as QuestionnaireCoachFitStored).analysis;
+  }
+  return null;
+}
+
+/**
+ * Coerce coach-fit API payloads (including legacy `recommendation_reasoning` only)
+ * into a consistent shape. Returns null if the payload cannot be shown.
+ */
+export function normalizeCoachFitAnalysis(
+  raw: unknown
+): CoachFitAnalysis | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const a = raw as Record<string, unknown>;
+  const id = parseCoachFitTrainerId(a.recommended_trainer_id);
+  if (id === null) return null;
+
+  const rec = a.recommendation;
+  if (rec && typeof rec === 'object' && !Array.isArray(rec)) {
+    const r = rec as Record<string, unknown>;
+    if (typeof r.reasoning === 'string' && r.reasoning.trim()) {
+      return {
+        recommended_trainer_id: id,
+        recommendation: {
+          reasoning: truncateCoachFitReasoningToTwoSentences(r.reasoning.trim()),
+        },
+      };
+    }
+    const headline = typeof r.headline === 'string' ? r.headline.trim() : '';
+    const bottomLine =
+      typeof r.bottom_line === 'string' ? r.bottom_line.trim() : '';
+    const keyPoints = Array.isArray(r.key_points)
+      ? r.key_points.map((x) => String(x).trim()).filter(Boolean)
+      : [];
+    const merged = [headline, ...keyPoints, bottomLine].filter(Boolean).join(' ');
+    if (merged.trim()) {
+      return {
+        recommended_trainer_id: id,
+        recommendation: {
+          reasoning: truncateCoachFitReasoningToTwoSentences(merged.trim()),
+        },
+      };
+    }
+  }
+
+  const legacy = a.recommendation_reasoning;
+  if (typeof legacy === 'string' && legacy.trim()) {
+    const text = legacy.trim();
+    return {
+      recommended_trainer_id: id,
+      recommendation: {
+        reasoning: truncateCoachFitReasoningToTwoSentences(text),
+      },
+    };
+  }
+
+  return null;
+}
+
 export interface Recommendation {
   id: number;
   client_id: number;
@@ -686,6 +907,90 @@ export interface Recommendation {
   trainer_id?: number | null;
   comparison_batch_id?: string | null;
   workouts?: Workout[]; // Optional, included when fetching recommendation
+}
+
+/** Prebuilt mesocycle templates (system library; gym-defined templates may come later) */
+export type PlanTemplateGoalCategory =
+  | 'general_fitness'
+  | 'fat_loss'
+  | 'muscle_gain'
+  | 'strength'
+  | 'athletic_performance'
+  | 'health_longevity'
+  | 'return_to_training';
+
+export interface PlanTemplateSummary {
+  id: string;
+  name: string;
+  summary: string;
+  goal_category: PlanTemplateGoalCategory;
+  experience_level: 'beginner' | 'intermediate' | 'advanced';
+  sessions_per_week: number;
+  session_length_minutes: number;
+  phase_1_weeks: number;
+  training_style: string;
+  intensity_label: string;
+  mesocycle_type: string;
+  /** True when the template includes exercise slots (library apply builds workouts). */
+  has_session_blueprints?: boolean;
+}
+
+export interface PlanTemplateSessionExercise {
+  order: number;
+  library_exercise_name: string;
+  sets?: number;
+  reps?: string;
+  load_prescription?: string;
+  rest_seconds?: number;
+  rir?: number;
+  notes?: string;
+}
+
+export interface PlanTemplateSessionBlueprint {
+  session_index: number;
+  exercises: PlanTemplateSessionExercise[];
+}
+
+export interface PlanTemplateProgression {
+  weekly_load_multiplier?: number;
+  weekly_rpe_delta?: number;
+}
+
+/** Full library template (for detail modal); extends summary with planning + optional blueprints */
+export interface PlanTemplateDetail extends PlanTemplateSummary {
+  client_type: string;
+  plan_structure: PlanGuidanceStructure;
+  ai_reasoning: string;
+  session_blueprints?: PlanTemplateSessionBlueprint[];
+  template_progression?: PlanTemplateProgression;
+}
+
+export interface PlanGuidanceWeeklyDay {
+  day: string;
+  session_label: string;
+  focus_theme: string;
+}
+
+export interface PlanGuidanceStructure {
+  archetype: string;
+  description: string;
+  phase_1_weeks: number;
+  training_methods: string[];
+  weekly_repeating_schedule: PlanGuidanceWeeklyDay[];
+  progression_guidelines: string;
+  intensity_load_progression: string;
+  periodization_approach?: string;
+}
+
+export interface ManualPlanStartPayload {
+  questionnaire_id: number;
+  trainer_id?: number;
+  client_type: string;
+  sessions_per_week: number;
+  session_length_minutes: number;
+  training_style: string;
+  plan_structure: PlanGuidanceStructure;
+  ai_reasoning?: string;
 }
 
 export interface UpdateRecommendationInput {
@@ -712,6 +1017,15 @@ export const workoutsApi = {
     apiClient.patch<ActualWorkout>(`/workouts/${id}/actual`, data),
 };
 
+/** Matches LLM shape before workouts are persisted */
+export interface LLMWorkoutPreview {
+  week_number: number;
+  session_number: number;
+  workout_name: string;
+  workout_data: WorkoutData;
+  workout_reasoning: string;
+}
+
 export interface RecommendationJob {
   id: number;
   questionnaire_id: number;
@@ -726,6 +1040,10 @@ export interface RecommendationJob {
     trainer_ids?: number[];
     comparison_batch_id?: string;
     recommendation_ids?: number[];
+    recommendation_id?: number;
+    preview_workouts?: LLMWorkoutPreview[];
+    /** Set when a library template with session blueprints persisted built workouts */
+    template_library_built_workouts?: boolean;
   } | null;
   created_at: string;
   started_at?: string;

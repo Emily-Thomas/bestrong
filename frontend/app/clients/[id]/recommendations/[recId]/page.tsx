@@ -210,7 +210,12 @@ export default function RecommendationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const clientId = Number(params.id);
-  const recId = Number(params.recId);
+  const recIdRaw = params.recId;
+  const recId =
+    typeof recIdRaw === 'string' && /^\d+$/.test(recIdRaw)
+      ? parseInt(recIdRaw, 10)
+      : NaN;
+  const recIdValid = Number.isFinite(recId) && recId > 0;
 
   const [recommendation, setRecommendation] = useState<Recommendation | null>(
     null
@@ -223,6 +228,10 @@ export default function RecommendationDetailPage() {
   const [error, setError] = useState('');
 
   const loadRecommendation = useCallback(async () => {
+    if (!recIdValid) {
+      setLoading(false);
+      return;
+    }
     const response = await recommendationsApi.getById(recId);
     if (response.success && response.data) {
       setRecommendation(response.data);
@@ -244,13 +253,14 @@ export default function RecommendationDetailPage() {
       });
     }
     setLoading(false);
-  }, [recId]);
+  }, [recId, recIdValid]);
 
   useEffect(() => {
     loadRecommendation();
   }, [loadRecommendation]);
 
   const handleSave = async () => {
+    if (!recIdValid) return;
     setError('');
     setSaving(true);
 
@@ -263,6 +273,31 @@ export default function RecommendationDetailPage() {
     }
     setSaving(false);
   };
+
+  if (!recIdValid) {
+    return (
+      <ProtectedRoute>
+        <AppShell title="Recommendation" description="Invalid link">
+          <Card>
+            <CardContent className="space-y-4 py-8 text-center">
+              <p className="text-muted-foreground">
+                This URL is not a valid recommendation. If you were looking for
+                the plan library, use Coach &amp; plan on the client page — it
+                loads there automatically.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push(`/clients/${clientId}`)}
+              >
+                Back to client
+              </Button>
+            </CardContent>
+          </Card>
+        </AppShell>
+      </ProtectedRoute>
+    );
+  }
 
   if (loading) {
     return (

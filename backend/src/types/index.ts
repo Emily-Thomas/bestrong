@@ -73,6 +73,8 @@ export interface Questionnaire {
   sleep_quality?: string;
   nutrition_habits?: string;
   notes?: string;
+  /** Persisted coach-fit AI result (when present) */
+  coach_fit?: QuestionnaireCoachFitStored | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -268,6 +270,23 @@ export interface RecommendedCoachMatch {
   reasoning: string;
 }
 
+/** AI coach-fit: pick one trainer + short rationale (no per-trainer pros/cons) */
+export interface CoachFitRecommendation {
+  /** At most two sentences; coaches by name only in text, no IDs */
+  reasoning: string;
+}
+
+export interface CoachFitAnalysis {
+  recommended_trainer_id: number;
+  recommendation: CoachFitRecommendation;
+}
+
+/** Stored in questionnaires.coach_fit JSONB */
+export interface QuestionnaireCoachFitStored {
+  analysis: CoachFitAnalysis;
+  trainer_ids_evaluated: number[];
+}
+
 export interface PlanGuidanceWeeklyDay {
   day: string;
   session_label: string;
@@ -284,6 +303,74 @@ export interface PlanGuidanceStructure {
   progression_guidelines: string;
   intensity_load_progression: string;
   periodization_approach?: string;
+}
+
+/** Prebuilt mesocycle library (system-defined; gym-owned templates may come later) */
+export type PlanTemplateGoalCategory =
+  | 'general_fitness'
+  | 'fat_loss'
+  | 'muscle_gain'
+  | 'strength'
+  | 'athletic_performance'
+  | 'health_longevity'
+  | 'return_to_training';
+
+export type PlanTemplateExperienceLevel =
+  | 'beginner'
+  | 'intermediate'
+  | 'advanced';
+
+export interface PlanTemplateSummary {
+  id: string;
+  name: string;
+  summary: string;
+  goal_category: PlanTemplateGoalCategory;
+  experience_level: PlanTemplateExperienceLevel;
+  sessions_per_week: number;
+  session_length_minutes: number;
+  phase_1_weeks: number;
+  training_style: string;
+  /** Short label for UI, e.g. "Moderate", "High" */
+  intensity_label: string;
+  /** e.g. "Foundation", "Hypertrophy block", "Deload" */
+  mesocycle_type: string;
+}
+
+/** One exercise slot in a library template session (resolved against the exercise library by name). */
+export interface PlanTemplateSessionExercise {
+  order: number;
+  /** Primary label used to fuzzy-match `exercise_library_exercises.name` */
+  library_exercise_name: string;
+  sets?: number;
+  reps?: string;
+  /** Default load / RPE before per-client AI refinement, e.g. "RPE 6–7" or "50% 1RM" */
+  load_prescription?: string;
+  rest_seconds?: number;
+  rir?: number;
+  notes?: string;
+}
+
+/** Exercises for one repeating session index (0 = first day in weekly_repeating_schedule, etc.). */
+export interface PlanTemplateSessionBlueprint {
+  session_index: number;
+  exercises: PlanTemplateSessionExercise[];
+}
+
+/** Deterministic progression applied across weeks of phase 1 (before AI load/RPE refinement). */
+export interface PlanTemplateProgression {
+  /** Compound weekly multiplier for numeric load strings (e.g. 1.025 ≈ 2.5%/week). */
+  weekly_load_multiplier?: number;
+  /** Added to parsed RPE numbers each week after week 1 (capped at 9). */
+  weekly_rpe_delta?: number;
+}
+
+export interface PlanTemplateDefinition extends PlanTemplateSummary {
+  client_type: string;
+  plan_structure: PlanGuidanceStructure;
+  ai_reasoning: string;
+  /** When set, library apply builds mesocycle workouts from these slots + library resolution. */
+  session_blueprints?: PlanTemplateSessionBlueprint[];
+  template_progression?: PlanTemplateProgression;
 }
 
 export interface PeerCoachDirectionPreview {

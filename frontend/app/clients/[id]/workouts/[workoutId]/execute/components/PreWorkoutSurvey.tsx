@@ -8,311 +8,283 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
+/**
+ * Fast pre-session check-in aligned with common readiness screening:
+ * sleep/rest, soreness, pain/injury (safety), and global readiness to train.
+ * All primary inputs are binary or 3-option taps for speed on the floor.
+ */
 export interface PreWorkoutSurveyResponse {
-  recovery: 'fully_recovered' | 'mostly_recovered' | 'still_sore' | 'very_sore';
-  rest: 'well_rested' | 'adequate_rest' | 'tired' | 'very_tired';
-  mood: 'excited' | 'ready' | 'neutral' | 'not_feeling_it';
-  injuries: 'none' | 'minor' | 'significant';
-  injuryDetails?: string;
+  /** Rested enough for this session (sleep / recovery)? */
+  rested_enough: boolean;
+  /** More muscle soreness than usual from recent training? */
+  elevated_soreness: boolean;
+  /** New pain, sharp pain, or injury concern today? */
+  pain_or_injury: boolean;
+  /** Single-item readiness — common in sports science wellness checks */
+  readiness: 'ready' | 'somewhat' | 'not_ready';
+  injury_notes?: string;
   notes?: string;
 }
 
 interface PreWorkoutSurveyProps {
   open: boolean;
   onComplete: (responses: PreWorkoutSurveyResponse) => void;
+  /** Optional — trainer can bypass; session still runs without check-in data. */
+  onSkip: () => void;
   clientName?: string;
+}
+
+function YesNoRow({
+  value,
+  onChange,
+  yesLabel,
+  noLabel,
+}: {
+  value: boolean | null;
+  onChange: (v: boolean) => void;
+  yesLabel?: string;
+  noLabel?: string;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Button
+        type="button"
+        variant={value === true ? 'default' : 'outline'}
+        className={cn(
+          'h-12 text-base font-semibold',
+          value === true && 'ring-2 ring-primary ring-offset-2'
+        )}
+        onClick={() => onChange(true)}
+      >
+        {yesLabel ?? 'Yes'}
+      </Button>
+      <Button
+        type="button"
+        variant={value === false ? 'default' : 'outline'}
+        className={cn(
+          'h-12 text-base font-semibold',
+          value === false && 'ring-2 ring-primary ring-offset-2'
+        )}
+        onClick={() => onChange(false)}
+      >
+        {noLabel ?? 'No'}
+      </Button>
+    </div>
+  );
 }
 
 export function PreWorkoutSurvey({
   open,
   onComplete,
+  onSkip,
   clientName,
 }: PreWorkoutSurveyProps) {
-  const [recovery, setRecovery] = useState<
-    PreWorkoutSurveyResponse['recovery'] | ''
-  >('');
-  const [rest, setRest] = useState<PreWorkoutSurveyResponse['rest'] | ''>('');
-  const [mood, setMood] = useState<PreWorkoutSurveyResponse['mood'] | ''>('');
-  const [injuries, setInjuries] = useState<
-    PreWorkoutSurveyResponse['injuries'] | ''
-  >('');
-  const [injuryDetails, setInjuryDetails] = useState('');
+  const [rested, setRested] = useState<boolean | null>(null);
+  const [soreness, setSoreness] = useState<boolean | null>(null);
+  const [pain, setPain] = useState<boolean | null>(null);
+  const [readiness, setReadiness] = useState<
+    PreWorkoutSurveyResponse['readiness'] | null
+  >(null);
+  const [injuryNotes, setInjuryNotes] = useState('');
   const [notes, setNotes] = useState('');
 
+  const reset = () => {
+    setRested(null);
+    setSoreness(null);
+    setPain(null);
+    setReadiness(null);
+    setInjuryNotes('');
+    setNotes('');
+  };
+
   const handleSubmit = () => {
-    if (!recovery || !rest || !mood || !injuries) {
+    if (
+      rested === null ||
+      soreness === null ||
+      pain === null ||
+      readiness === null
+    ) {
       return;
     }
 
     const responses: PreWorkoutSurveyResponse = {
-      recovery: recovery as PreWorkoutSurveyResponse['recovery'],
-      rest: rest as PreWorkoutSurveyResponse['rest'],
-      mood: mood as PreWorkoutSurveyResponse['mood'],
-      injuries: injuries as PreWorkoutSurveyResponse['injuries'],
-      injuryDetails: injuryDetails.trim() || undefined,
+      rested_enough: rested,
+      elevated_soreness: soreness,
+      pain_or_injury: pain,
+      readiness,
+      injury_notes: injuryNotes.trim() || undefined,
       notes: notes.trim() || undefined,
     };
 
     onComplete(responses);
+    reset();
   };
 
-  const isComplete = recovery && rest && mood && injuries;
+  const isComplete =
+    rested !== null && soreness !== null && pain !== null && readiness !== null;
+
   const hasConcerns =
-    recovery === 'still_sore' ||
-    recovery === 'very_sore' ||
-    rest === 'tired' ||
-    rest === 'very_tired' ||
-    mood === 'not_feeling_it' ||
-    injuries === 'minor' ||
-    injuries === 'significant';
+    pain === true ||
+    readiness === 'not_ready' ||
+    rested === false ||
+    soreness === true ||
+    readiness === 'somewhat';
 
   return (
-    <Dialog open={open} onOpenChange={() => {}} modal={true}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">Pre-Workout Check-In</DialogTitle>
-          <DialogDescription>
+    <Dialog open={open} onOpenChange={() => {}} modal>
+      <DialogContent
+        className="max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-xl"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="space-y-2 text-left">
+          <DialogTitle className="text-xl sm:text-2xl">
+            Pre-workout check-in
+          </DialogTitle>
+          <DialogDescription className="text-base leading-relaxed">
             {clientName
-              ? `Quick assessment for ${clientName}`
-              : 'Quick assessment before starting the workout'}
+              ? `Quick taps for ${clientName} — about 20 seconds.`
+              : 'Quick taps before you start — about 20 seconds.'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Recovery Question */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">
-              How recovered is the client from the previous workout?
+        <div className="space-y-6 py-2">
+          <section className="space-y-2">
+            <Label className="text-sm font-semibold leading-snug">
+              Rested enough for this session?
             </Label>
-            <RadioGroup
-              value={recovery}
-              onValueChange={(value) =>
-                setRecovery(value as PreWorkoutSurveyResponse['recovery'])
-              }
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="fully_recovered" id="recovery-1" />
-                <Label
-                  htmlFor="recovery-1"
-                  className="font-normal cursor-pointer"
-                >
-                  Fully recovered
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="mostly_recovered" id="recovery-2" />
-                <Label
-                  htmlFor="recovery-2"
-                  className="font-normal cursor-pointer"
-                >
-                  Mostly recovered
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="still_sore" id="recovery-3" />
-                <Label
-                  htmlFor="recovery-3"
-                  className="font-normal cursor-pointer"
-                >
-                  Still sore
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="very_sore" id="recovery-4" />
-                <Label
-                  htmlFor="recovery-4"
-                  className="font-normal cursor-pointer"
-                >
-                  Very sore
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
+            <p className="text-xs text-muted-foreground">
+              Adequate sleep / recovery since last training.
+            </p>
+            <YesNoRow value={rested} onChange={setRested} />
+          </section>
 
-          {/* Rest Question */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">
-              How well rested is the client?
+          <section className="space-y-2">
+            <Label className="text-sm font-semibold leading-snug">
+              More muscle soreness than usual?
             </Label>
-            <RadioGroup
-              value={rest}
-              onValueChange={(value) =>
-                setRest(value as PreWorkoutSurveyResponse['rest'])
-              }
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="well_rested" id="rest-1" />
-                <Label htmlFor="rest-1" className="font-normal cursor-pointer">
-                  Well rested
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="adequate_rest" id="rest-2" />
-                <Label htmlFor="rest-2" className="font-normal cursor-pointer">
-                  Adequate rest
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="tired" id="rest-3" />
-                <Label htmlFor="rest-3" className="font-normal cursor-pointer">
-                  Tired
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="very_tired" id="rest-4" />
-                <Label htmlFor="rest-4" className="font-normal cursor-pointer">
-                  Very tired
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
+            <p className="text-xs text-muted-foreground">
+              DOMS or soreness beyond what you&apos;d expect.
+            </p>
+            <YesNoRow value={soreness} onChange={setSoreness} />
+          </section>
 
-          {/* Mood Question */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">
-              How is the client feeling about the workout today?
+          <section className="space-y-2">
+            <Label className="text-sm font-semibold leading-snug">
+              New pain, sharp pain, or injury concern today?
             </Label>
-            <RadioGroup
-              value={mood}
-              onValueChange={(value) =>
-                setMood(value as PreWorkoutSurveyResponse['mood'])
-              }
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="excited" id="mood-1" />
-                <Label htmlFor="mood-1" className="font-normal cursor-pointer">
-                  Excited and ready
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="ready" id="mood-2" />
-                <Label htmlFor="mood-2" className="font-normal cursor-pointer">
-                  Ready to go
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="neutral" id="mood-3" />
-                <Label htmlFor="mood-3" className="font-normal cursor-pointer">
-                  Neutral
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="not_feeling_it" id="mood-4" />
-                <Label htmlFor="mood-4" className="font-normal cursor-pointer">
-                  Not feeling it
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
+            <p className="text-xs text-muted-foreground">
+              Safety check — anything that should change the plan?
+            </p>
+            <YesNoRow value={pain} onChange={setPain} />
+          </section>
 
-          {/* Injuries Question */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">
-              Any new injuries or pain?
-            </Label>
-            <RadioGroup
-              value={injuries}
-              onValueChange={(value) =>
-                setInjuries(value as PreWorkoutSurveyResponse['injuries'])
-              }
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="none" id="injuries-1" />
-                <Label
-                  htmlFor="injuries-1"
-                  className="font-normal cursor-pointer"
-                >
-                  None
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="minor" id="injuries-2" />
-                <Label
-                  htmlFor="injuries-2"
-                  className="font-normal cursor-pointer"
-                >
-                  Minor issue
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="significant" id="injuries-3" />
-                <Label
-                  htmlFor="injuries-3"
-                  className="font-normal cursor-pointer"
-                >
-                  Significant concern
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Injury Details */}
-          {(injuries === 'minor' || injuries === 'significant') && (
-            <div className="space-y-2">
-              <Label
-                htmlFor="injury-details"
-                className="text-base font-semibold"
-              >
-                Please describe the injury or pain
+          {pain === true && (
+            <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <Label htmlFor="injury-notes" className="text-sm font-semibold">
+                Where / what? (optional but helpful)
               </Label>
               <Textarea
-                id="injury-details"
-                value={injuryDetails}
-                onChange={(e) => setInjuryDetails(e.target.value)}
-                placeholder="Describe the injury, location, severity..."
-                rows={3}
-                className="text-base"
+                id="injury-notes"
+                value={injuryNotes}
+                onChange={(e) => setInjuryNotes(e.target.value)}
+                placeholder="e.g. sharp knee pain on squats"
+                rows={2}
+                className="text-sm"
               />
             </div>
           )}
 
-          {/* Additional Notes */}
+          <section className="space-y-2">
+            <Label className="text-sm font-semibold leading-snug">
+              Ready to train as planned?
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              One-tap readiness — scale back if not.
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {(
+                [
+                  { key: 'ready' as const, label: 'Ready' },
+                  { key: 'somewhat' as const, label: 'Somewhat' },
+                  { key: 'not_ready' as const, label: 'Not ready' },
+                ] as const
+              ).map(({ key, label }) => (
+                <Button
+                  key={key}
+                  type="button"
+                  variant={readiness === key ? 'default' : 'outline'}
+                  className={cn(
+                    'h-12 font-semibold',
+                    readiness === key && 'ring-2 ring-primary ring-offset-2',
+                    key === 'not_ready' &&
+                      readiness === 'not_ready' &&
+                      'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  )}
+                  onClick={() => setReadiness(key)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </section>
+
           <div className="space-y-2">
-            <Label htmlFor="notes" className="text-base font-semibold">
-              Additional notes (optional)
+            <Label htmlFor="notes" className="text-sm font-semibold">
+              Notes (optional)
             </Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any other observations or concerns..."
+              placeholder="Anything else the coach should know…"
               rows={2}
-              className="text-base"
+              className="text-sm"
             />
           </div>
 
-          {/* Warning Alert if concerns */}
           {hasConcerns && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Consider modifying the workout:</strong> The client may
-                need adjustments based on their current state. Review the
-                responses and consider reducing intensity, volume, or changing
-                exercises.
+                <strong>Consider scaling today:</strong> reduce load, volume, or
+                swap movements if recovery, soreness, pain, or readiness suggest
+                it.
               </AlertDescription>
             </Alert>
           )}
-
-          {/* Submit Button */}
-          <div className="flex justify-end pt-4">
-            <Button
-              onClick={handleSubmit}
-              disabled={!isComplete}
-              size="lg"
-              className="h-12 px-8 text-lg"
-            >
-              Continue to Workout
-            </Button>
-          </div>
         </div>
+
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            className="order-2 w-full sm:order-1 sm:w-auto"
+            onClick={() => {
+              reset();
+              onSkip();
+            }}
+          >
+            Skip check-in
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            className="order-1 w-full font-semibold sm:order-2 sm:w-auto"
+            disabled={!isComplete}
+            onClick={handleSubmit}
+          >
+            Continue to workout
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

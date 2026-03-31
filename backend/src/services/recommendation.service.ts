@@ -244,9 +244,12 @@ export async function createOrUpdateRecommendationForQuestionnaire(
         training_style = $4,
         plan_structure = $5,
         ai_reasoning = $6,
+        inbody_scan_id = $7,
+        trainer_id = $8,
+        comparison_batch_id = $9,
         is_edited = false,
         updated_at = NOW()
-      WHERE id = $7
+      WHERE id = $10
       RETURNING *`,
       [
         input.client_type,
@@ -255,6 +258,9 @@ export async function createOrUpdateRecommendationForQuestionnaire(
         input.training_style,
         JSON.stringify(input.plan_structure),
         input.ai_reasoning || null,
+        input.inbody_scan_id ?? null,
+        input.trainer_id ?? null,
+        input.comparison_batch_id ?? null,
         existing.id,
       ]
     );

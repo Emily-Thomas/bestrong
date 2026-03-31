@@ -7,13 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { type Client, clientsApi } from '@/lib/api';
 
 export default function ClientsPage() {
@@ -37,7 +31,7 @@ export default function ClientsPage() {
     <ProtectedRoute>
       <AppShell
         title="Clients"
-        description="Manage your client profiles and plans"
+        description="Open a client to view details and training"
         action={
           <Button asChild>
             <Link href="/clients/new">
@@ -68,23 +62,14 @@ export default function ClientsPage() {
           </Card>
         ) : (
           <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <CardTitle>Client roster</CardTitle>
-              <CardDescription>Quick view of all clients</CardDescription>
-            </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-hidden rounded-lg border-t border-border/60">
+              <div className="overflow-hidden rounded-lg border border-border/60">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/30 text-muted-foreground">
+                  <thead className="border-b border-border/60 bg-muted/20 text-left text-muted-foreground">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium">
-                        Client
-                      </th>
-                      <th className="px-4 py-3 text-left font-medium hidden md:table-cell">
-                        Contact
-                      </th>
-                      <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">
-                        Created
+                      <th className="px-4 py-3 font-medium">Name</th>
+                      <th className="px-4 py-3 font-medium hidden sm:table-cell">
+                        Added
                       </th>
                     </tr>
                   </thead>
@@ -97,24 +82,23 @@ export default function ClientsPage() {
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                               {client.first_name[0]}
                               {client.last_name[0]}
                             </div>
-                            <div>
-                              <div className="font-semibold">
+                            <div className="min-w-0">
+                              <div className="font-medium">
                                 {client.first_name} {client.last_name}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                ID: {client.id}
+                              <div className="truncate text-xs text-muted-foreground">
+                                {client.email ||
+                                  client.phone ||
+                                  'No email or phone'}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
-                          {client.email || client.phone || 'No contact info'}
-                        </td>
-                        <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">
+                        <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell whitespace-nowrap">
                           {new Date(client.created_at).toLocaleDateString()}
                         </td>
                       </tr>

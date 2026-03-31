@@ -94,7 +94,7 @@ if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
 }
 
 // CRITICAL: Double-check OPENAI_API_KEY is available before imports
-// The OpenAI client in ai.service.ts is created at module load time,
+// The OpenAI client in openai-client.service.ts is created at module load time,
 // so we must ensure the env var is set before importing any modules
 const apiKeyValue = process.env.OPENAI_API_KEY;
 if (!apiKeyValue || apiKeyValue.trim() === '') {

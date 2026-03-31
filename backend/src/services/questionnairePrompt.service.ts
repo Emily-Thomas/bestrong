@@ -16,7 +16,6 @@ function isV2(data: StructuredQuestionnaireData): boolean {
     return false;
   }
   return (
-    data.parq_chest_pain !== undefined ||
     data.work_pattern !== undefined ||
     data.goal_categories !== undefined ||
     data.has_pain_or_injury !== undefined
@@ -40,7 +39,6 @@ export function parseQuestionnaireData(
       return parsed;
     }
     if (
-      parsed.parq_chest_pain !== undefined ||
       parsed.work_pattern !== undefined ||
       parsed.goal_categories !== undefined ||
       parsed.has_pain_or_injury !== undefined
@@ -172,19 +170,11 @@ function formatQuestionnaireV2ForPrompt(
   prompt +=
     '\n**Interpretation:** Goals above define outcomes; this section guides *how* you program unless red flags or severe limitation in notes require medical clearance or major constraint.\n\n';
 
-  prompt += '### Safety (PAR-Q style)\n';
-  prompt += `- Chest pain with exertion: ${yn(d.parq_chest_pain)}\n`;
-  prompt += `- Resting BP / heart issue advised by doctor: ${yn(d.parq_resting_bp)}\n`;
-  prompt += `- Dizziness or loss of consciousness: ${yn(d.parq_dizziness)}\n`;
-  prompt += `- Bone/joint problem aggravated by activity: ${yn(d.parq_bone_joint)}\n`;
-  prompt += `- Heart meds affecting activity: ${yn(d.parq_heart_meds)}\n`;
-  prompt += `- Doctor advised not to exercise: ${yn(d.parq_other_reason)}\n`;
-  prompt += `- Any other reason not to exercise: ${yn(d.parq_extra)}\n`;
-  if (d.parq_health_note) {
-    prompt += `- Health note: ${d.parq_health_note}\n`;
-  }
+  prompt += '### Pre-exercise screening\n';
+  prompt +=
+    '- Completed **outside** this application. Treat standard PAR-Q style items as **no** (cleared for exercise) unless contradicted elsewhere in this questionnaire.\n\n';
 
-  prompt += '\n### Daily life & background\n';
+  prompt += '### Daily life & background\n';
   if (d.work_pattern) {
     prompt += `- Work / daily demand: ${d.work_pattern}\n`;
   }

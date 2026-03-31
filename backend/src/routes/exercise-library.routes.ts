@@ -34,6 +34,38 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/exercise-library/:id/similar (before /:id)
+router.get('/:id/similar', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    if (Number.isNaN(id)) {
+      res.status(400).json({ success: false, error: 'Invalid exercise ID' });
+      return;
+    }
+
+    const limitRaw = req.query.limit;
+    const parsedLimit =
+      typeof limitRaw === 'string' ? parseInt(limitRaw, 10) : NaN;
+    const limit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0 && parsedLimit <= 50
+        ? parsedLimit
+        : 24;
+    const exercises = await exerciseLibraryService.getSimilarExercises(
+      id,
+      limit
+    );
+
+    res.json({
+      success: true,
+      data: exercises,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 // GET /api/exercise-library/:id
 router.get('/:id', async (req: Request, res: Response) => {
   try {

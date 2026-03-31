@@ -5,12 +5,60 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+/** When `INBODY_MOCK_EXTRACTION=true`, skip vision API and persist fixed demo values (local/dev only). */
+export function isInBodyMockExtractionEnabled(): boolean {
+  return process.env.INBODY_MOCK_EXTRACTION === 'true';
+}
+
+function getMockExtractedInBodyData(): ExtractedInBodyData {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    weight_lbs: 175.2,
+    smm_lbs: 85.4,
+    body_fat_mass_lbs: 28.1,
+    bmi: 24.8,
+    percent_body_fat: 16.1,
+    scan_date: today,
+    segment_analysis: {
+      right_arm: {
+        muscle_mass_lbs: 6.2,
+        fat_mass_lbs: 2.1,
+        percent_fat: 14.2,
+      },
+      left_arm: {
+        muscle_mass_lbs: 6.0,
+        fat_mass_lbs: 2.1,
+        percent_fat: 14.5,
+      },
+      trunk: {
+        muscle_mass_lbs: 72.5,
+        fat_mass_lbs: 14.2,
+        percent_fat: 15.8,
+      },
+      right_leg: {
+        muscle_mass_lbs: 18.5,
+        fat_mass_lbs: 4.2,
+        percent_fat: 15.1,
+      },
+      left_leg: {
+        muscle_mass_lbs: 18.2,
+        fat_mass_lbs: 4.1,
+        percent_fat: 15.0,
+      },
+    },
+  };
+}
+
 /**
  * Extracts structured data from InBody scan PNG image using GPT-4 Vision
  */
 export async function extractInBodyData(
   imageBuffer: Buffer
 ): Promise<ExtractedInBodyData> {
+  if (isInBodyMockExtractionEnabled()) {
+    return getMockExtractedInBodyData();
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
       'OPENAI_API_KEY environment variable is not set. Please configure it to use InBody extraction.'

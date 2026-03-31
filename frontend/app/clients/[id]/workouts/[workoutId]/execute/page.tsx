@@ -3,27 +3,20 @@
 import {
   AlertCircle,
   ArrowLeft,
-  CheckCircle2,
-  Circle,
+  ChevronDown,
   Loader2,
   Save,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import {
   type ActualExercisePerformance,
   type ActualWorkoutPerformance,
@@ -32,55 +25,50 @@ import {
   type Workout,
   workoutsApi,
 } from '@/lib/api';
-import { ExerciseInputModal } from './components/ExerciseInputModal';
+import { cn } from '@/lib/utils';
+import { ExerciseLogCard, hasLoggedData } from './components/ExerciseLogCard';
 import {
   PreWorkoutSurvey,
   type PreWorkoutSurveyResponse,
 } from './components/PreWorkoutSurvey';
 import { WorkoutRatingSection } from './components/WorkoutRatingSection';
 
-// Helper function to determine concern level from survey response
 function getConcernLevel(
   response: PreWorkoutSurveyResponse
 ): 'high' | 'medium' | 'low' | 'none' {
-  // High concern: very sore, very tired, not feeling it, or significant injuries
-  if (
-    response.recovery === 'very_sore' ||
-    response.rest === 'very_tired' ||
-    response.mood === 'not_feeling_it' ||
-    response.injuries === 'significant'
-  ) {
+  if (response.pain_or_injury || response.readiness === 'not_ready') {
     return 'high';
   }
-
-  // Medium concern: still sore, tired, or minor injuries
-  if (
-    response.recovery === 'still_sore' ||
-    response.rest === 'tired' ||
-    response.injuries === 'minor'
-  ) {
+  if (!response.rested_enough || response.elevated_soreness) {
     return 'medium';
   }
-
-  // Low concern: mostly recovered but not fully, or adequate rest
-  if (
-    response.recovery === 'mostly_recovered' ||
-    response.rest === 'adequate_rest' ||
-    response.mood === 'neutral'
-  ) {
+  if (response.readiness === 'somewhat') {
     return 'low';
   }
-
-  // No concern: fully recovered, well rested, excited/ready
   return 'none';
 }
 
-// Helper function to format response values for display
-function formatResponseValue(value: string): string {
-  return value
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+function formatYesNo(value: boolean): string {
+  return value ? 'Yes' : 'No';
+}
+
+function formatReadiness(value: PreWorkoutSurveyResponse['readiness']): string {
+  switch (value) {
+    case 'ready':
+      return 'Ready';
+    case 'somewhat':
+      return 'Somewhat';
+    case 'not_ready':
+      return 'Not ready';
+    default:
+      return String(value);
+  }
+}
+
+function getExerciseStatus(
+  exercise: ActualExercisePerformance
+): 'completed' | 'pending' {
+  return hasLoggedData(exercise) ? 'completed' : 'pending';
 }
 
 export default function WorkoutExecutionPage() {
@@ -102,10 +90,12 @@ export default function WorkoutExecutionPage() {
   const [workoutRating, setWorkoutRating] = useState<
     'happy' | 'meh' | 'sad' | undefined
   >();
-  const [openExerciseIndex, setOpenExerciseIndex] = useState<number | null>(
-    null
-  );
+  const [expandedExerciseIndex, setExpandedExerciseIndex] = useState<
+    number | null
+  >(null);
+  const expandInitRef = useRef(false);
   const [showSurvey, setShowSurvey] = useState(false);
+  const [surveySkipped, setSurveySkipped] = useState(false);
   const [surveyResponse, setSurveyResponse] =
     useState<PreWorkoutSurveyResponse | null>(null);
   const [clientName, setClientName] = useState<string>('');
@@ -115,7 +105,6 @@ export default function WorkoutExecutionPage() {
     setError('');
 
     try {
-      // Load client data for survey
       const clientResponse = await clientsApi.getById(clientId);
       if (clientResponse.success && clientResponse.data) {
         const client = clientResponse.data;
@@ -127,33 +116,19 @@ export default function WorkoutExecutionPage() {
         const w = response.data;
         setWorkout(w);
 
-        // Initialize actual performance with proposed exercises
-        // Only set exercise_name - don't pre-populate actual performance data
         if (w.workout_data.exercises) {
           const exercises: ActualExercisePerformance[] =
             w.workout_data.exercises.map((ex) => ({
               exercise_name: ex.name,
-              // Don't pre-populate reps_completed, weight_used, etc.
-              // These should only be set when trainer actually records data
             }));
           setActualPerformance({ exercises });
         }
 
-        // If actual workout exists, load it
         if (w.actual_workout) {
           setActualPerformance(w.actual_workout.actual_performance);
           setSessionNotes(w.actual_workout.session_notes || '');
           setTrainerObservations(w.actual_workout.trainer_observations || '');
           setWorkoutRating(w.actual_workout.workout_rating);
-        }
-
-        // Show survey for workouts that aren't completed or skipped (for testing)
-        // This allows trainers to see the survey even if they've started recording
-        const shouldShowSurvey =
-          w.status !== 'completed' && w.status !== 'skipped';
-        if (shouldShowSurvey && !surveyResponse) {
-          // Only show if we haven't already completed a survey
-          setShowSurvey(true);
         }
       } else {
         setError(response.error || 'Failed to load workout');
@@ -163,13 +138,47 @@ export default function WorkoutExecutionPage() {
     } finally {
       setLoading(false);
     }
-  }, [workoutId, clientId, surveyResponse]);
+  }, [workoutId, clientId]);
 
   useEffect(() => {
     if (workoutId) {
       loadWorkout();
     }
   }, [workoutId, loadWorkout]);
+
+  useEffect(() => {
+    void workoutId;
+    setSurveySkipped(false);
+    setSurveyResponse(null);
+    expandInitRef.current = false;
+    setExpandedExerciseIndex(null);
+  }, [workoutId]);
+
+  useEffect(() => {
+    if (!workout) return;
+    const eligible =
+      workout.status !== 'completed' && workout.status !== 'skipped';
+    if (!eligible) {
+      setShowSurvey(false);
+      return;
+    }
+    if (surveyResponse || surveySkipped) {
+      setShowSurvey(false);
+      return;
+    }
+    setShowSurvey(true);
+  }, [workout, surveyResponse, surveySkipped]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Run once when load completes; expandInitRef prevents repeats.
+  useEffect(() => {
+    if (expandInitRef.current || loading || !workout) return;
+    if (actualPerformance.exercises.length === 0) return;
+    expandInitRef.current = true;
+    const firstPending = actualPerformance.exercises.findIndex(
+      (ex) => !hasLoggedData(ex)
+    );
+    setExpandedExerciseIndex(firstPending >= 0 ? firstPending : 0);
+  }, [loading, workout, actualPerformance.exercises.length]);
 
   const updateExercisePerformance = (
     index: number,
@@ -180,10 +189,16 @@ export default function WorkoutExecutionPage() {
     setActualPerformance({ ...actualPerformance, exercises: newExercises });
   };
 
+  const completedCount = actualPerformance.exercises.filter(
+    (ex) => getExerciseStatus(ex) === 'completed'
+  ).length;
+  const totalExercises = actualPerformance.exercises.length;
+  const progressPct =
+    totalExercises > 0 ? (completedCount / totalExercises) * 100 : 0;
+
   const handleSave = async () => {
     if (!workout) return;
 
-    // Validation
     if (actualPerformance.exercises.length === 0) {
       setError('Please record performance for at least one exercise');
       return;
@@ -220,41 +235,18 @@ export default function WorkoutExecutionPage() {
     setShowSurvey(false);
   };
 
-  const getExerciseStatus = (exercise: ActualExercisePerformance) => {
-    // Check if user has actually entered meaningful data
-    // Empty strings don't count as data
-    const hasReps =
-      exercise.reps_completed && String(exercise.reps_completed).trim() !== '';
-    const hasWeight =
-      exercise.weight_used && String(exercise.weight_used).trim() !== '';
-    const hasRounds =
-      exercise.rounds &&
-      exercise.rounds.length > 0 &&
-      exercise.rounds.some(
-        (r) =>
-          (r.reps && String(r.reps).trim() !== '') ||
-          (r.weight && String(r.weight).trim() !== '')
-      );
-    const hasRating = exercise.exercise_rating !== undefined;
-    const hasNotes =
-      exercise.exercise_notes && exercise.exercise_notes.trim() !== '';
-
-    // Exercise is only completed if user has entered at least one piece of actual data
-    const hasData = hasReps || hasWeight || hasRounds || hasRating || hasNotes;
-
-    if (hasData) {
-      return 'completed';
-    }
-    return 'pending';
+  const handleSurveySkip = () => {
+    setSurveySkipped(true);
+    setShowSurvey(false);
   };
 
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppShell title="Execute Workout" description="Loading workout...">
+        <AppShell title="Session" description="Loading…">
           <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <CardContent className="flex items-center justify-center py-16">
+              <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
             </CardContent>
           </Card>
         </AppShell>
@@ -265,9 +257,9 @@ export default function WorkoutExecutionPage() {
   if (!workout) {
     return (
       <ProtectedRoute>
-        <AppShell title="Execute Workout" description="Workout not found">
+        <AppShell title="Session" description="Not found">
           <Card>
-            <CardContent className="text-center py-12 text-muted-foreground">
+            <CardContent className="py-12 text-center text-muted-foreground">
               Workout not found
             </CardContent>
           </Card>
@@ -276,31 +268,34 @@ export default function WorkoutExecutionPage() {
     );
   }
 
+  const sessionTitle =
+    workout.workout_name ||
+    `Week ${workout.week_number} · Session ${workout.session_number}`;
+
   return (
     <ProtectedRoute>
       <AppShell
-        title={
-          workout.workout_name ||
-          `Week ${workout.week_number}, Session ${workout.session_number}`
-        }
-        description="Record workout performance"
+        title={sessionTitle}
+        description="Log sets as you go — optimized for tablet."
         backAction={
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" className="min-h-[44px]" asChild>
             <Link href={`/clients/${clientId}`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+              Client
             </Link>
           </Button>
         }
       >
-        {/* Pre-Workout Survey Modal */}
         <PreWorkoutSurvey
           open={showSurvey}
           onComplete={handleSurveyComplete}
+          onSkip={handleSurveySkip}
           clientName={clientName}
         />
 
-        <div className="max-w-4xl mx-auto space-y-6 pb-8">
+        <div
+          className={cn('mx-auto max-w-2xl space-y-4 pb-32', 'lg:max-w-3xl')}
+        >
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -308,14 +303,28 @@ export default function WorkoutExecutionPage() {
             </Alert>
           )}
 
-          {/* Pre-Workout Survey Summary */}
+          <div className="sticky top-0 z-20 -mx-2 rounded-xl border border-border/60 bg-background/90 px-3 py-3 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/75 sm:-mx-0 sm:px-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Progress
+                </p>
+                <p className="truncate text-sm font-bold text-foreground">
+                  {completedCount} / {totalExercises} exercises logged
+                </p>
+              </div>
+              <Badge variant="secondary" className="shrink-0 tabular-nums">
+                {Math.round(progressPct)}%
+              </Badge>
+            </div>
+            <Progress value={progressPct} className="mt-2 h-2" />
+          </div>
+
           {surveyResponse && (
-            <Card className="border-2 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">
-                    Pre-Workout Assessment
-                  </CardTitle>
+            <details className="group rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] dark:bg-blue-950/30">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
+                <span>Check-in summary</span>
+                <div className="flex items-center gap-2">
                   <Badge
                     variant={
                       getConcernLevel(surveyResponse) === 'high'
@@ -328,230 +337,140 @@ export default function WorkoutExecutionPage() {
                     }
                   >
                     {getConcernLevel(surveyResponse) === 'high'
-                      ? 'High Concern'
+                      ? 'High'
                       : getConcernLevel(surveyResponse) === 'medium'
-                        ? 'Moderate Concern'
+                        ? 'Moderate'
                         : getConcernLevel(surveyResponse) === 'low'
-                          ? 'Low Concern'
-                          : 'All Good'}
+                          ? 'Low'
+                          : 'Good'}
                   </Badge>
+                  <ChevronDown className="h-4 w-4 shrink-0 transition group-open:rotate-180" />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              </summary>
+              <div className="space-y-2 border-t border-blue-500/20 px-4 py-3 text-sm">
                 <div>
-                  <strong>Recovery:</strong>{' '}
-                  {formatResponseValue(surveyResponse.recovery)}
-                </div>
-                <div>
-                  <strong>Rest:</strong>{' '}
-                  {formatResponseValue(surveyResponse.rest)}
+                  <span className="text-muted-foreground">Rested: </span>
+                  {formatYesNo(surveyResponse.rested_enough)}
                 </div>
                 <div>
-                  <strong>Mood:</strong>{' '}
-                  {formatResponseValue(surveyResponse.mood)}
+                  <span className="text-muted-foreground">Soreness: </span>
+                  {formatYesNo(surveyResponse.elevated_soreness)}
                 </div>
                 <div>
-                  <strong>Injuries:</strong>{' '}
-                  {formatResponseValue(surveyResponse.injuries)}
+                  <span className="text-muted-foreground">Pain concern: </span>
+                  {formatYesNo(surveyResponse.pain_or_injury)}
                 </div>
-                {surveyResponse.injuryDetails && (
-                  <div className="pt-2 border-t">
-                    <strong>Injury Details:</strong>{' '}
-                    {surveyResponse.injuryDetails}
-                  </div>
-                )}
-                {surveyResponse.notes && (
-                  <div className="pt-2 border-t">
-                    <strong>Notes:</strong> {surveyResponse.notes}
-                  </div>
+                <div>
+                  <span className="text-muted-foreground">Ready: </span>
+                  {formatReadiness(surveyResponse.readiness)}
+                </div>
+                {surveyResponse.injury_notes && (
+                  <p className="pt-1 text-xs">{surveyResponse.injury_notes}</p>
                 )}
                 {(getConcernLevel(surveyResponse) === 'medium' ||
                   getConcernLevel(surveyResponse) === 'high') && (
-                  <Alert variant="destructive" className="mt-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Consider modifying today's workout based on the client's
-                      current state. You may want to reduce intensity, volume,
-                      or change exercises.
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertDescription className="text-xs">
+                      Consider scaling load or volume today.
                     </AlertDescription>
                   </Alert>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </details>
           )}
 
-          {/* Proposed Workout Plan - Compact */}
-          <Card className="border-2">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-xl">Workout Plan</CardTitle>
-              <CardDescription>
-                Week {workout.week_number} • Session {workout.session_number}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {workout.workout_data.warmup &&
-                workout.workout_data.warmup.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Warmup</h4>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                      {workout.workout_data.warmup.map((ex, idx) => (
-                        <li key={idx}>{ex.name}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+          {workout.workout_data.warmup?.length ||
+          workout.workout_data.cooldown?.length ? (
+            <details className="rounded-2xl border border-border/80 bg-muted/20">
+              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
+                Warm-up &amp; cool-down
+              </summary>
+              <div className="space-y-3 border-t px-4 py-3 text-sm text-muted-foreground">
+                {workout.workout_data.warmup &&
+                  workout.workout_data.warmup.length > 0 && (
+                    <div>
+                      <p className="mb-1 font-medium text-foreground">
+                        Warm-up
+                      </p>
+                      <ul className="list-inside list-disc space-y-1">
+                        {workout.workout_data.warmup.map((ex) => (
+                          <li key={`w-${ex.name}`}>{ex.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                {workout.workout_data.cooldown &&
+                  workout.workout_data.cooldown.length > 0 && (
+                    <div>
+                      <p className="mb-1 font-medium text-foreground">
+                        Cool-down
+                      </p>
+                      <ul className="list-inside list-disc space-y-1">
+                        {workout.workout_data.cooldown.map((ex) => (
+                          <li key={`c-${ex.name}`}>{ex.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+              </div>
+            </details>
+          ) : null}
 
-              {workout.workout_data.cooldown &&
-                workout.workout_data.cooldown.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm">Cooldown</h4>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                      {workout.workout_data.cooldown.map((ex, idx) => (
-                        <li key={idx}>{ex.name}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-            </CardContent>
-          </Card>
-
-          {/* Exercise List - Clickable Cards */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Exercises</h2>
-              <Badge variant="outline" className="text-sm">
-                {
-                  actualPerformance.exercises.filter(
-                    (ex) => getExerciseStatus(ex) === 'completed'
-                  ).length
-                }{' '}
-                / {actualPerformance.exercises.length} completed
-              </Badge>
+          <div className="space-y-3">
+            <div className="flex items-end justify-between gap-2 px-1">
+              <div>
+                <h2 className="text-lg font-bold tracking-tight sm:text-xl">
+                  Exercises
+                </h2>
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  Tap to expand. Use quick totals or log each set.
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="flex flex-col gap-3">
               {actualPerformance.exercises.map((exercise, idx) => {
-                const proposedExercise = workout.workout_data.exercises[idx];
+                const proposed = workout.workout_data.exercises[idx];
                 const status = getExerciseStatus(exercise);
-                const isOpen = openExerciseIndex === idx;
+                const expanded = expandedExerciseIndex === idx;
 
                 return (
-                  <div key={idx}>
-                    <Card
-                      className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
-                        status === 'completed'
-                          ? 'border-green-500 bg-green-50/50 dark:bg-green-950/20'
-                          : 'border-border hover:border-primary'
-                      }`}
-                      onClick={() => setOpenExerciseIndex(idx)}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="flex-shrink-0">
-                              {status === 'completed' ? (
-                                <CheckCircle2 className="h-6 w-6 text-green-600" />
-                              ) : (
-                                <Circle className="h-6 w-6 text-muted-foreground" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-xl font-semibold mb-2">
-                                {exercise.exercise_name}
-                              </h3>
-                              {proposedExercise && (
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                  {proposedExercise.sets && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {proposedExercise.sets} sets
-                                    </Badge>
-                                  )}
-                                  {proposedExercise.reps && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {proposedExercise.reps} reps
-                                    </Badge>
-                                  )}
-                                  {proposedExercise.weight && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {proposedExercise.weight}
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
-                              {status === 'completed' && (
-                                <div className="text-sm text-muted-foreground space-y-1">
-                                  {exercise.reps_completed && (
-                                    <div>Reps: {exercise.reps_completed}</div>
-                                  )}
-                                  {exercise.weight_used && (
-                                    <div>Weight: {exercise.weight_used}</div>
-                                  )}
-                                  {exercise.rounds &&
-                                    exercise.rounds.length > 0 && (
-                                      <div>
-                                        {exercise.rounds.length} round(s)
-                                        tracked
-                                      </div>
-                                    )}
-                                  {exercise.exercise_rating && (
-                                    <div className="capitalize">
-                                      Rating: {exercise.exercise_rating}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-shrink-0 ml-4">
-                            <Button
-                              variant="outline"
-                              size="lg"
-                              className="h-12 px-6"
-                            >
-                              {status === 'completed' ? 'Edit' : 'Record'}
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Exercise Input Modal */}
-                    <ExerciseInputModal
-                      exercise={exercise}
-                      proposedExercise={proposedExercise}
-                      open={isOpen}
-                      onOpenChange={(open) => {
-                        if (!open) {
-                          setOpenExerciseIndex(null);
-                        } else {
-                          setOpenExerciseIndex(idx);
-                        }
-                      }}
-                      onUpdate={(updates) =>
-                        updateExercisePerformance(idx, updates)
+                  <ExerciseLogCard
+                    key={`${workout.id}-ex-${idx}-${exercise.exercise_name}`}
+                    exercise={exercise}
+                    proposedExercise={proposed}
+                    exerciseIndex={idx}
+                    totalExercises={totalExercises}
+                    expanded={expanded}
+                    status={status}
+                    onToggle={() =>
+                      setExpandedExerciseIndex((cur) =>
+                        cur === idx ? null : idx
+                      )
+                    }
+                    onUpdate={(updates) =>
+                      updateExercisePerformance(idx, updates)
+                    }
+                    onGoPrev={() =>
+                      setExpandedExerciseIndex((i) =>
+                        i !== null && i > 0 ? i - 1 : i
+                      )
+                    }
+                    onGoNext={() => {
+                      if (idx < totalExercises - 1) {
+                        setExpandedExerciseIndex(idx + 1);
+                      } else {
+                        setExpandedExerciseIndex(null);
                       }
-                      exerciseIndex={idx}
-                      totalExercises={actualPerformance.exercises.length}
-                    />
-                  </div>
+                    }}
+                  />
                 );
               })}
             </div>
           </div>
 
-          <Separator className="my-8" />
-
-          {/* Overall Workout Feedback */}
           <WorkoutRatingSection
+            variant="compact"
             workoutRating={workoutRating}
             trainerObservations={trainerObservations}
             sessionNotes={sessionNotes}
@@ -559,31 +478,40 @@ export default function WorkoutExecutionPage() {
             onObservationsChange={setTrainerObservations}
             onSessionNotesChange={setSessionNotes}
           />
+        </div>
 
-          {/* Action Buttons - Tablet Optimized */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-6">
+        <div
+          className={cn(
+            'fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md',
+            'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3',
+            'lg:left-64'
+          )}
+        >
+          <div className="mx-auto flex max-w-2xl flex-col gap-2 px-4 sm:flex-row sm:items-center lg:max-w-3xl">
             <Button
+              type="button"
               variant="outline"
+              className="h-14 min-h-[56px] w-full touch-manipulation text-base sm:flex-1"
               onClick={() => router.push(`/clients/${clientId}`)}
               disabled={saving}
-              className="h-12 text-base"
             >
-              Cancel
+              Exit
             </Button>
             <Button
+              type="button"
+              className="h-14 min-h-[56px] w-full touch-manipulation text-base font-semibold sm:flex-[2]"
               onClick={() => handleSave()}
               disabled={saving}
-              className="h-12 text-base flex-1"
             >
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Saving...
+                  Saving…
                 </>
               ) : (
                 <>
                   <Save className="mr-2 h-5 w-5" />
-                  Save & Complete Workout
+                  Save &amp; complete session
                 </>
               )}
             </Button>

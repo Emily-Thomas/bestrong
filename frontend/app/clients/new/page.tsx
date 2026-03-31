@@ -2,7 +2,7 @@
 
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -20,6 +20,7 @@ import { type CreateClientInput, clientsApi } from '@/lib/api';
 
 export default function NewClientPage() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState<CreateClientInput>({
     first_name: '',
     last_name: '',
@@ -30,18 +31,36 @@ export default function NewClientPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runCreate = async (skipSetupChecklist: boolean) => {
     setError('');
     setLoading(true);
 
     const response = await clientsApi.create(formData);
     if (response.success && response.data) {
-      router.push(`/clients/${response.data.id}`);
+      const id = response.data.id;
+      router.push(
+        skipSetupChecklist
+          ? `/clients/${id}`
+          : `/clients/${id}?onboarding=1`
+      );
     } else {
       setError(response.error || 'Failed to create client');
     }
     setLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await runCreate(false);
+  };
+
+  const handleCreateWithoutChecklist = () => {
+    const form = formRef.current;
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    void runCreate(true);
   };
 
   return (
@@ -56,11 +75,17 @@ export default function NewClientPage() {
               <CardHeader>
                 <CardTitle>Client Information</CardTitle>
                 <CardDescription>
-                  Enter the client's basic information
+                  Save contact details first. You can complete intake, InBody,
+                  and training plan from the client profile—use the setup
+                  checklist or skip it if you are only adding a record.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form
+                  ref={formRef}
+                  onSubmit={handleSubmit}
+                  className="space-y-6"
+                >
                   {error && (
                     <Alert variant="destructive">
                       <AlertDescription>{error}</AlertDescription>
@@ -142,7 +167,7 @@ export default function NewClientPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                     <Button
                       type="button"
                       variant="outline"
@@ -150,16 +175,33 @@ export default function NewClientPage() {
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        'Create Client'
-                      )}
-                    </Button>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={loading}
+                        onClick={handleCreateWithoutChecklist}
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          'Create without checklist'
+                        )}
+                      </Button>
+                      <Button type="submit" disabled={loading}>
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          'Create and open setup'
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </CardContent>

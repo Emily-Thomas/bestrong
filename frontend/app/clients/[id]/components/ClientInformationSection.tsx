@@ -136,10 +136,10 @@ export function ClientInformationSection({
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <CardTitle>Client Information</CardTitle>
+            <CardTitle>Contact</CardTitle>
             {getStatusBadge(client.status)}
           </div>
-          <CardDescription>Contact and basics</CardDescription>
+          <CardDescription>Name, email, and phone</CardDescription>
         </div>
         <div className="flex items-center gap-2">
           {(client.status === 'prospect' || !client.status) &&

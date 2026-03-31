@@ -1,13 +1,14 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pool from '../src/config/database';
+import { CLIENT_ARCHETYPES } from '../src/services/ai-prompt-formatters.service';
 import * as clientService from '../src/services/client.service';
 import * as inbodyScanService from '../src/services/inbody-scan.service';
 import * as questionnaireService from '../src/services/questionnaire.service';
 import {
   formatQuestionnaireForPrompt,
   parseQuestionnaireData,
-} from '../src/services/questionnaire-prompt.service';
+} from '../src/services/questionnairePrompt.service';
 import type {
   Client,
   InBodyScan,
@@ -195,56 +196,15 @@ async function showPrompts() {
     const inbodyText = formatInBodyScanForPrompt(latestScan);
     const clientInfoText = formatClientInfoForPrompt(johnDoe);
 
-    // Get personas (duplicated from ai.service.ts since it's not exported)
-    const personasText = `**The Rebuilder**
-Description: 40+, post-injury, cautious
-Training Methods: Rehabilitation-Based Functional Training, Low-Impact Strength Circuits, Stability & Mobility Progressions (FRC-inspired)
-Why It Fits: Rebuilders need controlled intensity and tissue remodeling; they thrive on measurable progress without setbacks. These methods rebuild confidence and function.
-
-**The Serial Athlete**
-Description: Lifelong competitor
-Training Methods: Concurrent Training (Strength + Endurance), Undulating Periodization, Performance-Based Conditioning (HIIT/Tempo Runs)
-Why It Fits: Keeps them stimulated with variety and performance benchmarks. Undulating loads prevent burnout while concurrent training supports hybrid goals.
-
-**The Midlife Transformer**
-Description: Career-driven, seeking vitality
-Training Methods: Linear Progression Strength Training, Metabolic Conditioning (MetCon), Habit-Based Lifestyle Integration
-Why It Fits: Linear strength builds tangible results, MetCons keep engagement high, and habit integration sustains long-term transformation.
-
-**The Golden Grinder**
-Description: 60+, longevity-focused
-Training Methods: Functional Strength Training, Balance & Neuromotor Drills, Zone 2 Cardio Conditioning
-Why It Fits: Functional patterns improve independence, balance reduces fall risk, and Zone 2 supports heart health and recovery.
-
-**The Functionalist**
-Description: Movement-minded, practical strength
-Training Methods: Movement Pattern Periodization, Kettlebell & TRX Integration, Hybrid Mobility Circuits
-Why It Fits: They crave efficiency and purpose—training should feel like real life. Compound and asymmetrical loads reinforce control and joint resilience.
-
-**The Transformation Seeker**
-Description: Short-term goal, high emotion
-Training Methods: Body Recomposition Circuits, Linear Strength + HIIT Split, Macro-Driven Program Integration
-Why It Fits: Needs fast results with visible payoff. These pair calorie-burning structure with sustainable strength outcomes.
-
-**The Maintenance Pro**
-Description: Advanced, consistent, data-driven
-Training Methods: Autoregulated Hypertrophy (RIR-based), Block Periodization, Athlete Monitoring Systems (InBody, HRV, etc.)
-Why It Fits: Already efficient—focus on fine-tuning. Block periodization keeps novelty; RIR-based training ensures precision without overtraining.
-
-**The Overwhelmed Beginner**
-Description: Inexperienced, anxious
-Training Methods: Foundational Movement Training, Circuit-Based Full Body Workouts, Progressive Habit Building
-Why It Fits: Simple, clear, repeatable. Builds confidence, coordination, and comfort in the gym environment.
-
-**The Burnout Comeback**
-Description: Ex-athlete, rediscovering joy
-Training Methods: Autoregulatory Strength Training, Play-Based Conditioning (sleds, med balls), Mindful Mobility & Breathwork
-Why It Fits: Needs to rekindle enjoyment while avoiding all-or-nothing intensity. Blends creativity with low-pressure structure.
-
-**The Data-Driven Devotee**
-Description: Analytical, optimization-focused
-Training Methods: Autoregulated Progressive Overload, Concurrent Training with Measurable Metrics, Biofeedback-Integrated Programming (HRV, sleep, strain)
-Why It Fits: They want systems. Real-time data creates buy-in and accountability while precision keeps them engaged.`;
+    const personasText = Object.values(CLIENT_ARCHETYPES)
+      .map(
+        (archetype) =>
+          `**${archetype.type}**\n` +
+          `Description: ${archetype.description}\n` +
+          `Training Methods: ${archetype.trainingMethods.join(', ')}\n` +
+          `Why It Fits: ${archetype.whyItFits}\n`
+      )
+      .join('\n');
 
     // Build recommendation structure prompt
     const recommendationPrompt = `You are an expert personal trainer creating a comprehensive 6-week training program for a client.

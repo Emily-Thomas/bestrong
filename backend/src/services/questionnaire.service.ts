@@ -1,5 +1,9 @@
 import pool from '../config/database';
-import type { CreateQuestionnaireInput, Questionnaire } from '../types';
+import type {
+  CoachFitAnalysis,
+  CreateQuestionnaireInput,
+  Questionnaire,
+} from '../types';
 
 export async function createQuestionnaire(
   input: CreateQuestionnaireInput,
@@ -164,4 +168,19 @@ export async function deleteQuestionnaire(id: number): Promise<boolean> {
     id,
   ]);
   return (result.rowCount ?? 0) > 0;
+}
+
+export async function setQuestionnaireCoachFit(
+  questionnaireId: number,
+  analysis: CoachFitAnalysis,
+  trainerIdsEvaluated: number[]
+): Promise<void> {
+  const payload = {
+    analysis,
+    trainer_ids_evaluated: trainerIdsEvaluated,
+  };
+  await pool.query(
+    `UPDATE questionnaires SET coach_fit = $1::jsonb, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+    [JSON.stringify(payload), questionnaireId]
+  );
 }

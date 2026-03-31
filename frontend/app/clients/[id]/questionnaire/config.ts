@@ -12,61 +12,6 @@ export const GOAL_OPTIONS = [
 
 export const QUESTIONNAIRE_SECTIONS: Section[] = [
   {
-    title: 'Safety screening',
-    description:
-      'These yes/no questions follow common pre-exercise screening. Answer honestly; a “yes” may mean you should check with a clinician before ramping up activity.',
-    questions: [
-      {
-        type: 'yes_no',
-        fieldName: 'parq_chest_pain',
-        label:
-          'Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?',
-      },
-      {
-        type: 'yes_no',
-        fieldName: 'parq_resting_bp',
-        label: 'Do you feel pain in your chest when you do physical activity?',
-      },
-      {
-        type: 'yes_no',
-        fieldName: 'parq_dizziness',
-        label:
-          'In the past month, have you had chest pain when you were not doing physical activity?',
-      },
-      {
-        type: 'yes_no',
-        fieldName: 'parq_bone_joint',
-        label:
-          'Do you lose your balance because of dizziness or do you ever lose consciousness?',
-      },
-      {
-        type: 'yes_no',
-        fieldName: 'parq_heart_meds',
-        label:
-          'Do you have a bone or joint problem that could be made worse by a change in your physical activity?',
-      },
-      {
-        type: 'yes_no',
-        fieldName: 'parq_other_reason',
-        label:
-          'Is your doctor currently prescribing drugs (for example, water pills) for blood pressure or heart condition?',
-      },
-      {
-        type: 'yes_no',
-        fieldName: 'parq_extra',
-        label:
-          'Do you know of any other reason why you should not do physical activity?',
-      },
-      {
-        type: 'textarea',
-        fieldName: 'parq_health_note',
-        label: 'Anything else about your health we should know? (optional)',
-        placeholder: 'Medications, conditions, or recent changes…',
-        rows: 3,
-      },
-    ],
-  },
-  {
     title: 'Daily life & background',
     description: 'How life outside the gym affects training and recovery.',
     questions: [

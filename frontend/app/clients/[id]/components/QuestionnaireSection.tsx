@@ -51,11 +51,11 @@ export function QuestionnaireSection({
   questionnaire,
 }: QuestionnaireSectionProps) {
   return (
-    <Card>
+    <Card id="questionnaire-section">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Questionnaire</CardTitle>
-          <CardDescription>Goals and preferences</CardDescription>
+          <CardDescription>Goals and background for programming</CardDescription>
         </div>
         {questionnaire ? (
           <Button variant="outline" size="sm" asChild>

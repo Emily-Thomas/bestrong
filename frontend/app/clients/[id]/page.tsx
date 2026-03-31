@@ -2,8 +2,8 @@
 
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import {
@@ -22,20 +22,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   type Client,
   clientsApi,
+  inbodyScansApi,
   type Questionnaire,
   questionnairesApi,
   type Recommendation,
   recommendationsApi,
 } from '@/lib/api';
+import { ClientDetailTabs } from './components/ClientDetailTabs';
 import { ClientInformationSection } from './components/ClientInformationSection';
-import { InBodyScansSection } from './components/InBodyScansSection';
-import { QuestionnaireSection } from './components/QuestionnaireSection';
-import { TrainingPlansSection } from './components/TrainingPlansSection';
-import { WorkoutsSection } from './components/WorkoutsSection';
+import { ClientSetupWorkspace } from './components/ClientSetupWorkspace';
 
-export default function ClientDetailPage() {
+function ClientDetailInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const clientId = Number(params.id);
 
   const [client, setClient] = useState<Client | null>(null);
@@ -45,33 +45,54 @@ export default function ClientDetailPage() {
   const [recommendation, setRecommendation] = useState<Recommendation | null>(
     null
   );
+  const [hasScan, setHasScan] = useState<boolean | null>(null);
+  const [hasVerifiedScan, setHasVerifiedScan] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
+  const showWelcomeBanner = searchParams.get('onboarding') === '1';
+
   const loadData = useCallback(async () => {
-    const [clientRes, questionnaireRes] = await Promise.all([
-      clientsApi.getById(clientId),
-      questionnairesApi.getByClientId(clientId),
-    ]);
+    const [clientRes, questionnaireRes, scanRes, scansListRes] =
+      await Promise.all([
+        clientsApi.getById(clientId),
+        questionnairesApi.getByClientId(clientId),
+        inbodyScansApi.hasScan(clientId),
+        inbodyScansApi.getByClientId(clientId),
+      ]);
 
     if (clientRes.success && clientRes.data) {
       setClient(clientRes.data);
     }
+
+    const listVerified =
+      scansListRes.success &&
+      Boolean(scansListRes.data?.some((s) => s.verified === true));
+    const apiVerified =
+      scanRes.success && scanRes.data
+        ? scanRes.data.has_verified_scan === true
+        : false;
+
+    if (scanRes.success && scanRes.data) {
+      setHasScan(scanRes.data.has_scan);
+      setHasVerifiedScan(apiVerified || listVerified);
+    } else if (scansListRes.success && scansListRes.data) {
+      setHasScan(scansListRes.data.length > 0);
+      setHasVerifiedScan(listVerified);
+    } else {
+      setHasScan(false);
+      setHasVerifiedScan(false);
+    }
+
     if (questionnaireRes.success && questionnaireRes.data) {
       const q = questionnaireRes.data;
       setQuestionnaire(q);
 
-      // Note: We'll check for existing jobs in a useEffect after questionnaire is set
-      // This avoids circular dependency issues
-
-      // Get recommendation for this questionnaire (1:1 relationship)
       try {
         const recResponse = await recommendationsApi.getByQuestionnaireId(q.id);
         if (recResponse.success && recResponse.data) {
           setRecommendation(recResponse.data);
         } else {
-          // 404 is expected if no recommendation exists yet
-          // Try fallback: get all recommendations for client and find matching one
           const allRecsResponse =
             await recommendationsApi.getByClientId(clientId);
           if (allRecsResponse.success && allRecsResponse.data) {
@@ -99,9 +120,23 @@ export default function ClientDetailPage() {
 
   useEffect(() => {
     if (clientId) {
-      loadData();
+      void loadData();
     }
   }, [clientId, loadData]);
+
+  const setupComplete =
+    Boolean(questionnaire) &&
+    hasVerifiedScan === true &&
+    Boolean(recommendation);
+
+  useEffect(() => {
+    if (!setupComplete || !showWelcomeBanner) return;
+    router.replace(`/clients/${clientId}?tab=overview`, { scroll: false });
+  }, [setupComplete, showWelcomeBanner, clientId, router]);
+
+  const dismissWelcome = useCallback(() => {
+    router.replace(`/clients/${clientId}`, { scroll: false });
+  }, [router, clientId]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -110,7 +145,6 @@ export default function ClientDetailPage() {
     if (response.success) {
       router.push('/clients');
     } else {
-      // Error handling - could show a toast notification here
       setDeleting(false);
     }
   };
@@ -157,7 +191,11 @@ export default function ClientDetailPage() {
     <ProtectedRoute>
       <AppShell
         title={`${client.first_name} ${client.last_name}`}
-        description="Client overview"
+        description={
+          setupComplete
+            ? 'Intake → coach & plan → workouts'
+            : 'Finish intake, then coach & plan — workouts come after the plan is locked'
+        }
         backAction={
           <Button variant="ghost" size="sm" asChild>
             <Link href="/clients">
@@ -209,36 +247,60 @@ export default function ClientDetailPage() {
           </AlertDialog>
         }
       >
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
-            <ClientInformationSection
+        <div className="mx-auto w-full max-w-4xl space-y-8">
+          {!setupComplete ? (
+            <>
+              <ClientInformationSection
+                client={client}
+                recommendation={recommendation}
+                onClientUpdate={handleClientUpdate}
+                onRecommendationUpdate={handleRecommendationUpdate}
+              />
+              <ClientSetupWorkspace
+                clientId={clientId}
+                questionnaire={questionnaire}
+                recommendation={recommendation}
+                hasScan={hasScan}
+                hasVerifiedScan={hasVerifiedScan}
+                onRefresh={loadData}
+                onRecommendationUpdate={handleRecommendationUpdate}
+                showWelcomeBanner={showWelcomeBanner}
+                onDismissWelcome={dismissWelcome}
+              />
+            </>
+          ) : (
+            <ClientDetailTabs
+              clientId={clientId}
               client={client}
+              questionnaire={questionnaire}
               recommendation={recommendation}
+              onRefresh={loadData}
               onClientUpdate={handleClientUpdate}
               onRecommendationUpdate={handleRecommendationUpdate}
             />
-
-            <InBodyScansSection clientId={clientId} />
-
-            <QuestionnaireSection
-              clientId={clientId}
-              questionnaire={questionnaire}
-            />
-
-            <TrainingPlansSection
-              clientId={clientId}
-              questionnaire={questionnaire}
-              recommendation={recommendation}
-              onRecommendationUpdate={handleRecommendationUpdate}
-            />
-
-            <WorkoutsSection
-              clientId={clientId}
-              recommendation={recommendation}
-            />
-          </div>
+          )}
         </div>
       </AppShell>
     </ProtectedRoute>
+  );
+}
+
+export default function ClientDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <ProtectedRoute>
+          <AppShell title="Client" description="Loading…">
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </AppShell>
+        </ProtectedRoute>
+      }
+    >
+      <ClientDetailInner />
+    </Suspense>
   );
 }
