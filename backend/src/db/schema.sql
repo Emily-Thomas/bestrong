@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS questionnaires (
   activity_level VARCHAR(50), -- sedentary, lightly_active, moderately_active, very_active
   stress_level VARCHAR(50), -- low, moderate, high
   sleep_quality VARCHAR(50), -- poor, fair, good, excellent
-  nutrition_habits VARCHAR(50), -- poor, fair, good, excellent
+  nutrition_habits TEXT, -- summarized habits + optional notes (full detail also in notes JSON)
   
   -- Additional notes
   notes TEXT,
