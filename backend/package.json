@@ -14,6 +14,7 @@
     "migrate:client-status": "tsx scripts/add-client-status-column.ts",
     "migrate:all": "tsx scripts/add-all-missing-columns.ts",
     "seed:admins": "tsx scripts/seed-admins.ts",
+    "seed:exercise-library": "tsx scripts/seed-exercise-library.ts",
     "check:db": "tsx scripts/check-db-connection.ts",
     "process-jobs": "tsx scripts/process-jobs.ts",
     "process-jobs:watch": "tsx scripts/process-jobs.ts --watch",

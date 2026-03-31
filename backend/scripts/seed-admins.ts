@@ -15,6 +15,11 @@ const ADMIN_USERS = [
     password: 'bestrong',
     name: 'Emily',
   },
+  {
+    email: 'liz@bestrong.com',
+    password: 'bestrong',
+    name: 'Liz Wood',
+  },
 ];
 
 async function seedAdmins() {

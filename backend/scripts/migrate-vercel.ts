@@ -93,6 +93,7 @@ if (!databaseUrl) {
 import pool from '../src/config/database';
 // Now import modules that depend on environment variables
 import { runMigrations, testConnection } from '../src/db/migrations';
+import { seedExerciseLibraryExercises } from '../src/seeds/exercise-library.seed';
 
 /**
  * Verify that the workouts table exists after migration
@@ -352,6 +353,18 @@ async function main() {
 
     await runMigrations();
     console.log('\n✅ Migration complete!');
+
+    // Default exercise catalog (idempotent — skips existing names)
+    try {
+      console.log('\n🌱 Exercise library seed (deploy)...\n');
+      const seedResult = await seedExerciseLibraryExercises();
+      console.log(
+        `   Done: ${seedResult.inserted} inserted, ${seedResult.skipped} skipped\n`
+      );
+    } catch (seedError) {
+      console.error('❌ Exercise library seed failed:', seedError);
+      throw seedError;
+    }
 
     // Verify that the workouts table was created
     await verifyWorkoutsTable();

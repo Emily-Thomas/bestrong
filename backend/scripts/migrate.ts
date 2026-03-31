@@ -41,6 +41,7 @@ if (missingVars.length > 0) {
 
 // Now import modules that depend on environment variables
 import { runMigrations, testConnection } from '../src/db/migrations';
+import { seedExerciseLibraryExercises } from '../src/seeds/exercise-library.seed';
 
 async function main() {
   console.log('🔄 Running database migrations...\n');
@@ -68,6 +69,18 @@ async function main() {
 
     await runMigrations();
     console.log('\n✅ Migration complete!');
+
+    try {
+      console.log('\n🌱 Exercise library seed...\n');
+      const seedResult = await seedExerciseLibraryExercises();
+      console.log(
+        `   ${seedResult.inserted} inserted, ${seedResult.skipped} skipped\n`
+      );
+    } catch (seedError) {
+      console.error('❌ Exercise library seed failed:', seedError);
+      throw seedError;
+    }
+
     process.exit(0);
   } catch (error) {
     console.error('\n❌ Migration failed:', error);
