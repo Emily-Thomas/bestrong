@@ -74,21 +74,18 @@ export async function createTrainer(
   return result.rows[0];
 }
 
-export async function getTrainerById(
-  id: number,
-  adminId: number
-): Promise<Trainer | null> {
+export async function getTrainerById(id: number): Promise<Trainer | null> {
   const result = await pool.query<Trainer>(
-    `SELECT * FROM trainers WHERE id = $1 AND created_by = $2`,
-    [id, adminId]
+    `SELECT * FROM trainers WHERE id = $1`,
+    [id]
   );
   return result.rows[0] || null;
 }
 
-export async function getTrainersByAdmin(adminId: number): Promise<Trainer[]> {
+/** Shared roster: all trainers are visible to every authenticated admin. */
+export async function getAllTrainers(): Promise<Trainer[]> {
   const result = await pool.query<Trainer>(
-    `SELECT * FROM trainers WHERE created_by = $1 ORDER BY last_name ASC, first_name ASC`,
-    [adminId]
+    `SELECT * FROM trainers ORDER BY last_name ASC, first_name ASC`
   );
   return result.rows;
 }
@@ -125,7 +122,6 @@ export function trainersToCoachMatchOptions(
 
 export async function updateTrainer(
   id: number,
-  adminId: number,
   input: UpdateTrainerInput
 ): Promise<Trainer | null> {
   const fields: string[] = [];
@@ -162,15 +158,15 @@ export async function updateTrainer(
   }
 
   if (fields.length === 0) {
-    return getTrainerById(id, adminId);
+    return getTrainerById(id);
   }
 
   fields.push(`updated_at = CURRENT_TIMESTAMP`);
-  values.push(id, adminId);
+  values.push(id);
 
   const result = await pool.query<Trainer>(
     `UPDATE trainers SET ${fields.join(', ')}
-     WHERE id = $${n} AND created_by = $${n + 1}
+     WHERE id = $${n}
      RETURNING *`,
     values
   );
@@ -178,14 +174,8 @@ export async function updateTrainer(
   return result.rows[0] || null;
 }
 
-export async function deleteTrainer(
-  id: number,
-  adminId: number
-): Promise<boolean> {
-  const result = await pool.query(
-    `DELETE FROM trainers WHERE id = $1 AND created_by = $2`,
-    [id, adminId]
-  );
+export async function deleteTrainer(id: number): Promise<boolean> {
+  const result = await pool.query(`DELETE FROM trainers WHERE id = $1`, [id]);
   return (result.rowCount ?? 0) > 0;
 }
 
@@ -193,10 +183,9 @@ export async function deleteTrainer(
  * Returns the ai_prompt_injection block for program generation, or throws if missing.
  */
 export async function getCoachPromptInjectionForPlan(
-  trainerId: number,
-  adminId: number
+  trainerId: number
 ): Promise<string> {
-  const trainer = await getTrainerById(trainerId, adminId);
+  const trainer = await getTrainerById(trainerId);
   if (!trainer) {
     throw new Error('Trainer not found');
   }
@@ -211,7 +200,6 @@ export async function getCoachPromptInjectionForPlan(
 
 export async function saveTrainerStructuredPersona(
   id: number,
-  adminId: number,
   structured: TrainerPersonaStructured,
   rawHash: string
 ): Promise<Trainer | null> {
@@ -221,9 +209,9 @@ export async function saveTrainerStructuredPersona(
       persona_generated_at = CURRENT_TIMESTAMP,
       persona_raw_content_hash = $2,
       updated_at = CURRENT_TIMESTAMP
-     WHERE id = $3 AND created_by = $4
+     WHERE id = $3
      RETURNING *`,
-    [JSON.stringify(structured), rawHash, id, adminId]
+    [JSON.stringify(structured), rawHash, id]
   );
   return result.rows[0] || null;
 }

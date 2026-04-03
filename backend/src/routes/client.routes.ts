@@ -12,7 +12,7 @@ router.use(authenticateToken);
 // Get all clients
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const clients = await clientService.getAllClients(req.user?.userId);
+    const clients = await clientService.getAllClients();
 
     res.json({
       success: true,

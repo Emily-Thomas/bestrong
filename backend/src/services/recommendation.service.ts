@@ -374,14 +374,13 @@ export interface ComparisonPlanRow {
 }
 
 export async function listComparisonBatch(
-  batchId: string,
-  adminId: number
+  batchId: string
 ): Promise<ComparisonPlanRow[]> {
   const result = await pool.query<Recommendation>(
     `SELECT * FROM recommendations
-     WHERE comparison_batch_id = $1::uuid AND created_by = $2
+     WHERE comparison_batch_id = $1::uuid
      ORDER BY id ASC`,
-    [batchId, adminId]
+    [batchId]
   );
   const rows: ComparisonPlanRow[] = [];
   for (const rec of result.rows) {
@@ -390,7 +389,7 @@ export async function listComparisonBatch(
     }
     let trainer: Trainer | null = null;
     if (rec.trainer_id) {
-      trainer = await trainerService.getTrainerById(rec.trainer_id, adminId);
+      trainer = await trainerService.getTrainerById(rec.trainer_id);
     }
     rows.push({ recommendation: rec, trainer });
   }
@@ -399,13 +398,12 @@ export async function listComparisonBatch(
 
 export async function selectComparisonPlan(
   batchId: string,
-  recommendationId: number,
-  adminId: number
+  recommendationId: number
 ): Promise<Recommendation | null> {
   const candidates = await pool.query<{ id: number }>(
     `SELECT id FROM recommendations
-     WHERE comparison_batch_id = $1::uuid AND created_by = $2`,
-    [batchId, adminId]
+     WHERE comparison_batch_id = $1::uuid`,
+    [batchId]
   );
   const ids = new Set(candidates.rows.map((r) => r.id));
   if (!ids.has(recommendationId)) {
@@ -417,13 +415,13 @@ export async function selectComparisonPlan(
     await conn.query('BEGIN');
     await conn.query(
       `UPDATE recommendations SET status = 'draft', updated_at = NOW()
-       WHERE comparison_batch_id = $1::uuid AND created_by = $2 AND id <> $3`,
-      [batchId, adminId, recommendationId]
+       WHERE comparison_batch_id = $1::uuid AND id <> $2`,
+      [batchId, recommendationId]
     );
     await conn.query(
       `UPDATE recommendations SET status = 'approved', comparison_batch_id = NULL, updated_at = NOW()
-       WHERE id = $1 AND created_by = $2`,
-      [recommendationId, adminId]
+       WHERE id = $1`,
+      [recommendationId]
     );
     await conn.query('COMMIT');
   } catch (e) {

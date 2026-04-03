@@ -33,18 +33,11 @@ export async function getClientById(id: number): Promise<Client | null> {
   return result.rows[0] || null;
 }
 
-export async function getAllClients(adminId?: number): Promise<Client[]> {
-  let query = 'SELECT * FROM clients';
-  const params: number[] = [];
-
-  if (adminId) {
-    query += ' WHERE created_by = $1';
-    params.push(adminId);
-  }
-
-  query += ' ORDER BY created_at DESC';
-
-  const result = await pool.query<Client>(query, params);
+/** All clients are visible to every authenticated admin (shared roster). */
+export async function getAllClients(): Promise<Client[]> {
+  const result = await pool.query<Client>(
+    'SELECT * FROM clients ORDER BY created_at DESC'
+  );
   return result.rows;
 }
 

@@ -52,7 +52,7 @@ router.get('/', async (req: Request, res: Response) => {
       res.status(401).json({ success: false, error: 'Not authenticated' });
       return;
     }
-    const trainers = await trainerService.getTrainersByAdmin(req.user.userId);
+    const trainers = await trainerService.getAllTrainers();
     res.json({
       success: true,
       data: trainerService.enrichTrainersWithPersonaMeta(trainers),
@@ -74,7 +74,7 @@ router.post('/:id/generate-persona', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: 'Invalid trainer ID' });
       return;
     }
-    const trainer = await trainerService.getTrainerById(id, req.user.userId);
+    const trainer = await trainerService.getTrainerById(id);
     if (!trainer) {
       res.status(404).json({ success: false, error: 'Trainer not found' });
       return;
@@ -100,7 +100,6 @@ router.post('/:id/generate-persona', async (req: Request, res: Response) => {
     );
     const updated = await trainerService.saveTrainerStructuredPersona(
       id,
-      req.user.userId,
       structured,
       hash
     );
@@ -129,7 +128,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: 'Invalid trainer ID' });
       return;
     }
-    const trainer = await trainerService.getTrainerById(id, req.user.userId);
+    const trainer = await trainerService.getTrainerById(id);
     if (!trainer) {
       res.status(404).json({ success: false, error: 'Trainer not found' });
       return;
@@ -185,11 +184,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: updateErr });
       return;
     }
-    const trainer = await trainerService.updateTrainer(
-      id,
-      req.user.userId,
-      input
-    );
+    const trainer = await trainerService.updateTrainer(id, input);
     if (!trainer) {
       res.status(404).json({ success: false, error: 'Trainer not found' });
       return;
@@ -215,7 +210,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: 'Invalid trainer ID' });
       return;
     }
-    const deleted = await trainerService.deleteTrainer(id, req.user.userId);
+    const deleted = await trainerService.deleteTrainer(id);
     if (!deleted) {
       res.status(404).json({ success: false, error: 'Trainer not found' });
       return;

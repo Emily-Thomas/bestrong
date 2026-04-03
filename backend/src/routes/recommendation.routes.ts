@@ -199,10 +199,10 @@ router.post(
       }
 
       const client = await clientService.getClientById(questionnaire.client_id);
-      if (!client || client.created_by !== req.user.userId) {
-        res.status(403).json({
+      if (!client) {
+        res.status(404).json({
           success: false,
-          error: 'You do not have access to this client',
+          error: 'Client not found',
         });
         return;
       }
@@ -219,14 +219,11 @@ router.post(
       }
 
       const trainersWithPersonas = (
-        await trainerService.getTrainersByAdmin(req.user.userId)
+        await trainerService.getAllTrainers()
       ).filter((t) => t.structured_persona?.ai_prompt_injection?.trim());
       if (trainersWithPersonas.length > 0) {
         try {
-          const resolved = await resolveTrainerInjectionForGeneration(
-            req.body,
-            req.user.userId
-          );
+          const resolved = await resolveTrainerInjectionForGeneration(req.body);
           if (resolved.trainerId === undefined) {
             res.status(400).json({
               success: false,
@@ -245,7 +242,7 @@ router.post(
         }
       } else {
         try {
-          await resolveTrainerInjectionForGeneration(req.body, req.user.userId);
+          await resolveTrainerInjectionForGeneration(req.body);
         } catch {
           res.status(400).json({
             success: false,
@@ -273,10 +270,7 @@ router.post(
 
       let trainerMeta: Record<string, unknown>;
       try {
-        const resolved = await resolveTrainerInjectionForGeneration(
-          req.body,
-          req.user.userId
-        );
+        const resolved = await resolveTrainerInjectionForGeneration(req.body);
         trainerMeta = {
           mode: 'library_template',
           template_id: templateId,
@@ -341,10 +335,10 @@ router.post('/manual-plan/start', async (req: Request, res: Response) => {
     }
 
     const client = await clientService.getClientById(questionnaire.client_id);
-    if (!client || client.created_by !== req.user.userId) {
-      res.status(403).json({
+    if (!client) {
+      res.status(404).json({
         success: false,
-        error: 'You do not have access to this client',
+        error: 'Client not found',
       });
       return;
     }
@@ -361,14 +355,11 @@ router.post('/manual-plan/start', async (req: Request, res: Response) => {
     }
 
     const trainersWithPersonas = (
-      await trainerService.getTrainersByAdmin(req.user.userId)
+      await trainerService.getAllTrainers()
     ).filter((t) => t.structured_persona?.ai_prompt_injection?.trim());
     if (trainersWithPersonas.length > 0) {
       try {
-        const resolved = await resolveTrainerInjectionForGeneration(
-          body,
-          req.user.userId
-        );
+        const resolved = await resolveTrainerInjectionForGeneration(body);
         if (resolved.trainerId === undefined) {
           res.status(400).json({
             success: false,
@@ -387,7 +378,7 @@ router.post('/manual-plan/start', async (req: Request, res: Response) => {
       }
     } else {
       try {
-        await resolveTrainerInjectionForGeneration(body, req.user.userId);
+        await resolveTrainerInjectionForGeneration(body);
       } catch {
         res.status(400).json({
           success: false,
@@ -424,10 +415,7 @@ router.post('/manual-plan/start', async (req: Request, res: Response) => {
 
     let trainerMeta: Record<string, unknown>;
     try {
-      const resolved = await resolveTrainerInjectionForGeneration(
-        body,
-        req.user.userId
-      );
+      const resolved = await resolveTrainerInjectionForGeneration(body);
       trainerMeta = {
         mode: 'manual_plan',
         manual_plan: parsed,
@@ -492,10 +480,10 @@ router.post(
       }
 
       const client = await clientService.getClientById(questionnaire.client_id);
-      if (!client || client.created_by !== req.user.userId) {
-        res.status(403).json({
+      if (!client) {
+        res.status(404).json({
           success: false,
-          error: 'You do not have access to this client',
+          error: 'Client not found',
         });
         return;
       }
@@ -511,9 +499,7 @@ router.post(
         return;
       }
 
-      const allTrainers = await trainerService.getTrainersByAdmin(
-        req.user.userId
-      );
+      const allTrainers = await trainerService.getAllTrainers();
       const withPersona = allTrainers.filter((t) =>
         Boolean(t.structured_persona?.ai_prompt_injection?.trim())
       );
@@ -585,10 +571,9 @@ function mapLlmWorkoutsToInputs(
   }));
 }
 
-/** Optional `trainer_id` in JSON body; validates access and persona. */
+/** Optional `trainer_id` in JSON body; validates persona is available. */
 async function resolveTrainerInjectionForGeneration(
-  body: unknown,
-  adminId: number
+  body: unknown
 ): Promise<{ trainerId?: number; injection?: string }> {
   if (!body || typeof body !== 'object') {
     return {};
@@ -601,10 +586,7 @@ async function resolveTrainerInjectionForGeneration(
   if (Number.isNaN(n) || n <= 0) {
     throw new Error('Invalid trainer_id');
   }
-  const injection = await trainerService.getCoachPromptInjectionForPlan(
-    n,
-    adminId
-  );
+  const injection = await trainerService.getCoachPromptInjectionForPlan(n);
   return { trainerId: n, injection };
 }
 
@@ -639,8 +621,7 @@ async function processLibraryTemplateJob(
   if (trainerId != null) {
     try {
       coachInjection = await trainerService.getCoachPromptInjectionForPlan(
-        trainerId,
-        job.created_by
+        trainerId
       );
     } catch {
       coachInjection = undefined;
@@ -801,8 +782,7 @@ async function processWorkoutGenerationJob(
   if (recommendation.trainer_id != null) {
     try {
       coachInjection = await trainerService.getCoachPromptInjectionForPlan(
-        recommendation.trainer_id,
-        job.created_by
+        recommendation.trainer_id
       );
     } catch (e) {
       await jobService.failJob(
@@ -886,8 +866,7 @@ async function processTrainerComparisonJob(
     }
 
     const injection = await trainerService.getCoachPromptInjectionForPlan(
-      trainerId,
-      createdBy
+      trainerId
     );
 
     const structure = await aiService.generateRecommendationStructure(
@@ -1072,7 +1051,7 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
     }
 
     const trainersWithPersonas = (
-      await trainerService.getTrainersByAdmin(job.created_by)
+      await trainerService.getAllTrainers()
     ).filter((t) => t.structured_persona?.ai_prompt_injection?.trim());
     if (trainersWithPersonas.length > 0) {
       const tid =
@@ -1106,7 +1085,7 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
 
     const structuredData = aiService.parseQuestionnaireData(questionnaire);
 
-    const allTrainers = await trainerService.getTrainersByAdmin(job.created_by);
+    const allTrainers = await trainerService.getAllTrainers();
     const coachOptions =
       trainerService.trainersToCoachMatchOptions(allTrainers);
 
@@ -1120,8 +1099,7 @@ export async function processRecommendationJob(jobId: number): Promise<void> {
       singleTrainerId = (rawMeta as { trainer_id: number }).trainer_id;
       try {
         coachInjection = await trainerService.getCoachPromptInjectionForPlan(
-          singleTrainerId,
-          job.created_by
+          singleTrainerId
         );
       } catch (e) {
         const message =
@@ -1230,7 +1208,7 @@ router.post(
       }
 
       const trainersWithPersonas = (
-        await trainerService.getTrainersByAdmin(req.user.userId)
+        await trainerService.getAllTrainers()
       ).filter((t) => t.structured_persona?.ai_prompt_injection?.trim());
       if (trainersWithPersonas.length > 0) {
         const rawTid = (req.body as { trainer_id?: unknown })?.trainer_id;
@@ -1262,10 +1240,7 @@ router.post(
 
       let trainerMeta: Record<string, unknown> = { mode: 'single_plan' };
       try {
-        const resolved = await resolveTrainerInjectionForGeneration(
-          req.body,
-          req.user.userId
-        );
+        const resolved = await resolveTrainerInjectionForGeneration(req.body);
         if (resolved.trainerId !== undefined) {
           trainerMeta = { mode: 'single_plan', trainer_id: resolved.trainerId };
         }
@@ -1578,7 +1553,7 @@ router.post(
       }
 
       const coachOptions = trainerService.trainersToCoachMatchOptions(
-        await trainerService.getTrainersByAdmin(req.user.userId)
+        await trainerService.getAllTrainers()
       );
       const aiAnalysis = await aiService.generateRecommendationWithAI(
         questionnaire,
@@ -1672,7 +1647,7 @@ router.post(
       }
 
       const coachOptions = trainerService.trainersToCoachMatchOptions(
-        await trainerService.getTrainersByAdmin(req.user.userId)
+        await trainerService.getAllTrainers()
       );
       const aiAnalysis = await aiService.generateRecommendationWithAI(
         questionnaire,
@@ -1824,10 +1799,10 @@ router.post(
       const client = await clientService.getClientById(
         recommendation.client_id
       );
-      if (!client || client.created_by !== req.user.userId) {
-        res.status(403).json({
+      if (!client) {
+        res.status(404).json({
           success: false,
-          error: 'You do not have access to this client',
+          error: 'Client not found',
         });
         return;
       }
@@ -1935,10 +1910,10 @@ router.post(
       const client = await clientService.getClientById(
         recommendation.client_id
       );
-      if (!client || client.created_by !== req.user.userId) {
-        res.status(403).json({
+      if (!client) {
+        res.status(404).json({
           success: false,
-          error: 'You do not have access to this client',
+          error: 'Client not found',
         });
         return;
       }
@@ -1961,7 +1936,7 @@ router.post(
       }
 
       const job = await jobService.getJobById(jobId);
-      if (!job || job.created_by !== req.user.userId) {
+      if (!job) {
         res.status(404).json({
           success: false,
           error: 'Job not found',
@@ -2088,10 +2063,7 @@ router.get(
         return;
       }
       const batchId = req.params.batchId;
-      const plans = await recommendationService.listComparisonBatch(
-        batchId,
-        req.user.userId
-      );
+      const plans = await recommendationService.listComparisonBatch(batchId);
       res.json({ success: true, data: { plans } });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -2122,8 +2094,7 @@ router.post(
       }
       const rec = await recommendationService.selectComparisonPlan(
         batchId,
-        recommendationId,
-        req.user.userId
+        recommendationId
       );
       if (!rec) {
         res
