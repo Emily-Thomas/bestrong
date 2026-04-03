@@ -5,6 +5,17 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+/** Models that spend output budget on hidden reasoning tokens before visible text. */
+function usesReasoningOutputBudget(model: string): boolean {
+  const m = model.trim().toLowerCase();
+  return (
+    m.startsWith('gpt-5') ||
+    m.startsWith('o1') ||
+    m.startsWith('o3') ||
+    m.startsWith('o4')
+  );
+}
+
 /**
  * Extracts structured data from InBody scan PNG image using GPT-4 Vision
  */
@@ -60,7 +71,10 @@ Return as JSON with this exact structure:
 If a value is not found, use null. All numbers should be numeric values, not strings.`;
 
     // Step 2: Call OpenAI Vision API
-    const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
+    // Default gpt-4o-mini: strong vision + JSON; avoids GPT-5 "reasoning" eating the whole
+    // output budget (low max_completion_tokens previously produced empty message.content).
+    // Override with OPENAI_INBODY_MODEL (e.g. match OPENAI_MODEL) when desired.
+    const model = process.env.OPENAI_INBODY_MODEL ?? 'gpt-4o-mini';
     const response = await openai.chat.completions.create({
       model,
       messages: [
@@ -86,12 +100,24 @@ If a value is not found, use null. All numbers should be numeric values, not str
         },
       ],
       response_format: { type: 'json_object' }, // Force JSON response
-      max_completion_tokens: 2000,
+      // Large enough for JSON after any reasoning tokens on GPT-5 family; matches main client scale.
+      max_completion_tokens: 16_000,
+      ...(usesReasoningOutputBudget(model)
+        ? ({ reasoning_effort: 'low' } as const)
+        : {}),
     });
 
-    const responseContent = response.choices[0]?.message?.content;
+    const choice = response.choices[0];
+    const message = choice?.message;
+    const responseContent = message?.content;
     if (!responseContent) {
-      throw new Error('No response from OpenAI');
+      const refusal = message?.refusal;
+      const finish = choice?.finish_reason;
+      throw new Error(
+        refusal
+          ? `OpenAI refused: ${refusal}`
+          : `No response from OpenAI (finish_reason=${String(finish ?? 'unknown')})`
+      );
     }
 
     // Step 3: Parse JSON response
