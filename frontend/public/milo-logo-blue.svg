@@ -1,0 +1,36 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Goldendoodle sitting, side profile - Blue version -->
+  <g transform="translate(40, 30)">
+    <!-- Body -->
+    <path d="M 30 80 Q 25 60, 35 50 Q 40 45, 50 50 L 55 55 Q 60 50, 65 55 L 70 65 Q 75 70, 70 80 L 65 95 Q 60 105, 55 100 L 50 95 Q 45 100, 40 95 L 35 90 Q 28 88, 30 80 Z" fill="#5B7FF5" stroke="#3B5FE8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Head -->
+    <path d="M 35 50 Q 30 45, 30 35 Q 30 25, 40 22 Q 48 20, 53 25 L 55 30 Q 58 28, 60 30 Q 63 35, 60 42 Q 58 48, 53 50 L 50 52 Q 45 54, 40 52 Q 36 50, 35 50 Z" fill="#5B7FF5" stroke="#3B5FE8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Floppy ear -->
+    <path d="M 32 32 Q 28 30, 26 35 Q 25 40, 28 44 Q 30 46, 33 44 Q 35 40, 33 35 Q 32 32, 32 32 Z" fill="#5B7FF5" stroke="#3B5FE8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Snout -->
+    <ellipse cx="56" cy="38" rx="6" ry="5" fill="#3B5FE8"/>
+    
+    <!-- Nose -->
+    <ellipse cx="58" cy="37" rx="2.5" ry="2" fill="#2E4FE0"/>
+    
+    <!-- Eye -->
+    <circle cx="45" cy="32" r="2" fill="#1A3AA0"/>
+    
+    <!-- Front leg -->
+    <path d="M 50 95 L 48 115 Q 47 120, 50 120" stroke="#3B5FE8" stroke-width="4" stroke-linecap="round" fill="none"/>
+    
+    <!-- Back leg -->
+    <path d="M 40 95 L 38 115 Q 37 120, 40 120" stroke="#3B5FE8" stroke-width="4" stroke-linecap="round" fill="none"/>
+    
+    <!-- Tail (fluffy curved) -->
+    <path d="M 30 82 Q 20 85, 18 75 Q 17 68, 22 65" stroke="#5B7FF5" stroke-width="5" stroke-linecap="round" fill="none"/>
+    
+    <!-- Fluffy coat texture (subtle curves) -->
+    <path d="M 38 55 Q 35 58, 38 61" stroke="#3B5FE8" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.6"/>
+    <path d="M 48 58 Q 45 62, 48 65" stroke="#3B5FE8" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.6"/>
+    <path d="M 58 62 Q 55 66, 58 70" stroke="#3B5FE8" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.6"/>
+  </g>
+</svg>

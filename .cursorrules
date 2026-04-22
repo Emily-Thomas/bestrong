@@ -188,3 +188,270 @@ backend/
 - Example: `/generate/questionnaire/:id/job` before `/generate/job/:id`
 - Use clear, RESTful naming conventions
 
+---
+
+## Milo Brand & Design System
+
+### Brand Identity
+
+**Product Name:** Milo  
+**Tagline:** Your AI Training Companion  
+**Philosophy:** Like a loyal gym dog - supportive, intelligent, never in the way
+
+**Brand Personality:**
+- **Loyal & Reliable** - Always at your side, dependable
+- **Intelligent but Humble** - Smart assistance without ego
+- **Energetic & Positive** - Makes work feel lighter
+- **Intuitive** - Anticipates needs, low friction
+- **Professional Companion** - Serious B2B tool with friendly presence
+
+### Design System Location
+
+**All design tokens and guidelines:** `/frontend/src/design-system/`
+- Tokens: `/frontend/src/design-system/tokens/` (TypeScript)
+- Documentation: `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
+- Quick Start: `/frontend/src/design-system/README.md`
+
+### Visual Identity
+
+#### Logo Usage
+- **Primary Logo:** `/frontend/public/milo-logo-blue.svg` (blue version for navigation)
+- **Alternative Logo:** `/frontend/public/milo-logo-gold.svg` (golden version for marketing/warmth)
+- Logo represents a cream-colored goldendoodle (Milo) in sitting position
+- Minimum size: 32x32px
+- Always use SVG, never PNG (scalability)
+
+#### Color Palette
+
+**Primary Colors:**
+- **Brand Primary (Blue):** `hsl(220 85% 55%)` or `#5B7FF5`
+  - Use for: Primary actions, interactive elements, brand moments
+  - Variable: `--brand-primary`
+  
+- **Companion Gold:** `hsl(38 92% 50%)` or `#F5A623`
+  - Use for: Accents, warmth, highlights (use sparingly)
+  - Variable: `--brand-companion`
+  - Represents Milo's cream/golden color
+  
+- **Accent Red:** `hsl(355 90% 52%)` or `#F43F5E`
+  - Use for: High-priority actions, alerts
+  - Variable: `--brand-accent`
+
+**When to use each:**
+- Blue logo: Navigation, headers, professional contexts
+- Gold logo: Marketing sections, feature showcases, emotional/warm contexts
+- Use gold color sparingly as accent - maintain professional feel
+
+#### Typography
+
+**Font Families:**
+1. **Manrope** (`--font-display`) - Display/Brand
+   - Use for: Hero headings, page titles, brand moments
+   - Apply with: `style={{ fontFamily: 'var(--font-display)' }}`
+   - Always use for "Milo" brand name
+
+2. **Geist** (`--font-sans`) - UI/Interface
+   - Use for: Body text, UI components, navigation
+   - Default for most interface elements
+
+3. **Geist Mono** (`--font-mono`) - Code/Data
+   - Use for: Numbers, metrics, code blocks, tabular data
+
+**Typography Rules:**
+- Display font for brand name "Milo" (not generic sans)
+- Sans font for all other UI text
+- Mono font for metrics and data-heavy content
+
+#### Spacing & Layout
+
+- Base unit: 4px (0.25rem)
+- Common gaps: 8px, 16px, 24px
+- Section padding: 24px-48px
+- Use design tokens: `import { spacing } from '@/design-system/tokens'`
+
+#### Shadows
+
+**Warm shadows with amber tint** (Milo's companion warmth):
+- Use `shadow-sm`, `shadow-md`, `shadow-lg` classes
+- Never use pure gray/black shadows
+- Shadows have subtle warm tint: `hsl(38 50% 10% / 0.1)`
+
+### Voice & Tone
+
+**Brand Voice Characteristics:**
+- **Supportive** - We're here to help, not judge
+- **Capable** - We know what we're doing
+- **Clear** - No jargon, no confusion
+- **Warm** - Professional but approachable
+
+**Writing Guidelines:**
+
+**DO:**
+- Use "you" to address coaches directly
+- Keep sentences short and actionable
+- Acknowledge the hard work coaches do
+- Celebrate wins (program created, client progress)
+- Offer help proactively
+- Use encouraging empty states
+
+**DON'T:**
+- Use corporate jargon or buzzwords
+- Be overly technical without explanation
+- Make assumptions about coaching style
+- Be cutesy or use excessive emojis
+- Oversell or exaggerate capabilities
+- Use sterile, generic copy
+
+**Example Microcopy:**
+
+| Context | Milo Voice |
+|---------|------------|
+| Welcome | "Hey! Milo here. Let's get you set up." |
+| Empty state | "Ready to build your first program?" |
+| Loading | "Milo's working on it..." |
+| Success | "Got it! Your program is ready." |
+| Error | "Something went wrong—let's try that again" |
+| Helper tip | "Pro tip: You can duplicate this week to save time" |
+| Button labels | "Get Started", "Build Program", "Let's Go" (not "Submit" or "Proceed") |
+
+### UI Component Guidelines
+
+#### Buttons
+- Primary buttons use brand blue
+- Destructive buttons use accent red
+- Ghost buttons for secondary actions
+- Always clear, action-oriented labels ("Create Program", not "Submit")
+
+#### Cards
+- Use warm shadows (`shadow-md` or `shadow-lg`)
+- Rounded corners: `rounded-lg` or `rounded-xl`
+- Hover states should feel responsive (subtle scale or shadow change)
+
+#### Forms
+- Clear, friendly labels
+- Helpful placeholder text
+- Warm error messages (not just red text)
+- Success states feel rewarding
+
+#### Empty States
+- Never just say "No data" or "Empty"
+- Use encouraging copy: "Ready to create your first...?"
+- Include clear CTA button
+- Optional: Subtle Milo mascot or icon
+
+#### Loading States
+- Use "Milo's working on it..." or similar
+- Show what's happening ("Building your program...")
+- Spinner or progress indicator
+- Never just spinning wheel with no context
+
+### Component Creation
+
+When creating new UI components:
+
+1. **Use Design Tokens**
+   ```typescript
+   import { colors, typography, spacing } from '@/design-system/tokens';
+   ```
+
+2. **Follow Milo Voice**
+   - Review `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
+   - Use supportive, clear language
+   - Avoid generic corporate speak
+
+3. **Apply Brand Colors**
+   ```tsx
+   // Primary action
+   <Button className="bg-primary text-primary-foreground">
+   
+   // Warm accent
+   <div className="bg-accent/10 border-accent/20">
+   
+   // Use CSS variables for custom styling
+   <div style={{ color: 'var(--brand-primary)' }}>
+   ```
+
+4. **Use Warm Shadows**
+   ```tsx
+   <Card className="shadow-lg"> // NOT shadow-gray or shadow-black
+   ```
+
+5. **Apply Typography Correctly**
+   ```tsx
+   // Brand name (always display font)
+   <span style={{ fontFamily: 'var(--font-display)' }}>Milo</span>
+   
+   // UI text (default sans)
+   <p>Regular interface text</p>
+   
+   // Metrics
+   <span className="font-mono">123.45</span>
+   ```
+
+### Accessibility
+
+- All interactive elements need focus states (using brand primary color)
+- Color contrast meets WCAG 2.1 AA
+- Alt text for all images ("Milo logo", "Milo mascot")
+- Keyboard navigation support
+- Screen reader friendly labels
+
+### File Organization
+
+**New UI Components:**
+- Base components: `/frontend/src/components/ui/`
+- Composed components: `/frontend/src/components/composed/` (future)
+- Page-specific: `/frontend/app/[route]/components/`
+
+**Design System:**
+- Tokens: `/frontend/src/design-system/tokens/`
+- Documentation: `/frontend/src/design-system/docs/`
+- Brand guide: `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
+
+### Quality Checklist for New UI
+
+Before considering UI work complete, verify:
+
+- [ ] Uses design tokens (not hardcoded colors)
+- [ ] Logo is SVG (blue for nav, gold for marketing)
+- [ ] "Milo" uses display font (Manrope)
+- [ ] Copy uses Milo voice (supportive, clear, warm)
+- [ ] Shadows have warm tint (not pure gray)
+- [ ] Empty states are encouraging (not sterile)
+- [ ] Loading states explain what's happening
+- [ ] Error messages are friendly and actionable
+- [ ] Success states feel rewarding
+- [ ] Accessible (focus states, contrast, keyboard nav)
+- [ ] Responsive (mobile-first approach)
+- [ ] No hardcoded "BeStrong" references
+
+### Key Reminders
+
+**Brand Consistency:**
+- Always "Milo", never "MILO" or "milo" (except in code)
+- Tagline: "Your AI Training Companion" or "AI Training Companion"
+- Use goldendoodle/golden retriever inspiration (warm, loyal, friendly)
+
+**Color Usage:**
+- Blue = Trust, professional, primary
+- Gold = Warmth, loyalty (use sparingly as accent)
+- Red = Energy, alerts, destructive actions
+- Warm shadows always (never cold gray)
+
+**Typography Hierarchy:**
+- Display font = Brand moments only
+- Sans = Everything else
+- Mono = Data/metrics only
+
+**Voice:**
+- Think: "What would a loyal, intelligent gym dog say?"
+- Supportive colleague, not corporate robot
+- Clear and warm, never cold or generic
+
+### Resources
+
+- **Brand Guide:** `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
+- **Design Tokens:** `/frontend/src/design-system/tokens/`
+- **Logo Files:** `/frontend/public/milo-logo-blue.svg`, `/frontend/public/milo-logo-gold.svg`
+- **Summary:** `/MILO_REBRAND_SUMMARY.md`
+

@@ -35,7 +35,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <AppShell
         title="Dashboard"
-        description="Overview of your clients and their training plans"
+        description="Your coaching overview at a glance"
         action={
           <Button asChild size="sm">
             <Link href="/clients/new">
@@ -45,8 +45,8 @@ export default function DashboardPage() {
           </Button>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Total Clients
@@ -54,39 +54,39 @@ export default function DashboardPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary">
+              <div className="text-3xl font-bold text-primary font-mono">
                 {clients.length}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Active client profiles
+                Active profiles
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="shadow-md">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Engagement</CardTitle>
               <CardDescription>Coming soon</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-20 rounded-md border border-dashed border-border bg-muted flex items-center justify-center text-sm text-muted-foreground">
-                Add metrics like plans in progress.
+              <div className="h-20 rounded-md border border-dashed border-border bg-muted/50 flex items-center justify-center text-sm text-muted-foreground">
+                Track program progress
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="shadow-md">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">AI Plans</CardTitle>
+              <CardTitle className="text-sm font-medium">Milo's Plans</CardTitle>
               <CardDescription>Coming soon</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-20 rounded-md border border-dashed border-border bg-muted flex items-center justify-center text-sm text-muted-foreground">
-                Track generated recommendations.
+              <div className="h-20 rounded-md border border-dashed border-border bg-muted/50 flex items-center justify-center text-sm text-muted-foreground">
+                AI-generated programs
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Recent Clients</CardTitle>
@@ -97,25 +97,29 @@ export default function DashboardPage() {
             <Button asChild size="sm" variant="secondary">
               <Link href="/clients/new">
                 <Plus className="mr-2 h-4 w-4" />
-                Add New Client
+                Add Client
               </Link>
             </Button>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                <p className="text-sm text-muted-foreground">Milo's loading your clients...</p>
               </div>
             ) : clients.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  No clients yet. Create your first client to get started.
+              <div className="text-center py-16">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Ready to add your first client?</h3>
+                <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Start building personalized training programs with Milo's help
                 </p>
                 <Button asChild>
                   <Link href="/clients/new">
                     <Plus className="mr-2 h-4 w-4" />
-                    Create your first client
+                    Add Your First Client
                   </Link>
                 </Button>
               </div>
@@ -125,10 +129,10 @@ export default function DashboardPage() {
                   <Link
                     key={client.id}
                     href={`/clients/${client.id}`}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted transition-colors"
+                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:shadow-md hover:bg-accent/5 transition-all"
                   >
                     <div className="flex items-center space-x-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm">
                         {client.first_name[0]}
                         {client.last_name[0]}
                       </div>
@@ -143,7 +147,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground font-mono">
                       {new Date(client.created_at).toLocaleDateString()}
                     </div>
                   </Link>

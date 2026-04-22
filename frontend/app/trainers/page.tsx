@@ -187,32 +187,32 @@ function TrainersPageContent() {
     <ProtectedRoute>
       <AppShell
         title="Trainers"
-        description="Coaching profiles that describe your style and your clients—used to steer AI recommendations."
+        description="Coaching profiles that help Milo understand your style and approach"
         action={
           <Button size="sm" onClick={openAdd}>
             <Plus className="h-4 w-4 mr-2" />
-            Add trainer
+            Add Trainer
           </Button>
         }
       >
         {loading ? (
-          <div className="flex items-center justify-center py-24 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin mr-2" />
-            Loading trainers…
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+            <p className="text-sm text-muted-foreground">Loading trainers...</p>
           </div>
         ) : trainers.length === 0 ? (
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle>No trainers yet</CardTitle>
-              <CardDescription>
-                Add a trainer to capture how they coach and who their clients
-                are. You can use this when generating programs later.
+          <Card className="shadow-lg">
+            <CardContent className="text-center py-16">
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Ready to add your first trainer?</h3>
+              <CardDescription className="mb-6 max-w-sm mx-auto">
+                Create coaching profiles that help Milo understand your unique style and approach
               </CardDescription>
-            </CardHeader>
-            <CardContent>
               <Button onClick={openAdd}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add your first trainer
+                Add Your First Trainer
               </Button>
             </CardContent>
           </Card>
@@ -221,7 +221,7 @@ function TrainersPageContent() {
             {trainers.map((t) => (
               <Card
                 key={t.id}
-                className="overflow-hidden border-border/80 shadow-sm transition-all hover:shadow-md hover:border-primary/20 flex flex-col"
+                className="overflow-hidden shadow-md transition-all hover:shadow-lg hover:border-primary/30 flex flex-col"
               >
                 <div className="flex flex-1 min-h-0">
                   <Link
@@ -322,7 +322,7 @@ function TrainersPageContent() {
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingId !== null ? 'Edit trainer' : 'Add trainer'}
+                {editingId !== null ? 'Edit Trainer' : 'Add Trainer'}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
@@ -426,7 +426,9 @@ function TrainersPageContent() {
                 />
               </div>
               {formError ? (
-                <p className="text-sm text-destructive">{formError}</p>
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3">
+                  <p className="text-sm text-destructive">{formError}</p>
+                </div>
               ) : null}
             </div>
             <DialogFooter>
@@ -445,12 +447,12 @@ function TrainersPageContent() {
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving…
+                    Saving...
                   </>
                 ) : editingId !== null ? (
-                  'Save changes'
+                  'Save Changes'
                 ) : (
-                  'Save trainer'
+                  'Add Trainer'
                 )}
               </Button>
             </DialogFooter>
@@ -467,8 +469,9 @@ export default function TrainersPage() {
       fallback={
         <ProtectedRoute>
           <AppShell title="Trainers">
-            <div className="flex justify-center py-24 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-sm text-muted-foreground">Loading trainers...</p>
             </div>
           </AppShell>
         </ProtectedRoute>
