@@ -254,3 +254,18 @@ export async function deleteInBodyScan(id: number): Promise<boolean> {
   ]);
   return (result.rowCount ?? 0) > 0;
 }
+
+/**
+ * Get all pending InBody scans that need extraction (for cron processing)
+ */
+export async function getPendingInBodyScans(): Promise<InBodyScan[]> {
+  const result = await pool.query<InBodyScan>(
+    `SELECT * FROM inbody_scans 
+     WHERE extraction_status = 'pending'
+     ORDER BY created_at ASC
+     LIMIT 10`,
+    []
+  );
+
+  return result.rows;
+}

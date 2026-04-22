@@ -121,7 +121,7 @@ cd backend && npm run dev
 
 ### 4. Processing Background Jobs (Local Development)
 
-In production, background jobs (recommendation generation, week generation) are processed automatically by Vercel cron jobs. For local development, you need to manually process these jobs.
+In production, background jobs (recommendation generation, week generation, InBody scan extraction) are processed automatically by Vercel cron jobs. For local development, you need to manually process these jobs.
 
 **Option 1: Run once (process all pending jobs and exit)**
 ```bash
@@ -144,6 +144,7 @@ cd backend && npm run process-jobs:watch
 This is useful when:
 - Testing training plan generation for new clients
 - Testing week generation workflows
+- Testing InBody scan uploads and data extraction
 - Debugging job processing issues
 
 **Note:** In production, jobs are automatically processed by Vercel cron jobs every 2 minutes. You don't need to run this script in production.

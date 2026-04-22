@@ -123,6 +123,30 @@ async function extractInBodyDataAsync(
   }
 }
 
+/**
+ * Process a pending InBody scan by fetching the file and extracting data
+ * This function is used by the cron job to process scans stuck in pending status
+ */
+export async function processInBodyScan(scanId: number): Promise<void> {
+  // Get scan record
+  const scan = await inbodyScanService.getInBodyScanById(scanId);
+  
+  if (!scan) {
+    throw new Error(`Scan ${scanId} not found`);
+  }
+
+  if (scan.extraction_status !== 'pending') {
+    console.log(`Scan ${scanId} is not pending (status: ${scan.extraction_status}), skipping`);
+    return;
+  }
+
+  // Fetch the file from storage
+  const fileBuffer = await fileStorageService.readFileFromStorage(scan.file_path);
+
+  // Extract data
+  await extractInBodyDataAsync(scanId, fileBuffer);
+}
+
 // Get extraction status
 router.get('/:id/status', async (req: Request, res: Response) => {
   try {

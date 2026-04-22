@@ -129,9 +129,15 @@ async function processJobs(): Promise<void> {
   const { processRecommendationJob, processWeekGenerationJob } = await import(
     '../src/routes/recommendation.routes'
   );
+  const { processInBodyScan } = await import(
+    '../src/routes/inbody-scan.routes'
+  );
   const jobService = await import('../src/services/job.service');
   const weekGenerationJobService = await import(
     '../src/services/week-generation-job.service'
+  );
+  const inbodyScanService = await import(
+    '../src/services/inbody-scan.service'
   );
 
   try {
@@ -194,10 +200,44 @@ async function processJobs(): Promise<void> {
       }
     }
 
-    const totalProcessed = processedRecommendations + processedWeeks;
+    // Process pending InBody scans
+    const pendingScans = await inbodyScanService.getPendingInBodyScans();
+    console.log(
+      `\n📋 Found ${pendingScans.length} pending InBody scan(s)`
+    );
+
+    if (pendingScans.length > 0) {
+      console.log(`   Scan IDs: ${pendingScans.map((s) => s.id).join(', ')}`);
+    }
+
+    let processedScans = 0;
+    for (const scan of pendingScans) {
+      try {
+        console.log(
+          `\n🔄 Processing InBody scan ${scan.id} (client ${scan.client_id})...`
+        );
+        await processInBodyScan(scan.id);
+        processedScans++;
+        console.log(`✅ Successfully processed InBody scan ${scan.id}`);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        console.error(
+          `❌ Error processing InBody scan ${scan.id}:`,
+          errorMessage
+        );
+        if (errorStack) {
+          console.error(`   Stack trace:`, errorStack);
+        }
+        // Continue with next scan
+      }
+    }
+
+    const totalProcessed = processedRecommendations + processedWeeks + processedScans;
     if (totalProcessed > 0) {
       console.log(
-        `\n✨ Processed ${processedRecommendations} recommendation job(s) and ${processedWeeks} week generation job(s)`
+        `\n✨ Processed ${processedRecommendations} recommendation job(s), ${processedWeeks} week generation job(s), and ${processedScans} InBody scan(s)`
       );
     } else {
       console.log(`\n✨ No pending jobs to process`);

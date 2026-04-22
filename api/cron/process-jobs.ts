@@ -1,7 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { processRecommendationJob, processWeekGenerationJob } from '../../backend/src/routes/recommendation.routes';
+import { processInBodyScan } from '../../backend/src/routes/inbody-scan.routes';
 import * as jobService from '../../backend/src/services/job.service';
 import * as weekGenerationJobService from '../../backend/src/services/week-generation-job.service';
+import * as inbodyScanService from '../../backend/src/services/inbody-scan.service';
 
 export const config = {
   maxDuration: 300, // 5 minutes - Pro plan limit
@@ -70,15 +72,43 @@ export default async function handler(
       }
     }
 
+    // Process pending InBody scans
+    const pendingScans = await inbodyScanService.getPendingInBodyScans();
+    console.log(`Found ${pendingScans.length} pending InBody scans`);
+    
+    if (pendingScans.length > 0) {
+      console.log(`Pending InBody scan IDs: ${pendingScans.map(s => s.id).join(', ')}`);
+    }
+    
+    let processedScans = 0;
+    for (const scan of pendingScans) {
+      try {
+        console.log(`Processing InBody scan ${scan.id} (client ${scan.client_id})`);
+        await processInBodyScan(scan.id);
+        processedScans++;
+        console.log(`✅ Successfully processed InBody scan ${scan.id}`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        console.error(`❌ Error processing InBody scan ${scan.id}:`, errorMessage);
+        if (errorStack) {
+          console.error(`Stack trace for scan ${scan.id}:`, errorStack);
+        }
+        // Continue with next scan - error is already logged in processInBodyScan
+      }
+    }
+
     res.json({
       success: true,
       processed: {
         recommendations: processedRecommendations,
         weekGenerations: processedWeeks,
+        inbodyScans: processedScans,
       },
       found: {
         recommendations: pendingJobs.length,
         weekGenerations: pendingWeekJobs.length,
+        inbodyScans: pendingScans.length,
       },
     });
   } catch (error) {
