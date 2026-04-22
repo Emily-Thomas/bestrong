@@ -73,10 +73,11 @@ export default function WorkoutDetailPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppShell title="Workout Details" description="Loading workout...">
-          <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <AppShell title="Workout" description="Loading session">
+          <Card className="shadow-md">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading workout...</p>
             </CardContent>
           </Card>
         </AppShell>
@@ -87,10 +88,13 @@ export default function WorkoutDetailPage() {
   if (!workout) {
     return (
       <ProtectedRoute>
-        <AppShell title="Workout Details" description="Workout not found">
-          <Card>
-            <CardContent className="text-center py-12 text-muted-foreground">
-              Workout not found
+        <AppShell
+          title="Workout"
+          description="We couldn't find that session"
+        >
+          <Card className="max-w-md shadow-md">
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Workout not found. It may have been removed.
             </CardContent>
           </Card>
         </AppShell>
@@ -105,7 +109,7 @@ export default function WorkoutDetailPage() {
           workout.workout_name ||
           `Week ${workout.week_number}, Session ${workout.session_number}`
         }
-        description="Workout details and performance"
+        description="Session plan and your notes"
         backAction={
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/clients/${clientId}`}>
@@ -123,7 +127,7 @@ export default function WorkoutDetailPage() {
           )}
 
           {/* Workout Overview */}
-          <Card>
+          <Card className="shadow-md">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -164,7 +168,7 @@ export default function WorkoutDetailPage() {
           </Card>
 
           {/* Proposed Workout Plan */}
-          <Card>
+          <Card className="shadow-md">
             <CardHeader>
               <CardTitle>Proposed Workout Plan</CardTitle>
             </CardHeader>

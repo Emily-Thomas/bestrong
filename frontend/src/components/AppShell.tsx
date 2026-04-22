@@ -8,8 +8,8 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { MiloLogoMark } from '@/components/MiloLogoMark';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -51,13 +51,7 @@ export function AppShell({
       <aside className="hidden lg:flex w-64 flex-col border-r border-border/60 bg-card/60 backdrop-blur-lg">
         <div className="px-6 py-5 border-b border-border/60">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <Image 
-              src="/milo-logo-gold.png" 
-              alt="Milo" 
-              width={40} 
-              height={40}
-              className="flex-shrink-0"
-            />
+            <MiloLogoMark size="md" />
             <div>
               <div className="text-lg font-semibold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
                 Milo
@@ -114,13 +108,7 @@ export function AppShell({
       <div className="flex-1 flex flex-col">
         <header className="lg:hidden sticky top-0 z-40 border-b border-border/60 bg-card/80 backdrop-blur px-4 py-3 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image 
-              src="/milo-logo-gold.png" 
-              alt="Milo" 
-              width={32} 
-              height={32}
-              className="flex-shrink-0"
-            />
+            <MiloLogoMark size="sm" />
             <span className="font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Milo</span>
           </Link>
           <Button size="sm" variant="ghost" onClick={handleLogout}>

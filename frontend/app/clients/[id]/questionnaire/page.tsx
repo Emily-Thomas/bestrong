@@ -15,8 +15,8 @@ export default function QuestionnairePage() {
   return (
     <ProtectedRoute>
       <AppShell
-        title="Client Questionnaire"
-        description="Goals, schedule, and background for programming"
+        title="Questionnaire"
+        description="Goals, schedule, and background so Milo can program well"
         action={
           <Button variant="ghost" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />

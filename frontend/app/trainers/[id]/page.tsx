@@ -101,16 +101,16 @@ export default function TrainerDetailPage() {
         }
       >
         {loading ? (
-          <div className="flex items-center justify-center py-24 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin mr-2" />
-            Loading…
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading trainer...</p>
           </div>
         ) : !trainer || Number.isNaN(id) ? (
-          <Card className="max-w-lg border-dashed">
+          <Card className="max-w-lg border-dashed shadow-md">
             <CardHeader>
               <CardTitle>Trainer not found</CardTitle>
               <CardDescription>
-                This profile may have been removed or the link is invalid.
+                This profile may have been removed or the link is wrong.
               </CardDescription>
             </CardHeader>
             <CardContent>

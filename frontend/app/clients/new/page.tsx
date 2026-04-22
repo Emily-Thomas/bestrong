@@ -66,18 +66,17 @@ export default function NewClientPage() {
   return (
     <ProtectedRoute>
       <AppShell
-        title="Create New Client"
-        description="Add a new client to your system"
+        title="Add client"
+        description="Start a profile so you can add intake, scans, and programs in one place"
       >
         <div className="flex justify-center">
           <div className="w-full max-w-3xl">
-            <Card className="border-border/60">
+            <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle>Client Information</CardTitle>
+                <CardTitle>Client information</CardTitle>
                 <CardDescription>
-                  Save contact details first. You can complete intake, InBody,
-                  and training plan from the client profile—use the setup
-                  checklist or skip it if you are only adding a record.
+                  Save the basics first. You can use the setup checklist on their
+                  profile, or skip straight to the record.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -87,7 +86,7 @@ export default function NewClientPage() {
                   className="space-y-6"
                 >
                   {error && (
-                    <Alert variant="destructive">
+                    <Alert variant="destructive" className="border-destructive/50">
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}

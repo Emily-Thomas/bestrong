@@ -162,10 +162,13 @@ function ClientDetailInner() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppShell title="Client" description="Loading client details">
-          <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <AppShell title="Client" description="Getting their profile ready">
+          <Card className="shadow-md">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Loading client...
+              </p>
             </CardContent>
           </Card>
         </AppShell>
@@ -176,10 +179,13 @@ function ClientDetailInner() {
   if (!client) {
     return (
       <ProtectedRoute>
-        <AppShell title="Client" description="Client not found">
-          <Card>
-            <CardContent className="text-center py-12 text-muted-foreground">
-              Client not found
+        <AppShell
+          title="Client"
+          description="We couldn't find that profile"
+        >
+          <Card className="max-w-md shadow-md">
+            <CardContent className="text-center text-muted-foreground py-12">
+              Client not found. They may have been removed or the link is wrong.
             </CardContent>
           </Card>
         </AppShell>
@@ -290,10 +296,11 @@ export default function ClientDetailPage() {
     <Suspense
       fallback={
         <ProtectedRoute>
-          <AppShell title="Client" description="Loading…">
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <AppShell title="Client" description="Getting their profile ready">
+            <Card className="shadow-md">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Loading...</p>
               </CardContent>
             </Card>
           </AppShell>

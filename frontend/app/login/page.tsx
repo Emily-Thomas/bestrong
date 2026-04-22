@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/contexts/AuthContext';
+import { MiloLogoMark } from '@/components/MiloLogoMark';
 import { 
   Zap, 
   Brain, 
@@ -90,17 +91,7 @@ export default function LoginPage() {
               href="#login"
               className="flex min-w-0 items-center gap-3 sm:gap-4 rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {/* Taller tile fits portrait lockups (dog + wordmark); warm bg blends PNG cream edge */}
-              <div className="flex h-16 w-[4.25rem] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-amber-200/50 bg-amber-50/90 px-1.5 py-1 shadow-sm sm:h-[4.25rem] sm:w-24 dark:border-amber-800/40 dark:bg-amber-950/30">
-                <Image
-                  src="/milo-logo-gold.png"
-                  alt=""
-                  width={200}
-                  height={280}
-                  className="h-full w-full object-contain object-center"
-                  priority
-                />
-              </div>
+              <MiloLogoMark size="header" withAlt={false} />
               <div className="min-w-0 text-left">
                 <div
                   className="text-lg font-bold leading-tight sm:text-2xl"
@@ -346,15 +337,7 @@ export default function LoginPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-200/50 bg-amber-50/90 p-1 dark:border-amber-800/40 dark:bg-amber-950/30">
-                <Image
-                  src="/milo-logo-gold.png"
-                  alt="Milo"
-                  width={120}
-                  height={120}
-                  className="h-8 w-8 object-contain"
-                />
-              </div>
+              <MiloLogoMark size="md" />
               <span className="font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
                 Milo
               </span>

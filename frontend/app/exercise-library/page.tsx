@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, Edit2, Plus, RefreshCw } from 'lucide-react';
+import { Archive, Dumbbell, Edit2, Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -254,15 +254,14 @@ export default function ExerciseLibraryPage() {
   return (
     <ProtectedRoute>
       <AppShell
-        title="Exercise Library"
-        description="Manage reusable exercises to quickly build client workouts"
+        title="Exercise library"
+        description="Reusable moves Milo can drop into client workouts"
       >
         <div className="space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                Create and manage atomic exercises (e.g., Barbell Bench Press,
-                Back Squat) for reuse in workouts.
+                Add exercises once (e.g. bench, squat) and use them across programs.
               </p>
             </div>
             <div className="flex gap-2">
@@ -277,12 +276,11 @@ export default function ExerciseLibraryPage() {
             </div>
           </div>
 
-          <Card>
+          <Card className="shadow-lg">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Exercises</CardTitle>
               <CardDescription>
-                Search and filter your exercise library. Archived exercises are
-                hidden by default.
+                Search and filter. Archived exercises stay hidden until you show them.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -373,16 +371,35 @@ export default function ExerciseLibraryPage() {
               </div>
 
               {filteredExercises.length === 0 ? (
-                <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                  No exercises found. Try adjusting your search, toggling
-                  archived exercises, or create a new one.
-                </div>
+                exercises.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 py-14 text-center">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                      <Dumbbell className="h-8 w-8 text-primary" />
+                    </div>
+                    <h3 className="mb-2 text-lg font-semibold">
+                      Ready to add your first exercise?
+                    </h3>
+                    <p className="mb-6 max-w-sm text-sm text-muted-foreground">
+                      Build your library so Milo can reference it when you program
+                      sessions.
+                    </p>
+                    <Button size="sm" onClick={startCreate}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add exercise
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                    No matches for these filters. Try a different search, clear
+                    filters, or show archived exercises.
+                  </div>
+                )
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {paginatedExercises.map((exercise) => (
                     <Card
                       key={exercise.id}
-                      className="cursor-pointer transition hover:shadow-md"
+                      className="cursor-pointer shadow-md transition hover:shadow-lg"
                       onClick={() => startEdit(exercise)}
                     >
                       <CardHeader className="pb-3">
