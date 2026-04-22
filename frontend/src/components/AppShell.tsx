@@ -52,7 +52,7 @@ export function AppShell({
         <div className="px-6 py-5 border-b border-border/60">
           <Link href="/dashboard" className="flex items-center gap-3">
             <Image 
-              src="/milo-logo-blue.png" 
+              src="/milo-logo-gold.png" 
               alt="Milo" 
               width={40} 
               height={40}
@@ -115,7 +115,7 @@ export function AppShell({
         <header className="lg:hidden sticky top-0 z-40 border-b border-border/60 bg-card/80 backdrop-blur px-4 py-3 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image 
-              src="/milo-logo-blue.png" 
+              src="/milo-logo-gold.png" 
               alt="Milo" 
               width={32} 
               height={32}

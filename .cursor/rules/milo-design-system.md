@@ -11,7 +11,7 @@
 1. **Read the brand guide first:** `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
 2. **Use design tokens:** Import from `/frontend/src/design-system/tokens/`
 3. **Apply Milo voice:** Supportive, clear, warm (not corporate)
-4. **Use correct logo:** Blue SVG for navigation, gold SVG for marketing
+4. **Use correct logo:** `milo-logo-gold.png` everywhere (nav, marketing, all UI)
 5. **Apply display font:** Use Manrope for "Milo" brand name
 6. **Warm shadows:** Always use amber-tinted shadows
 7. **Check accessibility:** Focus states, contrast, keyboard nav
@@ -20,24 +20,22 @@
 
 ## Logo Implementation
 
-### Logo Files
+### Logo File
 
 ```typescript
-// Navigation, headers, professional contexts
-<Image src="/milo-logo-blue.png" alt="Milo" width={40} height={40} />
-
-// Marketing sections, warm moments, feature showcases
-<Image src="/milo-logo-gold.png" alt="Milo" width={300} height={300} />
+// All surfaces: navigation, headers, footers, marketing, in-app
+<Image src="/milo-logo-gold.png" alt="Milo" width={40} height={40} />
 ```
+
+Larger marketing blocks can use a bigger `width` / `height` with the same asset.
 
 ### Logo Rules
 
-- **Blue logo:** Navigation, app header, professional UI
-- **Gold logo:** Landing page, marketing sections, emotional moments
+- **Single default:** `milo-logo-gold.png` (warm goldendoodle mark) everywhere
 - **Minimum size:** 32x32px
 - **Alt text:** "Milo" or "Milo logo" or "Milo mascot"
 - **Never distort:** Maintain aspect ratio
-- **PNG format:** High-quality rasterized images
+- **Format:** PNG; use Next.js `Image` for optimization
 
 ---
 
@@ -399,7 +397,7 @@ When creating any UI component:
 ### ❌ Don't Do This
 
 ```tsx
-// Wrong: PNG logo
+// Wrong: Raw img without Next Image / wrong path
 <img src="/milo-logo.png" />
 
 // Wrong: Hardcoded "BeStrong"
@@ -427,8 +425,8 @@ When creating any UI component:
 ### ✅ Do This Instead
 
 ```tsx
-// Correct: Blue logo for UI
-<Image src="/milo-logo-blue.png" alt="Milo" width={40} height={40} />
+// Correct: Gold brand logo
+<Image src="/milo-logo-gold.png" alt="Milo" width={40} height={40} />
 
 // Correct: Milo branding
 <h1 style={{ fontFamily: 'var(--font-display)' }}>Milo</h1>
@@ -461,7 +459,7 @@ When creating any UI component:
 When modifying existing UI to match Milo brand:
 
 1. **Replace logo references:**
-   - Change `milo-logo.png` → `milo-logo-blue.svg`
+   - Use `milo-logo-gold.png` for the brand mark everywhere
    
 2. **Apply display font to brand name:**
    - Add `style={{ fontFamily: 'var(--font-display)' }}` to "Milo"
@@ -484,7 +482,7 @@ When modifying existing UI to match Milo brand:
 Before considering UI complete:
 
 ### Visual
-- [ ] Logo is correct (blue SVG for nav, gold for marketing)
+- [ ] Logo is `milo-logo-gold.png` app-wide
 - [ ] "Milo" uses display font (Manrope)
 - [ ] Shadows look warm (not cold gray)
 - [ ] Colors match brand palette
@@ -519,13 +517,13 @@ Before considering UI complete:
 
 1. Read: `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
 2. Import: `import { colors, typography, spacing } from '@/design-system/tokens'`
-3. Use logo: `<Image src="/milo-logo-blue.svg" alt="Milo" />`
+3. Use logo: `<Image src="/milo-logo-gold.png" alt="Milo" width={40} height={40} />`
 4. Apply voice: Supportive, clear, warm copy
 5. Check: Run through testing checklist
 
 ### When asked to update branding:
 
-1. Replace PNG logos with SVG
+1. Use `milo-logo-gold.png` for the brand mark
 2. Apply display font to "Milo"
 3. Update copy to Milo voice
 4. Verify warm shadows

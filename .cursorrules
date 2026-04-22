@@ -215,11 +215,10 @@ backend/
 ### Visual Identity
 
 #### Logo Usage
-- **Primary Logo:** `/frontend/public/milo-logo-blue.svg` (blue version for navigation)
-- **Alternative Logo:** `/frontend/public/milo-logo-gold.svg` (golden version for marketing/warmth)
+- **Brand Logo (everywhere):** `/frontend/public/milo-logo-gold.png` — use in navigation, headers, marketing, and all UI
 - Logo represents a cream-colored goldendoodle (Milo) in sitting position
 - Minimum size: 32x32px
-- Always use SVG, never PNG (scalability)
+- Use Next.js `Image` with this asset; keep aspect ratio
 
 #### Color Palette
 
@@ -237,10 +236,7 @@ backend/
   - Use for: High-priority actions, alerts
   - Variable: `--brand-accent`
 
-**When to use each:**
-- Blue logo: Navigation, headers, professional contexts
-- Gold logo: Marketing sections, feature showcases, emotional/warm contexts
-- Use gold color sparingly as accent - maintain professional feel
+**Logo asset:** Always the gold Milo mark (`milo-logo-gold.png`). Use companion gold in the UI palette sparingly as an accent where appropriate; primary actions stay on brand blue.
 
 #### Typography
 
@@ -413,7 +409,7 @@ When creating new UI components:
 Before considering UI work complete, verify:
 
 - [ ] Uses design tokens (not hardcoded colors)
-- [ ] Logo is SVG (blue for nav, gold for marketing)
+- [ ] Logo is `milo-logo-gold.png` (all surfaces)
 - [ ] "Milo" uses display font (Manrope)
 - [ ] Copy uses Milo voice (supportive, clear, warm)
 - [ ] Shadows have warm tint (not pure gray)
@@ -452,6 +448,6 @@ Before considering UI work complete, verify:
 
 - **Brand Guide:** `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
 - **Design Tokens:** `/frontend/src/design-system/tokens/`
-- **Logo Files:** `/frontend/public/milo-logo-blue.svg`, `/frontend/public/milo-logo-gold.svg`
+- **Logo File:** `/frontend/public/milo-logo-gold.png`
 - **Summary:** `/MILO_REBRAND_SUMMARY.md`
 

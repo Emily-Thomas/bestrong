@@ -83,26 +83,36 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-lg sticky top-0 z-50">
+      <header className="sticky top-0 z-50 border-b border-amber-200/20 bg-gradient-to-b from-amber-50/50 to-card/90 backdrop-blur-md dark:from-amber-950/20 dark:to-card/90 dark:border-amber-900/20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Image 
-                src="/milo-logo-blue.png" 
-                alt="Milo" 
-                width={40} 
-                height={40}
-                className="flex-shrink-0"
-              />
-              <div>
-                <div className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
+          <div className="flex min-h-16 sm:min-h-[4.5rem] items-center justify-between gap-4 py-2">
+            <a
+              href="#login"
+              className="flex min-w-0 items-center gap-3 sm:gap-4 rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {/* Taller tile fits portrait lockups (dog + wordmark); warm bg blends PNG cream edge */}
+              <div className="flex h-16 w-[4.25rem] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-amber-200/50 bg-amber-50/90 px-1.5 py-1 shadow-sm sm:h-[4.25rem] sm:w-24 dark:border-amber-800/40 dark:bg-amber-950/30">
+                <Image
+                  src="/milo-logo-gold.png"
+                  alt=""
+                  width={200}
+                  height={280}
+                  className="h-full w-full object-contain object-center"
+                  priority
+                />
+              </div>
+              <div className="min-w-0 text-left">
+                <div
+                  className="text-lg font-bold leading-tight sm:text-2xl"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
                   Milo
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground sm:text-sm">
                   AI Training Companion
                 </div>
               </div>
-            </div>
+            </a>
             <Button variant="ghost" size="sm" asChild>
               <a href="#login">Sign In</a>
             </Button>
@@ -336,12 +346,15 @@ export default function LoginPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
-              <Image 
-                src="/milo-logo-blue.png" 
-                alt="Milo" 
-                width={32} 
-                height={32}
-              />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-200/50 bg-amber-50/90 p-1 dark:border-amber-800/40 dark:bg-amber-950/30">
+                <Image
+                  src="/milo-logo-gold.png"
+                  alt="Milo"
+                  width={120}
+                  height={120}
+                  className="h-8 w-8 object-contain"
+                />
+              </div>
               <span className="font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
                 Milo
               </span>

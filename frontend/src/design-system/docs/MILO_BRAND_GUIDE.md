@@ -55,31 +55,19 @@ Just like a great gym dog, Milo:
 - **Style:** Modern, geometric line art with "MILO" wordmark
 - **Format:** PNG (high-quality rasterized)
 
-**Logo Versions:**
+**Primary logo file:** `/frontend/public/milo-logo-gold.png`
+- Color: Warm golden/cream tones (matches the real Milo)
+- **Use everywhere:** App shell, headers, footers, marketing, and any place the brand mark appears
 
-1. **Blue Logo** - `/frontend/public/milo-logo-blue.png`
-   - Color: Primary blue tones
-   - Use for: Navigation, headers, professional UI contexts
-   - Primary choice for most application UI
+**Optional asset:** `milo-logo-blue.png` exists for legacy or one-off use; the product default is the gold mark.
 
-2. **Gold Logo** - `/frontend/public/milo-logo-gold.png`
-   - Color: Warm golden/cream tones
-   - Use for: Marketing sections, feature showcases, warm emotional moments
-   - Represents Milo's cream/golden coat color
-   - Use sparingly to maintain professional feel
-
-**Logo Usage Guidelines:**
+**Logo usage guidelines:**
 - Minimum size: 32x32px
 - Clear space: 8px around logo
 - Works on light or dark backgrounds
 - Never distort or change aspect ratio
 - Alt text: "Milo" or "Milo logo" or "Milo mascot"
-- Use Next.js Image component for optimization
-
-**Logo Selection:**
-- **Blue logo:** Default for all UI (nav, headers, app)
-- **Gold logo:** Marketing landing pages, hero sections, feature benefits
-- When in doubt, use blue (professional)
+- Use Next.js `Image` for optimization
 
 **Alternative Concepts Available:**
 1. Full goldendoodle illustration with wordmark
@@ -375,8 +363,8 @@ frontend/src/design-system/
 ## Resources
 
 **Logo Files:**
-- `/frontend/public/milo-logo-blue.png` - Primary logo (blue, for navigation/UI)
-- `/frontend/public/milo-logo-gold.png` - Alternative logo (gold, for marketing)
+- `/frontend/public/milo-logo-gold.png` - Primary brand logo (use app-wide)
+- `/frontend/public/milo-logo-blue.png` - Optional alternate (not default)
 - Concept images in `/.cursor/projects/.../assets/`
 
 **Design Tokens:**
