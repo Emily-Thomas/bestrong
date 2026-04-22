@@ -29,7 +29,8 @@ import {
 import { cn } from '@/lib/utils';
 import { getPlanLibraryMeta } from './recommendation-plan-meta';
 
-const POLL_MS = 15000;
+/** Shorter than TrainingPlansSection – job may still need polling if a worker lags. */
+const POLL_MS = 3000;
 
 interface GenerateWorkoutsPanelProps {
   clientId: number;

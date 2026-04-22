@@ -436,6 +436,7 @@ export function TrainingPlansSection({
         }
 
         if (job.status === 'completed' && job.recommendation_id) {
+          const wasManualPlan = job.metadata?.mode === 'manual_plan';
           setGenerating(false);
           setCurrentJobId(null);
           setGenMode(null);
@@ -449,6 +450,9 @@ export function TrainingPlansSection({
             );
             if (wRes.success && wRes.data) {
               setWorkoutsForLock(wRes.data);
+            }
+            if (wasManualPlan) {
+              router.push(`/clients/${clientId}?tab=workouts`);
             }
           }
         } else if (job.status === 'failed') {
@@ -471,7 +475,7 @@ export function TrainingPlansSection({
         setGenMode(null);
       }
     },
-    [onRecommendationUpdate]
+    [onRecommendationUpdate, clientId, router]
   );
 
   const checkForExistingJob = useCallback(
@@ -654,13 +658,20 @@ export function TrainingPlansSection({
     setGenMode('manual');
     setCancelled(false);
     setCurrentStep('Starting manual plan job…');
-    const res = await recommendationsApi.startManualPlan(payload);
-    const jobId = res.success ? res.data?.job_id : undefined;
-    if (jobId != null) {
-      setCurrentJobId(jobId);
-      setTimeout(() => void pollJobStatus(jobId), 1000);
-    } else {
-      setError(res.error || 'Failed to start manual mesocycle job');
+    try {
+      const res = await recommendationsApi.startManualPlan(payload);
+      const jobId = res.success ? res.data?.job_id : undefined;
+      if (jobId != null) {
+        setCurrentJobId(jobId);
+        setTimeout(() => void pollJobStatus(jobId), 1000);
+      } else {
+        setError(res.error || 'Failed to start manual mesocycle job');
+        setGenerating(false);
+        setGenMode(null);
+        setCurrentStep('');
+      }
+    } catch {
+      setError('Failed to start manual mesocycle job');
       setGenerating(false);
       setGenMode(null);
       setCurrentStep('');

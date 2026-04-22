@@ -405,6 +405,18 @@ router.post('/manual-plan/start', async (req: Request, res: Response) => {
       existingJob &&
       (existingJob.status === 'pending' || existingJob.status === 'processing')
     ) {
+      const inFlightMode = (existingJob.metadata as { mode?: string } | null)
+        ?.mode;
+      if (inFlightMode === 'manual_plan') {
+        try {
+          await processRecommendationJob(existingJob.id);
+        } catch (e) {
+          console.error(
+            'Manual plan: could not process existing in-flight job',
+            e
+          );
+        }
+      }
       res.status(202).json({
         success: true,
         data: { job_id: existingJob.id },
@@ -438,6 +450,13 @@ router.post('/manual-plan/start', async (req: Request, res: Response) => {
       created_by: req.user.userId,
       metadata: trainerMeta,
     });
+
+    // Run immediately: no LLM; avoids relying on /api/cron/process-jobs (latency + config).
+    try {
+      await processRecommendationJob(job.id);
+    } catch (e) {
+      console.error('Manual plan: immediate processRecommendationJob failed', e);
+    }
 
     res.status(202).json({
       success: true,
@@ -1841,6 +1860,17 @@ router.post(
       ) {
         const mode = (existingJob.metadata as { mode?: string } | null)?.mode;
         if (mode === 'generate_workouts') {
+          // Nudge processing: otherwise a pending job may never run (cron/CRON_SECRET)
+          // or a stuck/retry case never advances. processRecommendationJob is a no-op
+          // if another worker is active (see sub-5-minute processing guard).
+          try {
+            await processRecommendationJob(existingJob.id);
+          } catch (e) {
+            console.error(
+              'generate_workouts: could not process in-flight job',
+              e
+            );
+          }
           res.status(202).json({
             success: true,
             data: { job_id: existingJob.id },
@@ -1865,6 +1895,15 @@ router.post(
           recommendation_id: recommendationId,
         },
       });
+
+      // Run in this request (api/index has maxDuration 300s) so we do not rely on
+      // /api/cron/process-jobs for the happy path; avoids jobs stuck pending/processing
+      // when cron is delayed, misconfigured, or times out in a separate invocation.
+      try {
+        await processRecommendationJob(job.id);
+      } catch (e) {
+        console.error('generate_workouts: immediate processRecommendationJob failed', e);
+      }
 
       res.status(202).json({
         success: true,
