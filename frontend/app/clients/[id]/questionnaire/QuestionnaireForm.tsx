@@ -129,9 +129,10 @@ export function QuestionnaireForm({
 
   if (loading) {
     return (
-      <Card className="border-border/60">
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <Card className="border-border/60 shadow-md">
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading questionnaire...</p>
         </CardContent>
       </Card>
     );
@@ -163,7 +164,7 @@ export function QuestionnaireForm({
           return null;
         }
         return (
-          <Card key={section.title} className="border-border/60">
+          <Card key={section.title} className="border-border/60 shadow-md">
             <CardHeader>
               <CardTitle className="text-base">{section.title}</CardTitle>
               <CardDescription>{section.description}</CardDescription>

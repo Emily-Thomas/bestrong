@@ -179,7 +179,7 @@ export default function WorkoutDetailPage() {
                     <h4 className="font-semibold mb-2">Warmup</h4>
                     <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                       {workout.workout_data.warmup.map((ex, idx) => (
-                        <li key={idx}>
+                        <li key={`wu-${idx}-${ex.name}`}>
                           {ex.name}
                           {ex.notes && (
                             <span className="ml-2">- {ex.notes}</span>
@@ -194,7 +194,10 @@ export default function WorkoutDetailPage() {
                 <h4 className="font-semibold mb-2">Exercises</h4>
                 <div className="space-y-3">
                   {workout.workout_data.exercises.map((ex, idx) => (
-                    <div key={idx} className="p-3 border rounded-lg">
+                    <div
+                      key={`pe-${idx}-${ex.name}`}
+                      className="p-3 border rounded-lg"
+                    >
                       <div className="font-medium">{ex.name}</div>
                       <div className="text-sm text-muted-foreground">
                         {ex.sets && <span>{ex.sets} sets</span>}
@@ -221,7 +224,7 @@ export default function WorkoutDetailPage() {
                     <h4 className="font-semibold mb-2">Cooldown</h4>
                     <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                       {workout.workout_data.cooldown.map((ex, idx) => (
-                        <li key={idx}>
+                        <li key={`cd-${idx}-${ex.name}`}>
                           {ex.name}
                           {ex.notes && (
                             <span className="ml-2">- {ex.notes}</span>
@@ -236,7 +239,7 @@ export default function WorkoutDetailPage() {
 
           {/* Actual Performance (if completed) */}
           {workout.actual_workout && (
-            <Card>
+            <Card className="shadow-md">
               <CardHeader>
                 <CardTitle>Actual Performance</CardTitle>
                 <CardDescription>What the client actually did</CardDescription>
@@ -266,7 +269,10 @@ export default function WorkoutDetailPage() {
                           (e) => e.name === ex.exercise_name
                         );
                         return (
-                          <div key={idx} className="p-3 border rounded-lg">
+                          <div
+                            key={`ap-${idx}-${ex.exercise_name}`}
+                            className="p-3 border rounded-lg"
+                          >
                             <div className="font-medium">
                               {ex.exercise_name}
                             </div>

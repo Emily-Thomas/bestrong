@@ -120,10 +120,11 @@ export default function EditWorkoutPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppShell title="Edit Workout" description="Loading workout...">
-          <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <AppShell title="Edit workout" description="Loading session">
+          <Card className="shadow-md">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading workout...</p>
             </CardContent>
           </Card>
         </AppShell>
@@ -134,10 +135,13 @@ export default function EditWorkoutPage() {
   if (!workout || !workoutData) {
     return (
       <ProtectedRoute>
-        <AppShell title="Edit Workout" description="Workout not found">
-          <Card>
-            <CardContent className="text-center py-12 text-muted-foreground">
-              Workout not found
+        <AppShell
+          title="Edit workout"
+          description="We couldn't find that session"
+        >
+          <Card className="max-w-md shadow-md">
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Workout not found. It may have been removed.
             </CardContent>
           </Card>
         </AppShell>
@@ -149,17 +153,18 @@ export default function EditWorkoutPage() {
     return (
       <ProtectedRoute>
         <AppShell
-          title="Edit Workout"
-          description="Cannot edit completed workout"
+          title="Edit workout"
+          description="This session is already logged"
         >
-          <Card>
-            <CardContent className="text-center py-12">
-              <p className="text-muted-foreground mb-4">
-                This workout has been completed and cannot be edited.
+          <Card className="max-w-md shadow-md">
+            <CardContent className="py-12 text-center">
+              <p className="mb-4 text-muted-foreground">
+                This workout is completed, so the plan can&apos;t be changed
+                here. View the session to see what was logged.
               </p>
               <Button variant="outline" asChild>
                 <Link href={`/clients/${clientId}/workouts/${workoutId}`}>
-                  View Workout Details
+                  View workout
                 </Link>
               </Button>
             </CardContent>
@@ -173,7 +178,7 @@ export default function EditWorkoutPage() {
     <ProtectedRoute>
       <AppShell
         title={`Edit: ${workoutName || `Week ${workout.week_number}, Session ${workout.session_number}`}`}
-        description="Modify workout plan"
+        description="Tweak the plan before your client runs it"
         backAction={
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/clients/${clientId}`}>
@@ -190,7 +195,7 @@ export default function EditWorkoutPage() {
             </Alert>
           )}
 
-          <Card>
+          <Card className="shadow-md">
             <CardHeader>
               <CardTitle>Workout Details</CardTitle>
               <CardDescription>
@@ -221,7 +226,7 @@ export default function EditWorkoutPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -235,7 +240,10 @@ export default function EditWorkoutPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {workoutData.exercises.map((exercise, index) => (
-                <Card key={index}>
+                <Card
+                  key={`ex-${index}-${exercise.name || 'ex'}`}
+                  className="border-border/60 shadow-sm"
+                >
                   <CardContent className="p-4 space-y-4">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium">Exercise {index + 1}</h4>

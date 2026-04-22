@@ -79,12 +79,12 @@ export default function ClientCompareCoachesPage() {
           </Button>
         }
         title="Compare coach plans"
-        description="Each column is training direction from the questionnaire and InBody, steered by that coach’s persona. Choose one to keep, then build workouts manually on the training plan."
+        description="Each column reflects questionnaire + InBody, steered by that coach’s persona. Pick one plan to keep."
       >
         {loading ? (
-          <div className="flex justify-center py-20 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin mr-2" />
-            Loading plans…
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading plans...</p>
           </div>
         ) : error && plans.length === 0 ? (
           <p className="text-destructive">{error}</p>
@@ -95,7 +95,7 @@ export default function ClientCompareCoachesPage() {
               {plans.map(({ recommendation: r, trainer: t }) => (
                 <Card
                   key={r.id}
-                  className="flex flex-col border-border/80 shadow-sm hover:shadow-md transition-shadow"
+                  className="flex flex-col border-border/80 shadow-md transition-shadow hover:shadow-lg"
                 >
                   <CardHeader className="space-y-2">
                     <div className="flex items-start justify-between gap-2">

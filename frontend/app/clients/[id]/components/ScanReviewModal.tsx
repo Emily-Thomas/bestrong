@@ -57,7 +57,7 @@ export function ScanReviewModal({
       verified: true,
     });
     setError('');
-  }, [scan.id]);
+  }, [scan]);
 
   const handleSave = async () => {
     setSaving(true);

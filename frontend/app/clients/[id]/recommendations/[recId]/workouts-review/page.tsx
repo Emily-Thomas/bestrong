@@ -136,7 +136,7 @@ export default function WorkoutsReviewPage() {
       <TooltipProvider delayDuration={250}>
         <AppShell
           title="Review workouts"
-          description="Scan the mesocycle, tune exercises, and keep training aligned with your client."
+          description="Walk the mesocycle, tweak sessions, and keep the plan in sync with your client."
           backAction={
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/clients/${clientId}/recommendations/${recId}`}>
@@ -148,7 +148,7 @@ export default function WorkoutsReviewPage() {
         >
           <div className="relative min-h-[calc(100vh-8rem)]">
             <div
-              className="pointer-events-none absolute inset-x-0 -top-px h-48 bg-gradient-to-b from-violet-500/[0.12] via-transparent to-transparent dark:from-violet-500/20"
+              className="pointer-events-none absolute inset-x-0 -top-px h-48 bg-gradient-to-b from-amber-500/12 via-transparent to-transparent dark:from-amber-500/20"
               aria-hidden
             />
             <div className="relative mx-auto max-w-6xl space-y-8 px-4 pb-16 pt-2 sm:px-6 lg:px-8">
@@ -164,9 +164,14 @@ export default function WorkoutsReviewPage() {
                   <Skeleton className="h-96 w-full rounded-2xl" />
                 </div>
               ) : error ? (
-                <p className="text-sm text-destructive">{error}</p>
+                <div
+                  className="rounded-2xl border border-destructive/35 bg-destructive/5 px-5 py-4 text-sm text-destructive shadow-sm"
+                  role="alert"
+                >
+                  {error}
+                </div>
               ) : workouts.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/80 bg-muted/30 px-6 py-16 text-center">
+                <div className="rounded-2xl border border-dashed border-border/80 bg-muted/30 px-6 py-16 text-center shadow-sm">
                   <LayoutGrid className="mx-auto h-10 w-10 text-muted-foreground/60" />
                   <p className="mt-4 text-sm font-medium text-foreground">
                     No workouts in this plan yet
@@ -196,8 +201,8 @@ export default function WorkoutsReviewPage() {
                   </header>
 
                   <section className="grid gap-3 sm:grid-cols-3">
-                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-sm ring-1 ring-border/30 backdrop-blur-sm">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
+                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-md ring-1 ring-border/30 backdrop-blur-sm">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-200">
                         <CalendarDays className="h-6 w-6" />
                       </div>
                       <div>
@@ -209,7 +214,7 @@ export default function WorkoutsReviewPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-sm ring-1 ring-border/30 backdrop-blur-sm">
+                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-md ring-1 ring-border/30 backdrop-blur-sm">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                         <Layers className="h-6 w-6" />
                       </div>
@@ -222,7 +227,7 @@ export default function WorkoutsReviewPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-sm ring-1 ring-border/30 backdrop-blur-sm">
+                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-md ring-1 ring-border/30 backdrop-blur-sm">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
                         <Dumbbell className="h-6 w-6" />
                       </div>

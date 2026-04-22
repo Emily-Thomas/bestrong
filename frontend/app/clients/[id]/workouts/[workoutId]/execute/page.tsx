@@ -243,10 +243,11 @@ export default function WorkoutExecutionPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppShell title="Session" description="Loading…">
-          <Card>
-            <CardContent className="flex items-center justify-center py-16">
-              <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        <AppShell title="Session" description="Getting your workout ready">
+          <Card className="shadow-md">
+            <CardContent className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="mb-3 h-9 w-9 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading session...</p>
             </CardContent>
           </Card>
         </AppShell>
@@ -257,10 +258,13 @@ export default function WorkoutExecutionPage() {
   if (!workout) {
     return (
       <ProtectedRoute>
-        <AppShell title="Session" description="Not found">
-          <Card>
+        <AppShell
+          title="Session"
+          description={"We couldn't find that workout"}
+        >
+          <Card className="max-w-md shadow-md">
             <CardContent className="py-12 text-center text-muted-foreground">
-              Workout not found
+              Workout not found. It may have been removed.
             </CardContent>
           </Card>
         </AppShell>
@@ -276,7 +280,7 @@ export default function WorkoutExecutionPage() {
     <ProtectedRoute>
       <AppShell
         title={sessionTitle}
-        description="Log sets as you go — optimized for tablet."
+        description="Log sets as you go — great on a phone or tablet at the gym"
         backAction={
           <Button variant="ghost" size="sm" className="min-h-[44px]" asChild>
             <Link href={`/clients/${clientId}`}>

@@ -277,13 +277,15 @@ export default function RecommendationDetailPage() {
   if (!recIdValid) {
     return (
       <ProtectedRoute>
-        <AppShell title="Recommendation" description="Invalid link">
-          <Card>
+        <AppShell
+          title="Training plan"
+          description={"That link doesn't look right"}
+        >
+          <Card className="max-w-lg shadow-md">
             <CardContent className="space-y-4 py-8 text-center">
               <p className="text-muted-foreground">
-                This URL is not a valid recommendation. If you were looking for
-                the plan library, use Coach &amp; plan on the client page — it
-                loads there automatically.
+                This URL isn&apos;t a valid plan. Open the client and use Coach
+                &amp; plan — the latest plan loads there.
               </p>
               <Button
                 type="button"
@@ -302,10 +304,11 @@ export default function RecommendationDetailPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppShell title="Recommendation" description="Loading details">
-          <Card>
-            <CardContent className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <AppShell title="Training plan" description="Loading plan">
+          <Card className="shadow-md">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading plan...</p>
             </CardContent>
           </Card>
         </AppShell>
@@ -316,10 +319,13 @@ export default function RecommendationDetailPage() {
   if (!recommendation) {
     return (
       <ProtectedRoute>
-        <AppShell title="Recommendation" description="Not found">
-          <Card>
-            <CardContent className="text-center py-12 text-muted-foreground">
-              Recommendation not found
+        <AppShell
+          title="Training plan"
+          description={"We couldn't find that plan"}
+        >
+          <Card className="max-w-md shadow-md">
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Recommendation not found. It may have been removed.
             </CardContent>
           </Card>
         </AppShell>
@@ -331,7 +337,7 @@ export default function RecommendationDetailPage() {
     <ProtectedRoute>
       <AppShell
         title={recommendation.client_type}
-        description="AI planning direction (sessions and exercises are built separately)"
+        description="How Milo shaped this block; workouts are built week by week"
         action={
           !editing && (
             <Button variant="outline" onClick={() => setEditing(true)}>
@@ -351,7 +357,7 @@ export default function RecommendationDetailPage() {
           Back to Client
         </Button>
 
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader className="space-y-1">
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{recommendation.status}</Badge>
