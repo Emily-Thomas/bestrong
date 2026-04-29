@@ -118,7 +118,7 @@ export function PlanTemplateDetailDialog({
                 </div>
                 <div className="rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2">
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <Clock className="h-3.5 w-3.5 shrink-0 text-milo-info" />
                     Session
                   </div>
                   <p className="mt-1 text-sm font-bold tabular-nums text-foreground">

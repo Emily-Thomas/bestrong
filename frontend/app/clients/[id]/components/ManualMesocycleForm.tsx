@@ -13,10 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type {
-  ManualPlanStartPayload,
-  PlanGuidanceWeeklyDay,
-} from '@/lib/api';
+import type { ManualPlanStartPayload, PlanGuidanceWeeklyDay } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const DAY_PRESETS = [
@@ -208,9 +205,9 @@ export function ManualMesocycleForm({
             Build mesocycle manually
           </h4>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Define frequency, phase length, session themes, and load progression.
-            Generate workouts afterward from the Workouts tab when you&apos;re
-            ready.
+            Define frequency, phase length, session themes, and load
+            progression. Generate workouts afterward from the Workouts tab when
+            you&apos;re ready.
           </p>
         </div>
       </div>

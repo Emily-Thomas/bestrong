@@ -2,11 +2,7 @@
 
 import { LayoutGrid, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -93,52 +89,49 @@ export function GenerateWorkoutsPanel({
     void refreshWorkoutCount();
   }, [refreshWorkoutCount]);
 
-  const pollJob = useCallback(
-    async (id: number) => {
-      const res = await recommendationsApi.getJobStatus(id);
-      if (!res.success || !res.data) {
-        setError(res.error || 'Could not load job status');
-        setGenerating(false);
-        setJobId(null);
-        return;
-      }
-      const job = res.data;
-      if (job.current_step) setStep(job.current_step);
+  const pollJob = useCallback(async (id: number) => {
+    const res = await recommendationsApi.getJobStatus(id);
+    if (!res.success || !res.data) {
+      setError(res.error || 'Could not load job status');
+      setGenerating(false);
+      setJobId(null);
+      return;
+    }
+    const job = res.data;
+    if (job.current_step) setStep(job.current_step);
 
-      if (job.status === 'completed' && job.recommendation_id) {
-        const pw = job.metadata?.preview_workouts;
-        if (Array.isArray(pw) && pw.length > 0) {
-          setPreviewWorkouts(pw);
-          setJsonDraft(JSON.stringify(pw, null, 2));
-          setPreviewJobId(id);
-          setPreviewOpen(true);
-        } else {
-          setError('Generation finished but no preview was returned.');
-        }
-        setGenerating(false);
-        setJobId(null);
-        setStep('');
-        return;
+    if (job.status === 'completed' && job.recommendation_id) {
+      const pw = job.metadata?.preview_workouts;
+      if (Array.isArray(pw) && pw.length > 0) {
+        setPreviewWorkouts(pw);
+        setJsonDraft(JSON.stringify(pw, null, 2));
+        setPreviewJobId(id);
+        setPreviewOpen(true);
+      } else {
+        setError('Generation finished but no preview was returned.');
       }
-      if (job.status === 'failed') {
-        setError(job.error_message || 'Workout generation failed');
-        setGenerating(false);
-        setJobId(null);
-        setStep('');
-        return;
-      }
-      if (job.status === 'cancelled') {
-        setGenerating(false);
-        setJobId(null);
-        setStep('');
-        return;
-      }
-      if (job.status === 'pending' || job.status === 'processing') {
-        setTimeout(() => void pollJob(id), POLL_MS);
-      }
-    },
-    []
-  );
+      setGenerating(false);
+      setJobId(null);
+      setStep('');
+      return;
+    }
+    if (job.status === 'failed') {
+      setError(job.error_message || 'Workout generation failed');
+      setGenerating(false);
+      setJobId(null);
+      setStep('');
+      return;
+    }
+    if (job.status === 'cancelled') {
+      setGenerating(false);
+      setJobId(null);
+      setStep('');
+      return;
+    }
+    if (job.status === 'pending' || job.status === 'processing') {
+      setTimeout(() => void pollJob(id), POLL_MS);
+    }
+  }, []);
 
   useEffect(() => {
     if (jobId != null && generating) {
@@ -241,8 +234,9 @@ export function GenerateWorkoutsPanel({
                     <span className="font-medium text-foreground">
                       Review mesocycle
                     </span>{' '}
-                    to swap exercises and tune sessions. Running AI again replaces
-                    all sessions — only use that if you want a full redo.
+                    to swap exercises and tune sessions. Running AI again
+                    replaces all sessions — only use that if you want a full
+                    redo.
                   </>
                 ) : (
                   <>
@@ -319,7 +313,7 @@ export function GenerateWorkoutsPanel({
           </p>
         )}
         {generating && (
-          <Alert className="mt-3 border-violet-500/30 bg-violet-500/[0.04]">
+          <Alert variant="info" className="mt-3">
             <Loader2 className="h-4 w-4 animate-spin" />
             <AlertDescription className="text-sm">
               {step || 'Generating mesocycle workouts…'} This can take several

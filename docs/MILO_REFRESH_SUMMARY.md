@@ -16,11 +16,11 @@ Successfully established the complete Milo brand foundation and updated core use
 ### Phase 1: Design System Foundation (100% Complete)
 
 #### Brand Identity & Assets
-- ✅ Goldendoodle logo (PNG, blue & gold versions)
+- ✅ Goldendoodle logo (PNG; default mark is gold; optional blue asset for edge cases)
 - ✅ Logo integrated across all navigation
-- ✅ Brand color palette defined (primary blue, companion gold, accent red)
+- ✅ Brand color palette: bone/ink base, **signal** (primary CTA), **collar** (warm accent), fog neutrals, semantic success/info/danger/warning
 - ✅ Typography system (Manrope display, Geist UI, Geist Mono)
-- ✅ Warm shadow system (amber-tinted, not cold gray)
+- ✅ Elevation: neutral ink-tinted shadows (see `globals.css` — not cold pure gray)
 
 #### Design Tokens
 - ✅ Complete TypeScript token system (`/frontend/src/design-system/tokens/`)
@@ -31,8 +31,8 @@ Successfully established the complete Milo brand foundation and updated core use
   - radii.ts
 
 #### CSS Variables
-- ✅ globals.css updated with Milo brand colors
-- ✅ Warm shadow definitions
+- ✅ globals.css — `--milo-*` tokens + shadcn bridge (`--primary` = signal, etc.)
+- ✅ Shadow definitions (ink-tinted)
 - ✅ Font variable references
 - ✅ Dark mode theme updated
 

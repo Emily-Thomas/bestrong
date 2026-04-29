@@ -732,18 +732,16 @@ export function WorkoutsSection({
           )}
 
           {successMessage && (
-            <Alert className="border-emerald-500/40 bg-emerald-500/5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <AlertDescription className="text-emerald-800 dark:text-emerald-300">
-                {successMessage}
-              </AlertDescription>
+            <Alert variant="success">
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription>{successMessage}</AlertDescription>
             </Alert>
           )}
 
           {inProgressWorkouts.length > 0 && (
-            <Alert className="border-amber-500/35 bg-amber-500/[0.06]">
-              <Clock className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-sm text-amber-950 dark:text-amber-100">
+            <Alert variant="warning">
+              <Clock className="h-4 w-4" />
+              <AlertDescription className="text-sm">
                 You have a session in progress — use{' '}
                 <span className="font-semibold">Continue session</span> below or
                 open the Active tab.

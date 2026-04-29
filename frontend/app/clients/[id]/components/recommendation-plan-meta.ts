@@ -22,7 +22,11 @@ export function getPlanLibraryMeta(rec: Recommendation | null): {
 } {
   const ps = rec?.plan_structure;
   if (!ps || typeof ps !== 'object') {
-    return { templateId: null, templateName: null, libraryBuiltWorkouts: false };
+    return {
+      templateId: null,
+      templateName: null,
+      libraryBuiltWorkouts: false,
+    };
   }
   const p = ps as Record<string, unknown>;
   const tid = p.plan_template_id;

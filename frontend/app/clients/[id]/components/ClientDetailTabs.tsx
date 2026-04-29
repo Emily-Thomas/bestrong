@@ -2,12 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Client, Questionnaire, Recommendation } from '@/lib/api';
 import { ClientInformationSection } from './ClientInformationSection';
 import { InBodyScansSection } from './InBodyScansSection';
@@ -106,10 +101,7 @@ export function ClientDetailTabs({
       </TabsContent>
 
       <TabsContent value="inbody" className="mt-0">
-        <InBodyScansSection
-          clientId={clientId}
-          onUpdate={refreshInBody}
-        />
+        <InBodyScansSection clientId={clientId} onUpdate={refreshInBody} />
       </TabsContent>
 
       <TabsContent value="training" className="mt-0">
@@ -131,10 +123,7 @@ export function ClientDetailTabs({
           (Coach &amp; plan) to swap exercises. Schedule and track sessions
           here.
         </p>
-        <WorkoutsSection
-          clientId={clientId}
-          recommendation={recommendation}
-        />
+        <WorkoutsSection clientId={clientId} recommendation={recommendation} />
       </TabsContent>
     </Tabs>
   );

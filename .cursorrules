@@ -220,23 +220,15 @@ backend/
 - Minimum size: 32x32px
 - Use Next.js `Image` with this asset; keep aspect ratio
 
-#### Color Palette
+#### Color palette
 
-**Primary Colors:**
-- **Brand Primary (Blue):** `hsl(220 85% 55%)` or `#5B7FF5`
-  - Use for: Primary actions, interactive elements, brand moments
-  - Variable: `--brand-primary`
-  
-- **Companion Gold:** `hsl(38 92% 50%)` or `#F5A623`
-  - Use for: Accents, warmth, highlights (use sparingly)
-  - Variable: `--brand-companion`
-  - Represents Milo's cream/golden color
-  
-- **Accent Red:** `hsl(355 90% 52%)` or `#F43F5E`
-  - Use for: High-priority actions, alerts
-  - Variable: `--brand-accent`
+**Core (see `--milo-*` in `frontend/app/globals.css`):** bone, ink, **signal** (primary CTA, chartreuse; `bg-primary` / `text-primary`), **collar** (warm terracotta; `bg-accent` / `accent-foreground` uses **ink** on solid terracotta), **fog** and fog-1/2/3, ink-mute, ink-soft.
 
-**Logo asset:** Always the gold Milo mark (`milo-logo-gold.png`). Use companion gold in the UI palette sparingly as an accent where appropriate; primary actions stay on brand blue.
+**Semantic:** success, info, danger, warning — for feedback and `Alert` variants: `default`, `destructive`, `success`, `info`, `warning`, `signal`.
+
+**Bridge:** shadcn `primary` = signal, `ring` = signal, `destructive` = danger. Tailwind: `bg-milo-bone`, `text-milo-info`, `border-milo-fog-1`, etc. Charts: `--chart-1`..`5`.
+
+**Logo:** `milo-logo-gold.png` (default). `milo-logo-blue.png` is optional legacy, not the product default.
 
 #### Typography
 
@@ -267,10 +259,8 @@ backend/
 
 #### Shadows
 
-**Warm shadows with amber tint** (Milo's companion warmth):
-- Use `shadow-sm`, `shadow-md`, `shadow-lg` classes
-- Never use pure gray/black shadows
-- Shadows have subtle warm tint: `hsl(38 50% 10% / 0.1)`
+**Neutral ink-tinted elevation** (see `globals.css` / `--ink-shadow`):
+- Use `shadow-sm` … `shadow-2xl`; avoid ad-hoc pure black/gray-only shadows
 
 ### Voice & Tone
 
@@ -313,13 +303,13 @@ backend/
 ### UI Component Guidelines
 
 #### Buttons
-- Primary buttons use brand blue
-- Destructive buttons use accent red
+- Primary = **signal** (`default` / `bg-primary` + ink label)
+- Destructive = danger semantic (`variant="destructive"`)
 - Ghost buttons for secondary actions
 - Always clear, action-oriented labels ("Create Program", not "Submit")
 
 #### Cards
-- Use warm shadows (`shadow-md` or `shadow-lg`)
+- Use design-system shadows (`shadow-md` or `shadow-lg`)
 - Rounded corners: `rounded-lg` or `rounded-xl`
 - Hover states should feel responsive (subtle scale or shadow change)
 
@@ -355,21 +345,16 @@ When creating new UI components:
    - Use supportive, clear language
    - Avoid generic corporate speak
 
-3. **Apply Brand Colors**
+3. **Apply brand colors**
    ```tsx
-   // Primary action
-   <Button className="bg-primary text-primary-foreground">
-   
-   // Warm accent
-   <div className="bg-accent/10 border-accent/20">
-   
-   // Use CSS variables for custom styling
-   <div style={{ color: 'var(--brand-primary)' }}>
+   <Button className="bg-primary text-primary-foreground" /> // signal + ink
+   <div className="bg-milo-bone text-milo-ink" />
+   <div style={{ color: "var(--milo-signal)" }} />
    ```
 
-4. **Use Warm Shadows**
+4. **Elevation**
    ```tsx
-   <Card className="shadow-lg"> // NOT shadow-gray or shadow-black
+   <Card className="shadow-lg" />
    ```
 
 5. **Apply Typography Correctly**
@@ -386,7 +371,7 @@ When creating new UI components:
 
 ### Accessibility
 
-- All interactive elements need focus states (using brand primary color)
+- All interactive elements need focus states (ring uses **signal**)
 - Color contrast meets WCAG 2.1 AA
 - Alt text for all images ("Milo logo", "Milo mascot")
 - Keyboard navigation support
@@ -412,7 +397,7 @@ Before considering UI work complete, verify:
 - [ ] Logo is `milo-logo-gold.png` (all surfaces)
 - [ ] "Milo" uses display font (Manrope)
 - [ ] Copy uses Milo voice (supportive, clear, warm)
-- [ ] Shadows have warm tint (not pure gray)
+- [ ] Shadows use the design system (not ad-hoc flat gray)
 - [ ] Empty states are encouraging (not sterile)
 - [ ] Loading states explain what's happening
 - [ ] Error messages are friendly and actionable
@@ -428,11 +413,11 @@ Before considering UI work complete, verify:
 - Tagline: "Your AI Training Companion" or "AI Training Companion"
 - Use goldendoodle/golden retriever inspiration (warm, loyal, friendly)
 
-**Color Usage:**
-- Blue = Trust, professional, primary
-- Gold = Warmth, loyalty (use sparingly as accent)
-- Red = Energy, alerts, destructive actions
-- Warm shadows always (never cold gray)
+**Color usage:**
+- **Signal** — primary action, focus, progress emphasis (not “default SaaS blue”)
+- **Collar** / bone — warmth and human moments; keep surfaces mostly bone/ink
+- **Danger** — errors and irreversible actions
+- **Info / success / warning** — hints, positive outcomes, caution (use `Alert` variants where possible)
 
 **Typography Hierarchy:**
 - Display font = Brand moments only

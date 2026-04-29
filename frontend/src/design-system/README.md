@@ -15,8 +15,9 @@ The Milo Design System embodies our brand philosophy: **intelligent assistance t
 import { colors, typography, spacing, shadows } from '@/design-system/tokens';
 
 // Access specific tokens
-const primaryColor = colors.brand.primary[600];
-const displayFont = typography.fontFamily.display;
+const action = colors.core.signal
+const bodyBg = colors.neutral.bone
+const displayFont = typography.fontFamily.display
 ```
 
 ### Using CSS Variables
@@ -25,10 +26,9 @@ const displayFont = typography.fontFamily.display;
 // In React components
 <h1 style={{ fontFamily: 'var(--font-display)' }}>Milo</h1>
 
-// In Tailwind classes
-<div className="text-primary bg-accent/10 shadow-lg">
-  Content
-</div>
+// shadcn + explicit Milo palette in Tailwind
+<div className="text-primary-foreground bg-primary shadow-lg">Primary CTA</div>
+<div className="bg-milo-bone text-milo-ink">Paper surface</div>
 ```
 
 ## Structure
@@ -61,25 +61,22 @@ We're a B2B tool with a friendly personality. Professional enough for serious co
 ### 4. Supportive, Not Intrusive
 UI elements should help without getting in the way. Like a gym dog that knows when to approach and when to hang back.
 
-## Brand Colors
+## Brand colors
 
-### Primary Blue (Trust, Intelligence)
-```typescript
-colors.brand.primary[600] // hsl(220 84% 49%) - #2E4FE0
-```
-Use for: Primary actions, brand elements, interactive elements
+- **core** — `bone`, `ink`, `signal` (primary action), `fog`, `collar` (accent warmth)  
+- **neutral** — bone tints, fog-1/2/3, ink / ink-mute / ink-soft  
+- **semantic** — `signal`, `success`, `info`, `danger`, `warning`
 
-### Companion Gold (Warmth, Loyalty)
 ```typescript
-colors.brand.companion[500] // hsl(38 92% 50%) - #F5A623
-```
-Use for: Accents, highlights, warm touches (use sparingly)
+import { colors, chartColors } from '@/design-system/tokens';
 
-### Accent Red (Energy, Action)
-```typescript
-colors.brand.accent[500] // hsl(355 90% 52%) - #F43F5E
+colors.core.signal   // #D4FB3C — maps to `primary`, `--milo-signal`
+colors.core.collar   // #E07856 — maps to `accent`, `--milo-collar`
+colors.neutral.ink
+chartColors[1]       // chart series aligned to globals.css --chart-1..5
 ```
-Use for: High-priority actions, alerts
+
+UI mapping: `primary` / `bg-primary` = **signal** (ink foreground); `accent` = **collar**. Raw palette: `bg-milo-bone`, `text-milo-ink-mute`, etc.
 
 ## Typography
 
@@ -126,14 +123,14 @@ Common patterns:
 
 ## Shadows
 
-Warm shadows with subtle amber tint (Milo's companion warmth):
+Neutral, ink-tinted elevation (`--ink-shadow` in `globals.css`):
 
 ```css
-shadow-sm  /* Subtle, for inputs and small cards */
-shadow     /* Standard cards, dropdowns */
-shadow-md  /* Raised cards, popovers */
-shadow-lg  /* Modals, important content */
-shadow-xl  /* Hero sections, major CTAs */
+shadow-sm
+shadow
+shadow-md
+shadow-lg
+shadow-xl
 ```
 
 ## Components
@@ -144,6 +141,8 @@ All UI components live in `/src/components/ui/` and are built on:
 - **class-variance-authority** - Component variants
 
 Components automatically use design tokens from the system.
+
+`Alert` supports `variant="default" | "destructive" | "success" | "info" | "warning" | "signal"` (aligned to Milo semantic colors; `signal` = in-progress / primary callout).
 
 ## Voice & Tone
 

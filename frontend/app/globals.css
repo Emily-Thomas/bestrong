@@ -6,101 +6,165 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/**
+ * Milo design tokens — paper (bone), ink, signal (chartreuse), fog neutrals, collar (terracotta)
+ * `fog` and `ink-mute` are the same value (#6E6E75); ink-mute is the canonical name for type.
+ */
 :root {
-  /* Milo Brand Colors */
-  --brand-primary: hsl(220 85% 55%);
-  --brand-primary-dark: hsl(220 84% 49%);
-  --brand-companion: hsl(38 92% 50%);
-  --brand-accent: hsl(355 90% 52%);
-  
-  /* Light Theme */
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(0 0% 9%);
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(0 0% 9%);
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(0 0% 9%);
-  --primary: hsl(220 84% 49%);
-  --primary-foreground: hsl(0 0% 98%);
-  --secondary: hsl(0 0% 96%);
-  --secondary-foreground: hsl(0 0% 9%);
-  --muted: hsl(0 0% 96%);
-  --muted-foreground: hsl(0 0% 45%);
-  --accent: hsl(38 92% 50%);
-  --accent-foreground: hsl(0 0% 9%);
-  --destructive: hsl(352 124% 41%);
-  --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(0 0% 90%);
-  --input: hsl(0 0% 90%);
-  --ring: hsl(220 85% 55%);
-  
-  /* Chart Colors */
-  --chart-1: hsl(211.788 101.9718% 78.6759%);
-  --chart-2: hsl(217.4076 91.3672% 59.5787%);
-  --chart-3: hsl(221.4336 86.3731% 54.0624%);
-  --chart-4: hsl(223.6587 78.7180% 47.8635%);
-  --chart-5: hsl(226.5426 70.0108% 39.9224%);
-  
+  /* Core palette (hex) */
+  --milo-bone-soft: #ffffff;
+  --milo-bone: #f8f8f5;
+  --milo-bone-deep: #eeeee8;
+  --milo-fog-1: #e5e5e1;
+  --milo-fog-2: #cfcfca;
+  --milo-fog-3: #9a9a95;
+  --milo-ink-mute: #6e6e75;
+  --milo-ink-soft: #2e2e33;
+  --milo-ink: #141416;
+  --milo-signal: #d4fb3c;
+  --milo-collar: #e07856;
+  --milo-fog: #6e6e75;
+  --milo-success: #2e8b57;
+  --milo-info: #3b6ea8;
+  --milo-danger: #d64545;
+  /* Caution: reversible / attention — not destructive */
+  --milo-warning: #b8860b;
+
+  /* Slightly dimmed signal for hovers/pressed (no layout shift) */
+  --milo-signal-emphasis: color-mix(
+    in srgb,
+    var(--milo-signal) 90%,
+    var(--milo-ink) 10%
+  );
+
+  /* Legacy — map to the new system */
+  --brand-primary: var(--milo-signal);
+  --brand-primary-dark: var(--milo-signal-emphasis);
+  --brand-companion: var(--milo-collar);
+  --brand-accent: var(--milo-collar);
+
+  /* shadcn semantic (light) */
+  --background: var(--milo-bone);
+  --foreground: var(--milo-ink);
+  --card: var(--milo-bone-soft);
+  --card-foreground: var(--milo-ink);
+  --popover: var(--milo-bone-soft);
+  --popover-foreground: var(--milo-ink);
+  --primary: var(--milo-signal);
+  --primary-foreground: var(--milo-ink);
+  --secondary: var(--milo-bone-deep);
+  --secondary-foreground: var(--milo-ink);
+  --muted: var(--milo-bone-deep);
+  --muted-foreground: var(--milo-ink-mute);
+  --accent: var(--milo-collar);
+  /* Ink on terracotta meets contrast for controls better than white */
+  --accent-foreground: var(--milo-ink);
+  --destructive: var(--milo-danger);
+  --destructive-foreground: var(--milo-bone-soft);
+  --border: var(--milo-fog-1);
+  --input: var(--milo-fog-1);
+  --ring: var(--milo-signal);
+
+  --success: var(--milo-success);
+  --success-foreground: var(--milo-bone-soft);
+  --info: var(--milo-info);
+  --info-foreground: var(--milo-bone-soft);
+  --warning: var(--milo-warning);
+  --warning-foreground: var(--milo-ink);
+
+  /* Charts — aligned to core + semantic (not default blue) */
+  --chart-1: var(--milo-signal);
+  --chart-2: var(--milo-collar);
+  --chart-3: var(--milo-info);
+  --chart-4: var(--milo-success);
+  --chart-5: var(--milo-fog-3);
+
   /* Sidebar */
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(0 0% 9%);
-  --sidebar-primary: hsl(220 84% 49%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(0 0% 96%);
-  --sidebar-accent-foreground: hsl(0 0% 9%);
-  --sidebar-border: hsl(0 0% 90%);
-  --sidebar-ring: hsl(220 85% 55%);
-  
+  --sidebar: var(--milo-bone);
+  --sidebar-foreground: var(--milo-ink);
+  --sidebar-primary: var(--milo-signal);
+  --sidebar-primary-foreground: var(--milo-ink);
+  --sidebar-accent: var(--milo-bone-deep);
+  --sidebar-accent-foreground: var(--milo-ink);
+  --sidebar-border: var(--milo-fog-1);
+  --sidebar-ring: var(--milo-signal);
+
   /* Typography */
   --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  
-  /* Spacing & Layout */
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Spacing & layout */
   --radius: 0.625rem;
-  
-  /* Warm Shadows (Milo's companion touch) */
-  --shadow-xs: 0 1px 2px 0px hsl(38 50% 10% / 0.05);
-  --shadow-sm: 0 1px 3px 0px hsl(38 50% 10% / 0.1), 0 1px 2px -1px hsl(38 50% 10% / 0.1);
-  --shadow: 0 1px 3px 0px hsl(38 50% 10% / 0.1), 0 1px 2px -1px hsl(38 50% 10% / 0.1);
-  --shadow-md: 0 4px 6px -1px hsl(38 50% 10% / 0.1), 0 2px 4px -2px hsl(38 50% 10% / 0.1);
-  --shadow-lg: 0 10px 15px -3px hsl(38 50% 10% / 0.1), 0 4px 6px -4px hsl(38 50% 10% / 0.1);
-  --shadow-xl: 0 20px 25px -5px hsl(38 50% 10% / 0.1), 0 8px 10px -6px hsl(38 50% 10% / 0.1);
-  --shadow-2xl: 0 25px 50px -12px hsl(38 50% 10% / 0.25);
+
+  /* Elevation — neutral ink tint (replaces generic amber) */
+  --ink-shadow: 240 5% 6%;
+  --shadow-2xs: 0 0.5px 1.5px 0 hsl(var(--ink-shadow) / 0.04);
+  --shadow-xs: 0 1px 2px 0px hsl(var(--ink-shadow) / 0.05);
+  --shadow-sm:
+    0 1px 3px 0px hsl(var(--ink-shadow) / 0.1), 0 1px 2px -1px
+    hsl(var(--ink-shadow) / 0.1);
+  --shadow:
+    0 1px 3px 0px hsl(var(--ink-shadow) / 0.1), 0 1px 2px -1px
+    hsl(var(--ink-shadow) / 0.1);
+  --shadow-md:
+    0 4px 6px -1px hsl(var(--ink-shadow) / 0.1), 0 2px 4px -2px
+    hsl(var(--ink-shadow) / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px hsl(var(--ink-shadow) / 0.1), 0 4px 6px -4px
+    hsl(var(--ink-shadow) / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px hsl(var(--ink-shadow) / 0.1), 0 8px 10px -6px
+    hsl(var(--ink-shadow) / 0.1);
+  --shadow-2xl: 0 25px 50px -12px hsl(var(--ink-shadow) / 0.25);
 }
 
 .dark {
-  /* Dark Theme */
-  --background: hsl(0 0% 9%);
-  --foreground: hsl(0 0% 98%);
-  --card: hsl(0 0% 15%);
-  --card-foreground: hsl(0 0% 98%);
-  --popover: hsl(0 0% 15%);
-  --popover-foreground: hsl(0 0% 98%);
-  --primary: hsl(220 85% 55%);
-  --primary-foreground: hsl(0 0% 9%);
-  --secondary: hsl(0 0% 20%);
-  --secondary-foreground: hsl(0 0% 98%);
-  --muted: hsl(0 0% 20%);
-  --muted-foreground: hsl(0 0% 63%);
-  --accent: hsl(38 92% 50%);
-  --accent-foreground: hsl(0 0% 9%);
-  --destructive: hsl(352 124% 41%);
-  --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(0 0% 20%);
-  --input: hsl(0 0% 25%);
-  --ring: hsl(220 85% 55%);
-  
-  /* Sidebar Dark */
-  --sidebar: hsl(0 0% 12%);
-  --sidebar-foreground: hsl(0 0% 98%);
-  --sidebar-primary: hsl(220 85% 55%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(0 0% 20%);
-  --sidebar-accent-foreground: hsl(0 0% 98%);
-  --sidebar-border: hsl(0 0% 20%);
-  --sidebar-ring: hsl(220 85% 55%);
+  /* Dark surfaces: ink family, not inverted bone */
+  --background: var(--milo-ink);
+  --foreground: var(--milo-bone);
+  --card: var(--milo-ink-soft);
+  --card-foreground: var(--milo-bone);
+  --popover: var(--milo-ink-soft);
+  --popover-foreground: var(--milo-bone);
+  --primary: var(--milo-signal);
+  --primary-foreground: var(--milo-ink);
+  --secondary: var(--milo-ink-soft);
+  --secondary-foreground: var(--milo-bone);
+  --muted: var(--milo-ink-soft);
+  --muted-foreground: var(--milo-fog-3);
+  --accent: var(--milo-collar);
+  --accent-foreground: var(--milo-ink);
+  --destructive: var(--milo-danger);
+  --destructive-foreground: var(--milo-bone-soft);
+  --border: color-mix(in srgb, var(--milo-bone) 12%, transparent);
+  --input: var(--milo-ink-soft);
+  --ring: var(--milo-signal);
+
+  --success: var(--milo-success);
+  --success-foreground: var(--milo-bone-soft);
+  --info: var(--milo-info);
+  --info-foreground: var(--milo-bone-soft);
+  --warning: var(--milo-warning);
+  --warning-foreground: var(--milo-ink);
+
+  --chart-1: var(--milo-signal);
+  --chart-2: var(--milo-collar);
+  --chart-3: #5b8cce;
+  --chart-4: #3cb87a;
+  --chart-5: #9a9a95;
+
+  --sidebar: var(--milo-ink);
+  --sidebar-foreground: var(--milo-bone);
+  --sidebar-primary: var(--milo-signal);
+  --sidebar-primary-foreground: var(--milo-ink);
+  --sidebar-accent: var(--milo-ink-soft);
+  --sidebar-accent-foreground: var(--milo-bone);
+  --sidebar-border: color-mix(in srgb, var(--milo-bone) 12%, transparent);
+  --sidebar-ring: var(--milo-signal);
 }
 
 @theme inline {
@@ -123,6 +187,12 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -136,6 +206,24 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Explicit Milo palette (Tailwind: bg-milo-bone, text-milo-ink, etc.) */
+  --color-milo-bone-soft: var(--milo-bone-soft);
+  --color-milo-bone: var(--milo-bone);
+  --color-milo-bone-deep: var(--milo-bone-deep);
+  --color-milo-fog-1: var(--milo-fog-1);
+  --color-milo-fog-2: var(--milo-fog-2);
+  --color-milo-fog-3: var(--milo-fog-3);
+  --color-milo-fog: var(--milo-fog);
+  --color-milo-ink-mute: var(--milo-ink-mute);
+  --color-milo-ink-soft: var(--milo-ink-soft);
+  --color-milo-ink: var(--milo-ink);
+  --color-milo-signal: var(--milo-signal);
+  --color-milo-collar: var(--milo-collar);
+  --color-milo-success: var(--milo-success);
+  --color-milo-info: var(--milo-info);
+  --color-milo-danger: var(--milo-danger);
+  --color-milo-warning: var(--milo-warning);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);

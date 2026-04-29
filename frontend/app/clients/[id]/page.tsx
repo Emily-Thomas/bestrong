@@ -166,9 +166,7 @@ function ClientDetailInner() {
           <Card className="shadow-md">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Loading client...
-              </p>
+              <p className="text-sm text-muted-foreground">Loading client...</p>
             </CardContent>
           </Card>
         </AppShell>
@@ -179,10 +177,7 @@ function ClientDetailInner() {
   if (!client) {
     return (
       <ProtectedRoute>
-        <AppShell
-          title="Client"
-          description="We couldn't find that profile"
-        >
+        <AppShell title="Client" description="We couldn't find that profile">
           <Card className="max-w-md shadow-md">
             <CardContent className="text-center text-muted-foreground py-12">
               Client not found. They may have been removed or the link is wrong.

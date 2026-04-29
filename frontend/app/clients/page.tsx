@@ -45,7 +45,9 @@ export default function ClientsPage() {
           <Card className="shadow-md">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-              <p className="text-sm text-muted-foreground">Loading your clients...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading your clients...
+              </p>
             </CardContent>
           </Card>
         ) : clients.length === 0 ? (
@@ -54,7 +56,9 @@ export default function ClientsPage() {
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Users className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Ready to add your first client?</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                Ready to add your first client?
+              </h3>
               <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                 Start building personalized training programs with Milo's help
               </p>

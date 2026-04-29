@@ -55,7 +55,9 @@ export function QuestionnaireSection({
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Questionnaire</CardTitle>
-          <CardDescription>Goals and background for programming</CardDescription>
+          <CardDescription>
+            Goals and background for programming
+          </CardDescription>
         </div>
         {questionnaire ? (
           <Button variant="outline" size="sm" asChild>

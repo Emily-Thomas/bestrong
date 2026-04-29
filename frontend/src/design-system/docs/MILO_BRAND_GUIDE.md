@@ -55,11 +55,11 @@ Just like a great gym dog, Milo:
 - **Style:** Modern, geometric line art with "MILO" wordmark
 - **Format:** PNG (high-quality rasterized)
 
-**Primary logo file:** `/frontend/public/milo-logo-gold.png`
-- Color: Warm golden/cream tones (matches the real Milo)
-- **Use everywhere:** App shell, headers, footers, marketing, and any place the brand mark appears
+**Primary assets (SVG, in `frontend/public/`):**
+- **`milo-mark.svg`** — logomark (round mark + signal collar) for compact UI, favicon-style use, and icon-scale touchpoints
+- **`milo-wordmark.svg`** — mark + “milo” wordmark; use in app shell, headers, and marketing
 
-**Optional asset:** `milo-logo-blue.png` exists for legacy or one-off use; the product default is the gold mark.
+The wordmark references **General Sans** in the SVG; the app loads it via Fontshare in `app/layout.tsx` (embedded SVG text may still use a system fallback when the file is used as an `<img>`).
 
 **Logo usage guidelines:**
 - Minimum size: 32x32px
@@ -77,33 +77,22 @@ Just like a great gym dog, Milo:
 
 ### Color Palette
 
-#### Primary Colors
+**Core (named roles)**  
+- **bone** `#F8F8F5` — default app surface, paper feel  
+- **ink** `#141416` — primary type and high emphasis  
+- **signal** `#D4FB3C` — primary action, focus, `primary` in the UI system  
+- **fog** `#6E6E75` — secondary / muted copy (see **ink-mute**; same value)  
+- **collar** `#E07856` — brand warmth, secondary CTAs, `accent` in the UI system  
 
-**Brand Primary (Trust, Intelligence)**
-- Primary: `hsl(220 85% 55%)` - #3B5FE8
-- Primary Dark: `hsl(220 84% 49%)` - #2E4FE0
-- Use for: Primary actions, brand elements, interactive elements
+**Neutrals & tints (surfaces + borders + type steps)**  
+- `bone-soft` `#FFFFFF` · `bone` `#F8F8F5` · `bone-deep` `#EEEEE8`  
+- `fog-1` `#E5E5E1` · `fog-2` `#CFCFCA` · `fog-3` `#9A9A95`  
+- `ink-mute` `#6E6E75` (alias: fog) · `ink-soft` `#2E2E33` · `ink` `#141416`  
 
-**Companion Gold (Warmth, Loyalty)**
-- Companion: `hsl(38 92% 50%)` - #F5A623
-- Use for: Accents, highlights, success states, warm touches
-- *Use sparingly* - maintains professionalism
+**Semantic**  
+- **Signal** (primary CTA) · **Success** `#2E8B57` (streak, goal met) · **Info** `#3B6EA8` (notes, hints) · **Danger** `#D64545` (errors, destructive) · **Warning** `#B8860B` (caution, reversible)  
 
-**Accent Red (Energy, Action)**
-- Accent: `hsl(355 90% 52%)` - #F43F5E
-- Use for: High-priority actions, destructive actions, alerts
-
-#### Semantic Colors
-
-- **Success:** `hsl(142 76% 45%)` - #10B981 (Progress green)
-- **Warning:** `hsl(38 95% 55%)` - Matches companion gold
-- **Error:** `hsl(352 124% 41%)` - Error red
-- **Info:** `hsl(200 95% 55%)` - Information cyan
-
-#### Neutral Scale
-
-- 50-900 grayscale for backgrounds, text, borders
-- See `design-system/tokens/colors.ts` for full scale
+**Implementation** — all hex live as `--milo-*` in `globals.css`; shadcn tokens (`--primary` = signal, `--accent` = collar, etc.) and Tailwind `milo-*` colors are wired in `@theme inline`.
 
 ### Typography
 
@@ -159,17 +148,11 @@ Just like a great gym dog, Milo:
 
 ### Shadows
 
-**Warm shadows** with subtle amber tint (Milo's companion warmth):
-- XS: Subtle hint for interactive elements
-- SM: Input fields, small cards
-- Base: Standard cards, dropdowns
-- MD: Raised cards, popovers
-- LG: Modals, important elevated content
-- XL: Hero sections, major CTAs
+**Neutral, ink-tinted** elevation (aligned with the bone/ink system — no default amber):
+- 2xs–XL: see `--shadow-*` in `globals.css`
+- Use smaller shadows for inputs and list rows, larger for modals and focus moments
 
-**Focus Rings:**
-- 2px offset ring in primary color with 50% opacity
-- Always visible for keyboard navigation
+**Focus rings:** `signal` at ~45% opacity on focus (`outline` / `ring`); `destructive` and `success` have dedicated focus ring tokens in `design-system/tokens/shadows.ts` where needed
 
 ### Iconography
 
@@ -184,8 +167,7 @@ Just like a great gym dog, Milo:
 **Icon Style:**
 - Line-based, consistent stroke width
 - Matches overall visual language (geometric, clean)
-- Primary color for brand icons
-- Muted foreground for utility icons
+- **Signal** or **collar** for brand-forward icons; **muted-foreground** for utility
 
 ---
 
@@ -283,14 +265,18 @@ Reminders that feel helpful, not nagging
 All design tokens are available as CSS variables in `globals.css`:
 
 ```css
-/* Brand colors */
---brand-primary: hsl(220 85% 55%);
---brand-companion: hsl(38 92% 50%);
---brand-accent: hsl(355 90% 52%);
+/* Canonical Milo (examples — see full list in app/globals.css) */
+--milo-bone: #F8F8F5;
+--milo-ink: #141416;
+--milo-signal: #D4FB3C;
+--milo-collar: #E07856;
 
-/* Semantic colors */
---primary: var(--brand-primary);
---accent: var(--brand-companion);
+/* shadcn bridge */
+--primary: var(--milo-signal);
+--accent: var(--milo-collar);
+--brand-primary: var(--milo-signal);
+--brand-companion: var(--milo-collar);
+--brand-accent: var(--milo-collar);
 
 /* Typography */
 --font-display: var(--font-manrope);
@@ -313,10 +299,9 @@ import { colors, typography, spacing } from '@/design-system/tokens';
 
 **In Components:**
 ```tsx
-// Use design tokens via CSS variables
-<div className="text-primary bg-accent/10">
-  Content
-</div>
+// shadcn tokens: primary = signal, accent = collar
+<div className="text-primary-foreground bg-primary">CTA</div>
+<div className="text-milo-ink bg-milo-bone">Surface</div>
 
 // Use display font for brand moments
 <h1 style={{ fontFamily: 'var(--font-display)' }}>
@@ -332,7 +317,7 @@ import { colors, typography, spacing } from '@/design-system/tokens';
 **In Custom CSS:**
 ```css
 .my-component {
-  color: var(--brand-primary);
+  color: var(--milo-signal);
   font-family: var(--font-display);
   box-shadow: var(--shadow-md);
 }

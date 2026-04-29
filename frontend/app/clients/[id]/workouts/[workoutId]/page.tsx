@@ -77,7 +77,9 @@ export default function WorkoutDetailPage() {
           <Card className="shadow-md">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading workout...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading workout...
+              </p>
             </CardContent>
           </Card>
         </AppShell>
@@ -88,10 +90,7 @@ export default function WorkoutDetailPage() {
   if (!workout) {
     return (
       <ProtectedRoute>
-        <AppShell
-          title="Workout"
-          description="We couldn't find that session"
-        >
+        <AppShell title="Workout" description="We couldn't find that session">
           <Card className="max-w-md shadow-md">
             <CardContent className="py-12 text-center text-muted-foreground">
               Workout not found. It may have been removed.

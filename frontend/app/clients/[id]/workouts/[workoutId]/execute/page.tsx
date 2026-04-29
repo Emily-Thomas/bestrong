@@ -247,7 +247,9 @@ export default function WorkoutExecutionPage() {
           <Card className="shadow-md">
             <CardContent className="flex flex-col items-center justify-center py-20">
               <Loader2 className="mb-3 h-9 w-9 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading session...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading session...
+              </p>
             </CardContent>
           </Card>
         </AppShell>
@@ -258,10 +260,7 @@ export default function WorkoutExecutionPage() {
   if (!workout) {
     return (
       <ProtectedRoute>
-        <AppShell
-          title="Session"
-          description={"We couldn't find that workout"}
-        >
+        <AppShell title="Session" description={"We couldn't find that workout"}>
           <Card className="max-w-md shadow-md">
             <CardContent className="py-12 text-center text-muted-foreground">
               Workout not found. It may have been removed.
@@ -325,7 +324,7 @@ export default function WorkoutExecutionPage() {
           </div>
 
           {surveyResponse && (
-            <details className="group rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] dark:bg-blue-950/30">
+            <details className="group rounded-2xl border border-milo-info/25 bg-milo-info/[0.06] dark:bg-milo-info/15">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
                 <span>Check-in summary</span>
                 <div className="flex items-center gap-2">
@@ -351,7 +350,7 @@ export default function WorkoutExecutionPage() {
                   <ChevronDown className="h-4 w-4 shrink-0 transition group-open:rotate-180" />
                 </div>
               </summary>
-              <div className="space-y-2 border-t border-blue-500/20 px-4 py-3 text-sm">
+              <div className="space-y-2 border-t border-milo-info/20 px-4 py-3 text-sm">
                 <div>
                   <span className="text-muted-foreground">Rested: </span>
                   {formatYesNo(surveyResponse.rested_enough)}

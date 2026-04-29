@@ -27,9 +27,7 @@ function zoneOpacity(
   return Math.min(0.92, 0.18 + 0.74 * blended);
 }
 
-function buildAriaLabel(
-  intensity: Map<MuscleCategory, number>
-): string {
+function buildAriaLabel(intensity: Map<MuscleCategory, number>): string {
   const parts: string[] = [];
   for (const cat of MUSCLE_ORDER) {
     const v = intensity.get(cat);
@@ -67,9 +65,7 @@ export function MuscleBodyDiagram({
   const fullIntensity = intensity.get('full') ?? 0;
   const showFullRing = fullIntensity > 0;
 
-  const hasLegend = MUSCLE_ORDER.some(
-    (cat) => (intensity.get(cat) ?? 0) > 0
-  );
+  const hasLegend = MUSCLE_ORDER.some((cat) => (intensity.get(cat) ?? 0) > 0);
 
   return (
     <div

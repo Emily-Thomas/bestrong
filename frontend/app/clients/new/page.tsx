@@ -39,9 +39,7 @@ export default function NewClientPage() {
     if (response.success && response.data) {
       const id = response.data.id;
       router.push(
-        skipSetupChecklist
-          ? `/clients/${id}`
-          : `/clients/${id}?onboarding=1`
+        skipSetupChecklist ? `/clients/${id}` : `/clients/${id}?onboarding=1`
       );
     } else {
       setError(response.error || 'Failed to create client');
@@ -75,8 +73,8 @@ export default function NewClientPage() {
               <CardHeader>
                 <CardTitle>Client information</CardTitle>
                 <CardDescription>
-                  Save the basics first. You can use the setup checklist on their
-                  profile, or skip straight to the record.
+                  Save the basics first. You can use the setup checklist on
+                  their profile, or skip straight to the record.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -86,7 +84,10 @@ export default function NewClientPage() {
                   className="space-y-6"
                 >
                   {error && (
-                    <Alert variant="destructive" className="border-destructive/50">
+                    <Alert
+                      variant="destructive"
+                      className="border-destructive/50"
+                    >
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}

@@ -1,76 +1,78 @@
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-type Size = 'sm' | 'md' | 'lg' | 'header';
+/** @see `/public/milo-mark.svg` (asset from brand package) */
+const MARK = '/milo-mark.svg';
+/** @see `/public/milo-wordmark.svg` (mark + “milo” wordmark) */
+const WORDMARK = '/milo-wordmark.svg';
 
-const styles: Record<
-  Size,
-  { box: string; img: string; width: number; height: number; rounded: string }
-> = {
-  sm: {
-    box: 'h-9 w-9 p-0.5',
-    img: 'h-7 w-7',
-    width: 120,
-    height: 120,
-    rounded: 'rounded-lg',
-  },
-  md: {
-    box: 'h-10 w-10 p-1',
-    img: 'h-8 w-8',
-    width: 120,
-    height: 120,
-    rounded: 'rounded-xl',
-  },
-  lg: {
-    box: 'h-12 w-12 p-1',
-    img: 'h-9 w-9',
-    width: 160,
-    height: 160,
-    rounded: 'rounded-xl',
-  },
-  /** Portrait-friendly tile for full lockup (dog + wordmark) */
-  header: {
-    box: 'h-16 w-[4.25rem] min-w-0 sm:h-[4.25rem] sm:w-24 px-1.5 py-1',
-    img: 'h-full w-full object-contain object-center',
-    width: 200,
-    height: 280,
-    rounded: 'rounded-2xl',
-  },
+const MARK_VIEW = 120;
+
+const markSizeClass: Record<'sm' | 'md' | 'lg', string> = {
+  sm: 'h-7 w-7',
+  md: 'h-9 w-9',
+  lg: 'h-10 w-10',
 };
 
-interface MiloLogoMarkProps {
-  size?: Size;
+type MiloMarkProps = {
+  size?: keyof typeof markSizeClass;
   className?: string;
-  /** When false, use alt="" for lockups with adjacent visible text (a11y) */
   withAlt?: boolean;
-}
+};
 
 /**
- * Gold Milo mark in a warm tile so the PNG’s cream background blends with the UI.
+ * Logomark only (round dog + signal collar). For nav icons and compact touchpoints.
  */
-export function MiloLogoMark({
+export function MiloMark({
   size = 'md',
   className,
   withAlt = true,
-}: MiloLogoMarkProps) {
-  const s = styles[size];
+}: MiloMarkProps) {
   return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-center overflow-hidden border border-amber-200/50 bg-amber-50/90 shadow-sm dark:border-amber-800/40 dark:bg-amber-950/30',
-        s.rounded,
-        s.box,
-        className
-      )}
-    >
-      <Image
-        src="/milo-logo-gold.png"
-        alt={withAlt ? 'Milo' : ''}
-        width={s.width}
-        height={s.height}
-        className={s.img}
-        priority={size === 'header'}
-      />
-    </div>
+    <Image
+      src={MARK}
+      alt={withAlt ? 'Milo' : ''}
+      width={MARK_VIEW}
+      height={MARK_VIEW}
+      unoptimized
+      className={cn('shrink-0 object-contain', markSizeClass[size], className)}
+    />
   );
 }
+
+type MiloWordmarkProps = {
+  className?: string;
+  withAlt?: boolean;
+  /** Tailwind height utilities (default keeps ~3.1:1 width via w-auto) */
+  heightClass?: string;
+  priority?: boolean;
+};
+
+/**
+ * Mark + “milo” typesetting. SVG text uses General Sans; ensure the font is loaded
+ * in `app/layout.tsx` or accept system-ui fallback in the wordmark.
+ */
+export function MiloWordmark({
+  className,
+  withAlt = true,
+  heightClass = 'h-7',
+  priority = false,
+}: MiloWordmarkProps) {
+  return (
+    <Image
+      src={WORDMARK}
+      alt={withAlt ? 'Milo — AI training companion' : ''}
+      width={340}
+      height={110}
+      unoptimized
+      priority={priority}
+      className={cn(
+        'w-auto max-w-full shrink-0 object-contain object-left',
+        heightClass,
+        className
+      )}
+    />
+  );
+}
+
+export { MiloMark as MiloLogoMark };

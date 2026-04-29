@@ -93,11 +93,11 @@ const GOAL_VISUAL: Record<
   },
   strength: {
     shortLabel: 'Strength',
-    leftBar: 'border-l-blue-600',
+    leftBar: 'border-l-milo-info',
     cardTint:
-      'bg-gradient-to-br from-blue-600/[0.09] via-background to-background dark:from-blue-600/[0.12]',
+      'bg-gradient-to-br from-milo-info/[0.09] via-background to-background dark:from-milo-info/[0.12]',
     goalBadge:
-      'bg-blue-500/20 text-blue-950 dark:bg-blue-500/25 dark:text-blue-50',
+      'bg-milo-info/20 text-milo-ink dark:bg-milo-info/25 dark:text-milo-bone',
   },
   athletic_performance: {
     shortLabel: 'Athletic',
@@ -176,7 +176,9 @@ function LockedCoachPlanReadonly({
                   {trainer.first_name} {trainer.last_name}
                 </p>
                 {trainer.title ? (
-                  <p className="text-xs text-muted-foreground">{trainer.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {trainer.title}
+                  </p>
                 ) : null}
               </div>
             </div>
@@ -887,919 +889,931 @@ export function TrainingPlansSection({
                       'pointer-events-none opacity-[0.65]'
                   )}
                 >
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  1. Pick a coach
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Choose one of your first three coaches (alphabetically) or ask
-                  AI who fits this client best — then lock that persona for plan
-                  generation. No multi-plan comparison.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.05] to-muted/20 p-4 shadow-sm dark:from-primary/10">
-                {trainersLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    Loading coaches…
-                  </div>
-                ) : eligibleTrainers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">
-                    Add trainers and generate personas in{' '}
-                    <Link
-                      href="/trainers"
-                      className="font-medium text-primary underline underline-offset-2"
-                    >
-                      Trainers
-                    </Link>{' '}
-                    to steer AI plans. You can still generate without a linked
-                    coach.
-                  </p>
-                ) : (
-                  <>
-                    {threeCoaches.length < 3 && (
-                      <p className="text-xs text-amber-800 dark:text-amber-200 mb-3 rounded-lg bg-amber-500/10 border border-amber-500/25 px-3 py-2">
-                        AI coach fit needs <strong>three</strong> trainers with
-                        personas. You have {eligibleTrainers.length}; add more
-                        in Trainers, or pick a coach manually below.
-                      </p>
-                    )}
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <UserCircle2 className="h-4 w-4 text-primary shrink-0" />
-                        Select a coach
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="border border-primary/30 bg-background"
-                        disabled={
-                          coachFitLoading ||
-                          generating ||
-                          checkingScan ||
-                          hasVerifiedScan !== true ||
-                          threeCoaches.length < 3
-                        }
-                        onClick={() => void handleCoachFitAnalysis()}
-                      >
-                        {coachFitLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Analyzing fit…
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Suggest
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    {coachFitError && (
-                      <Alert variant="destructive" className="mb-4">
-                        <AlertDescription>{coachFitError}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {coachFit?.recommendation?.reasoning ? (
-                      <Alert className="mb-4 border-emerald-500/35 bg-emerald-500/[0.07]">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                        <AlertDescription className="space-y-2">
-                          <p className="font-semibold text-emerald-900 dark:text-emerald-100">
-                            Suggestion
-                          </p>
-                          <p className="text-sm text-foreground/90 leading-relaxed">
-                            {coachFit.recommendation.reasoning}
-                          </p>
-                        </AlertDescription>
-                      </Alert>
-                    ) : null}
-
-                    <RadioGroup
-                      value={
-                        selectedTrainerId != null
-                          ? String(selectedTrainerId)
-                          : undefined
-                      }
-                      onValueChange={(v) =>
-                        setSelectedTrainerId(parseInt(v, 10))
-                      }
-                      className="grid gap-3 sm:grid-cols-3"
-                    >
-                      {threeCoaches.map((t) => {
-                        const isAiPick =
-                          coachFit?.recommended_trainer_id === t.id;
-                        return (
-                          <div
-                            key={t.id}
-                            className={cn(
-                              'relative rounded-xl border-2 bg-background/90 p-3 text-left transition-shadow',
-                              isAiPick
-                                ? 'border-emerald-500/60 shadow-md ring-2 ring-emerald-500/20'
-                                : 'border-border/70 hover:border-primary/35'
-                            )}
-                          >
-                            {isAiPick && (
-                              <span className="absolute -top-2.5 left-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
-                                AI pick
-                              </span>
-                            )}
-                            <div className="flex items-start gap-2.5 pt-1">
-                              <RadioGroupItem
-                                value={String(t.id)}
-                                id={`coach-${t.id}`}
-                                className="mt-2.5"
-                              />
-                              <Avatar
-                                className={cn(
-                                  'h-12 w-12 shrink-0 rounded-full border-2 border-border/70 shadow-sm',
-                                  selectedTrainerId === t.id &&
-                                    'border-primary ring-2 ring-primary/25'
-                                )}
-                              >
-                                {t.image_url ? (
-                                  <AvatarImage
-                                    src={t.image_url}
-                                    alt=""
-                                    className="object-cover"
-                                  />
-                                ) : null}
-                                <AvatarFallback className="rounded-full bg-primary/15 text-sm font-semibold text-primary">
-                                  {`${t.first_name?.[0] ?? ''}${t.last_name?.[0] ?? ''}`}
-                                </AvatarFallback>
-                              </Avatar>
-                              <Label
-                                htmlFor={`coach-${t.id}`}
-                                className="min-w-0 flex-1 cursor-pointer space-y-0.5 pt-0.5 font-normal"
-                              >
-                                <span className="block text-sm font-semibold text-foreground">
-                                  {t.first_name} {t.last_name}
-                                </span>
-                                {t.title ? (
-                                  <span className="block text-xs text-muted-foreground">
-                                    {t.title}
-                                  </span>
-                                ) : null}
-                              </Label>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </RadioGroup>
-
-                    {eligibleTrainers.length > 3 && (
-                      <p className="mt-3 text-[11px] text-muted-foreground">
-                        Showing your first three coaches with personas (by
-                        name). Add or reorder in Trainers if you need different
-                        options on this screen.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                'space-y-4',
-                sessionsLoadingForLock && 'pointer-events-none opacity-[0.65]'
-              )}
-            >
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  2. Lock in the initial plan
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Choose a path — the section below updates to match. You can
-                  switch anytime.
-                </p>
-              </div>
-
-              {recommendation ? (
-                <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.07] p-4 shadow-sm dark:bg-emerald-500/[0.09]">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-100">
-                        Current mesocycle
-                      </p>
-                      <p className="text-sm text-foreground">
-                        {planOrigin === 'library' && planLib.templateName ? (
-                          <>
-                            <span className="text-muted-foreground">
-                              Plan library:{' '}
-                            </span>
-                            <span className="font-semibold">
-                              {planLib.templateName}
-                            </span>
-                          </>
-                        ) : planOrigin === 'library' ? (
-                          <span className="font-medium">
-                            Plan library (template metadata not stored — older
-                            save)
-                          </span>
-                        ) : planOrigin === 'ai' ? (
-                          <span className="font-medium">
-                            Generated with AI from questionnaire + InBody
-                          </span>
-                        ) : planOrigin === 'manual' ? (
-                          <span className="font-medium">
-                            Defined manually (custom structure)
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            Saved plan — choose a path below to see how it was
-                            built, or regenerate.
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className="shrink-0 border-emerald-500/30 bg-emerald-500/15 text-emerald-950 dark:text-emerald-50"
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    The path below highlights how this plan was created. You can
-                    switch views without losing the saved mesocycle.
-                  </p>
-                </div>
-              ) : null}
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <button
-                  type="button"
-                  onClick={() => setInitialPlanMode('library')}
-                  className={cn(
-                    'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
-                    'from-primary/[0.08] via-background to-muted/20 hover:shadow-md',
-                    initialPlanMode === 'library'
-                      ? 'border-primary/60 ring-2 ring-primary/35 shadow-md'
-                      : 'border-border/70 hover:border-primary/35'
-                  )}
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-                    <BookOpen className="h-5 w-5" aria-hidden />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    Plan library
-                  </span>
-                  <span className="text-xs leading-relaxed text-muted-foreground">
-                    Pick a template — we save the mesocycle; you generate
-                    workouts when ready.
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInitialPlanMode('ai')}
-                  className={cn(
-                    'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
-                    'from-violet-500/[0.06] via-background to-muted/20 hover:shadow-md',
-                    initialPlanMode === 'ai'
-                      ? 'border-violet-500/55 ring-2 ring-violet-500/35 shadow-md'
-                      : 'border-border/70 hover:border-violet-500/35'
-                  )}
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 text-white shadow-md dark:bg-violet-500">
-                    <Sparkles className="h-5 w-5" aria-hidden />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    AI custom plan
-                  </span>
-                  <span className="text-xs leading-relaxed text-muted-foreground">
-                    Generate a tailored direction from questionnaire + InBody.
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInitialPlanMode('manual')}
-                  className={cn(
-                    'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
-                    'from-amber-500/[0.07] via-background to-muted/20 hover:shadow-md',
-                    initialPlanMode === 'manual'
-                      ? 'border-amber-500/55 ring-2 ring-amber-500/35 shadow-md'
-                      : 'border-border/70 hover:border-amber-500/35'
-                  )}
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-600 text-white shadow-md dark:bg-amber-500">
-                    <PenLine className="h-5 w-5" aria-hidden />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    Build manually
-                  </span>
-                  <span className="text-xs leading-relaxed text-muted-foreground">
-                    Shape the plan yourself in the editor.
-                  </span>
-                </button>
-              </div>
-
-              {initialPlanMode === 'library' && (
-                <div className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/[0.06] via-muted/30 to-muted/10 shadow-sm dark:from-primary/10 dark:via-muted/20">
-                  <div className="border-b border-primary/15 bg-primary/[0.07] px-4 py-3 dark:bg-primary/10">
-                    <div className="flex flex-wrap items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                        <BookOpen className="h-5 w-5" aria-hidden />
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="text-base font-semibold tracking-tight text-foreground">
-                          Plan library
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Color shows{' '}
-                          <span className="font-medium text-foreground">
-                            goal
-                          </span>
-                          , pills show{' '}
-                          <span className="font-medium text-foreground">
-                            level &amp; phase type
-                          </span>
-                          . Click{' '}
-                          <span className="font-medium text-foreground">
-                            Use this plan
-                          </span>{' '}
-                          to save the mesocycle. Then go to the{' '}
-                          <span className="font-medium text-foreground">
-                            Workouts
-                          </span>{' '}
-                          tab, run{' '}
-                          <span className="font-medium text-foreground">
-                            Generate workouts
-                          </span>
-                          , review the draft, and save.
-                        </p>
-                      </div>
-                    </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      1. Pick a coach
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Choose one of your first three coaches (alphabetically) or
+                      ask AI who fits this client best — then lock that persona
+                      for plan generation. No multi-plan comparison.
+                    </p>
                   </div>
 
-                  <div className="space-y-4 p-4">
-                    <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-background/90 p-3 shadow-sm sm:flex-row sm:items-end sm:justify-between">
-                      <div className="space-y-2 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          <Filter
-                            className="h-3.5 w-3.5 text-primary"
-                            aria-hidden
-                          />
-                          Narrow the list
-                        </div>
-                        <Label htmlFor="goal-filter" className="sr-only">
-                          Filter by goal
-                        </Label>
-                        <Select
-                          value={goalFilter}
-                          onValueChange={(v) =>
-                            setGoalFilter(v as 'all' | PlanTemplateGoalCategory)
-                          }
-                        >
-                          <SelectTrigger
-                            id="goal-filter"
-                            className="h-10 w-full max-w-md border-primary/25 bg-background text-sm font-medium shadow-none sm:w-[min(100%,280px)]"
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All goals</SelectItem>
-                            <SelectItem value="general_fitness">
-                              General fitness
-                            </SelectItem>
-                            <SelectItem value="fat_loss">Fat loss</SelectItem>
-                            <SelectItem value="muscle_gain">
-                              Muscle gain
-                            </SelectItem>
-                            <SelectItem value="strength">Strength</SelectItem>
-                            <SelectItem value="athletic_performance">
-                              Athletic performance
-                            </SelectItem>
-                            <SelectItem value="health_longevity">
-                              Health &amp; longevity
-                            </SelectItem>
-                            <SelectItem value="return_to_training">
-                              Return to training
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <p className="text-xs leading-relaxed text-muted-foreground sm:max-w-md">
-                        {eligibleTrainers.length > 0 ? (
-                          <>
-                            Library templates use the{' '}
-                            <span className="font-medium text-foreground">
-                              coach you selected in step 1
-                            </span>{' '}
-                            so workouts match that persona and your exercise
-                            library.
-                          </>
-                        ) : (
-                          <>
-                            Add trainers with personas in{' '}
-                            <Link
-                              href="/trainers"
-                              className="font-medium text-primary underline underline-offset-2"
-                            >
-                              Trainers
-                            </Link>{' '}
-                            to steer AI-generated workouts from templates.
-                          </>
-                        )}
-                      </p>
-                    </div>
-
-                    {planTemplatesLoading && (
-                      <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/25 bg-background/80 py-10 text-sm font-medium text-muted-foreground">
+                  <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.05] to-muted/20 p-4 shadow-sm dark:from-primary/10">
+                    {trainersLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        Loading templates…
+                        Loading coaches…
                       </div>
-                    )}
+                    ) : eligibleTrainers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-2">
+                        Add trainers and generate personas in{' '}
+                        <Link
+                          href="/trainers"
+                          className="font-medium text-primary underline underline-offset-2"
+                        >
+                          Trainers
+                        </Link>{' '}
+                        to steer AI plans. You can still generate without a
+                        linked coach.
+                      </p>
+                    ) : (
+                      <>
+                        {threeCoaches.length < 3 && (
+                          <p className="text-xs text-amber-800 dark:text-amber-200 mb-3 rounded-lg bg-amber-500/10 border border-amber-500/25 px-3 py-2">
+                            AI coach fit needs <strong>three</strong> trainers
+                            with personas. You have {eligibleTrainers.length};
+                            add more in Trainers, or pick a coach manually
+                            below.
+                          </p>
+                        )}
 
-                    {planTemplatesError && !planTemplatesLoading && (
-                      <Alert variant="destructive">
-                        <AlertDescription>
-                          {planTemplatesError}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    {!planTemplatesLoading &&
-                      !planTemplatesError &&
-                      filteredPlanTemplates.length === 0 && (
-                        <div className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/40 py-10 text-center text-sm text-muted-foreground">
-                          No templates match this filter — try{' '}
-                          <span className="font-medium text-foreground">
-                            All goals
-                          </span>
-                          .
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <UserCircle2 className="h-4 w-4 text-primary shrink-0" />
+                            Select a coach
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="border border-primary/30 bg-background"
+                            disabled={
+                              coachFitLoading ||
+                              generating ||
+                              checkingScan ||
+                              hasVerifiedScan !== true ||
+                              threeCoaches.length < 3
+                            }
+                            onClick={() => void handleCoachFitAnalysis()}
+                          >
+                            {coachFitLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Analyzing fit…
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="mr-2 h-4 w-4" />
+                                Suggest
+                              </>
+                            )}
+                          </Button>
                         </div>
-                      )}
 
-                    {!planTemplatesLoading && !planTemplatesError && (
-                      <ScrollArea className="h-[min(440px,52vh)] pr-2">
-                        <div className="space-y-3 pb-1">
-                          {filteredPlanTemplates.map((t) => {
-                            const gv = GOAL_VISUAL[t.goal_category];
-                            const ev = EXPERIENCE_BADGE[t.experience_level];
-                            const isCurrentPlan =
-                              planLib.templateId != null &&
-                              planLib.templateId === t.id;
+                        {coachFitError && (
+                          <Alert variant="destructive" className="mb-4">
+                            <AlertDescription>{coachFitError}</AlertDescription>
+                          </Alert>
+                        )}
+
+                        {coachFit?.recommendation?.reasoning ? (
+                          <Alert variant="success" className="mb-4">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <AlertDescription className="space-y-2">
+                              <p className="font-semibold text-foreground">
+                                Suggestion
+                              </p>
+                              <p className="text-sm text-foreground/90 leading-relaxed">
+                                {coachFit.recommendation.reasoning}
+                              </p>
+                            </AlertDescription>
+                          </Alert>
+                        ) : null}
+
+                        <RadioGroup
+                          value={
+                            selectedTrainerId != null
+                              ? String(selectedTrainerId)
+                              : undefined
+                          }
+                          onValueChange={(v) =>
+                            setSelectedTrainerId(parseInt(v, 10))
+                          }
+                          className="grid gap-3 sm:grid-cols-3"
+                        >
+                          {threeCoaches.map((t) => {
+                            const isAiPick =
+                              coachFit?.recommended_trainer_id === t.id;
                             return (
                               <div
                                 key={t.id}
                                 className={cn(
-                                  'overflow-hidden rounded-xl border border-border/70 border-l-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md',
-                                  gv.leftBar,
-                                  isCurrentPlan &&
-                                    'ring-2 ring-primary/45 shadow-md'
+                                  'relative rounded-xl border-2 bg-background/90 p-3 text-left transition-shadow',
+                                  isAiPick
+                                    ? 'border-emerald-500/60 shadow-md ring-2 ring-emerald-500/20'
+                                    : 'border-border/70 hover:border-primary/35'
                                 )}
                               >
-                                <div className={cn('p-4 sm:p-5', gv.cardTint)}>
-                                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                    <div className="min-w-0 flex-1 space-y-3">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <span
-                                          className={cn(
-                                            'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold',
-                                            gv.goalBadge
-                                          )}
-                                        >
-                                          {gv.shortLabel}
-                                        </span>
-                                        <span
-                                          className={cn(
-                                            'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold',
-                                            ev.className
-                                          )}
-                                        >
-                                          {ev.label}
-                                        </span>
-                                        {t.has_session_blueprints ? (
-                                          <span className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                            Exercise blueprint
-                                          </span>
-                                        ) : null}
-                                        {isCurrentPlan ? (
-                                          <span className="inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
-                                            Your current plan
-                                          </span>
-                                        ) : null}
-                                      </div>
-                                      <div>
-                                        <h4 className="text-base font-semibold leading-snug text-foreground sm:text-lg">
-                                          {t.name}
-                                        </h4>
-                                        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                                          {t.summary}
-                                        </p>
-                                      </div>
-                                      <p className="text-xs font-medium uppercase tracking-wide text-primary/90">
-                                        {t.mesocycle_type}
-                                      </p>
-                                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                        <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-                                          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                            <Calendar className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                                            Frequency
-                                          </div>
-                                          <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
-                                            {t.sessions_per_week}× / week
-                                          </p>
-                                        </div>
-                                        <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-                                          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                            <Clock className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
-                                            Session
-                                          </div>
-                                          <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
-                                            {t.session_length_minutes} min
-                                          </p>
-                                        </div>
-                                        <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-                                          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                            <Layers className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
-                                            Phase
-                                          </div>
-                                          <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
-                                            {t.phase_1_weeks} wk block
-                                          </p>
-                                        </div>
-                                        <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-                                          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                            <Flame className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" />
-                                            Intensity
-                                          </div>
-                                          <p className="mt-1 text-sm font-bold leading-tight text-foreground">
-                                            {t.intensity_label}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="flex w-full shrink-0 flex-col gap-2 sm:flex-row sm:items-stretch lg:w-auto lg:pt-1 lg:pl-2">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="default"
-                                        className="w-full min-w-[9rem] font-semibold shadow-sm lg:w-auto"
-                                        onClick={() =>
-                                          setDetailTemplateId(t.id)
-                                        }
-                                      >
-                                        <Info
-                                          className="mr-2 h-4 w-4 opacity-80"
-                                          aria-hidden
-                                        />
-                                        Details
-                                      </Button>
-                                      <Button
-                                        size="default"
-                                        className="w-full min-w-[9rem] font-semibold shadow-sm lg:w-auto"
-                                        disabled={
-                                          applyingTemplateId !== null ||
-                                          checkingScan ||
-                                          hasVerifiedScan !== true ||
-                                          generating ||
-                                          (eligibleTrainers.length > 0 &&
-                                            selectedTrainerId == null)
-                                        }
-                                        onClick={() =>
-                                          void handleApplyPlanTemplate(t.id)
-                                        }
-                                      >
-                                        {applyingTemplateId === t.id ? (
-                                          <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Applying…
-                                          </>
-                                        ) : isCurrentPlan ? (
-                                          'Re-apply template'
-                                        ) : (
-                                          'Use this plan'
-                                        )}
-                                      </Button>
-                                    </div>
-                                  </div>
+                                {isAiPick && (
+                                  <span className="absolute -top-2.5 left-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+                                    AI pick
+                                  </span>
+                                )}
+                                <div className="flex items-start gap-2.5 pt-1">
+                                  <RadioGroupItem
+                                    value={String(t.id)}
+                                    id={`coach-${t.id}`}
+                                    className="mt-2.5"
+                                  />
+                                  <Avatar
+                                    className={cn(
+                                      'h-12 w-12 shrink-0 rounded-full border-2 border-border/70 shadow-sm',
+                                      selectedTrainerId === t.id &&
+                                        'border-primary ring-2 ring-primary/25'
+                                    )}
+                                  >
+                                    {t.image_url ? (
+                                      <AvatarImage
+                                        src={t.image_url}
+                                        alt=""
+                                        className="object-cover"
+                                      />
+                                    ) : null}
+                                    <AvatarFallback className="rounded-full bg-primary/15 text-sm font-semibold text-primary">
+                                      {`${t.first_name?.[0] ?? ''}${t.last_name?.[0] ?? ''}`}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <Label
+                                    htmlFor={`coach-${t.id}`}
+                                    className="min-w-0 flex-1 cursor-pointer space-y-0.5 pt-0.5 font-normal"
+                                  >
+                                    <span className="block text-sm font-semibold text-foreground">
+                                      {t.first_name} {t.last_name}
+                                    </span>
+                                    {t.title ? (
+                                      <span className="block text-xs text-muted-foreground">
+                                        {t.title}
+                                      </span>
+                                    ) : null}
+                                  </Label>
                                 </div>
                               </div>
                             );
                           })}
-                        </div>
-                      </ScrollArea>
+                        </RadioGroup>
+
+                        {eligibleTrainers.length > 3 && (
+                          <p className="mt-3 text-[11px] text-muted-foreground">
+                            Showing your first three coaches with personas (by
+                            name). Add or reorder in Trainers if you need
+                            different options on this screen.
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
-              )}
 
-              {initialPlanMode === 'ai' && (
-                <div className="flex flex-col gap-3 rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/[0.06] to-background p-4 sm:flex-row sm:items-start sm:justify-between dark:from-violet-500/10">
-                  <div className="flex gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-violet-700 dark:text-violet-200">
-                      <Sparkles className="h-4 w-4" aria-hidden />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-foreground">
-                        Generate with AI
-                      </h4>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        Tailored to questionnaire + InBody — runs as an async
-                        job (more time &amp; cost than the library).
+                <div
+                  className={cn(
+                    'space-y-4',
+                    sessionsLoadingForLock &&
+                      'pointer-events-none opacity-[0.65]'
+                  )}
+                >
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      2. Lock in the initial plan
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Choose a path — the section below updates to match. You
+                      can switch anytime.
+                    </p>
+                  </div>
+
+                  {recommendation ? (
+                    <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.07] p-4 shadow-sm dark:bg-emerald-500/[0.09]">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-100">
+                            Current mesocycle
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {planOrigin === 'library' &&
+                            planLib.templateName ? (
+                              <>
+                                <span className="text-muted-foreground">
+                                  Plan library:{' '}
+                                </span>
+                                <span className="font-semibold">
+                                  {planLib.templateName}
+                                </span>
+                              </>
+                            ) : planOrigin === 'library' ? (
+                              <span className="font-medium">
+                                Plan library (template metadata not stored —
+                                older save)
+                              </span>
+                            ) : planOrigin === 'ai' ? (
+                              <span className="font-medium">
+                                Generated with AI from questionnaire + InBody
+                              </span>
+                            ) : planOrigin === 'manual' ? (
+                              <span className="font-medium">
+                                Defined manually (custom structure)
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                Saved plan — choose a path below to see how it
+                                was built, or regenerate.
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 border-emerald-500/30 bg-emerald-500/15 text-emerald-950 dark:text-emerald-50"
+                        >
+                          Active
+                        </Badge>
+                      </div>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        The path below highlights how this plan was created. You
+                        can switch views without losing the saved mesocycle.
                       </p>
                     </div>
-                  </div>
-                  <div className="shrink-0 sm:pt-0.5">{generateButton}</div>
-                </div>
-              )}
+                  ) : null}
 
-              {initialPlanMode === 'manual' && questionnaire && (
-                <ManualMesocycleForm
-                  questionnaireId={questionnaire.id}
-                  trainerId={selectedTrainerId}
-                  coachRequired={eligibleTrainers.length > 0}
-                  disabled={
-                    checkingScan ||
-                    hasVerifiedScan !== true ||
-                    generating ||
-                    trainersLoading
-                  }
-                  onSubmit={handleManualPlanSubmit}
-                />
-              )}
-
-              {initialPlanMode === null && (
-                <div className="rounded-2xl border border-dashed border-muted-foreground/30 bg-gradient-to-b from-muted/30 to-muted/10 px-6 py-14 text-center shadow-inner">
-                  <p className="text-sm text-muted-foreground">
-                    Choose a path above — plan library, AI, or manual — to
-                    continue locking in the initial plan.
-                  </p>
-                </div>
-              )}
-
-              {!checkingScan && hasAnyScan === false && (
-                <Alert className="mb-6">
-                  <AlertDescription>
-                    <div className="flex items-center justify-between gap-3">
-                      <span>
-                        Upload at least one InBody scan, then verify extracted
-                        data before generating.
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => setInitialPlanMode('library')}
+                      className={cn(
+                        'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
+                        'from-primary/[0.08] via-background to-muted/20 hover:shadow-md',
+                        initialPlanMode === 'library'
+                          ? 'border-primary/60 ring-2 ring-primary/35 shadow-md'
+                          : 'border-border/70 hover:border-primary/35'
+                      )}
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
+                        <BookOpen className="h-5 w-5" aria-hidden />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">
+                        Plan library
                       </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const element = document.getElementById(
-                            'inbody-scans-section'
-                          );
-                          element?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            const element = document.getElementById(
-                              'inbody-scans-section'
-                            );
-                            element?.scrollIntoView({ behavior: 'smooth' });
-                          }
-                        }}
-                      >
-                        Go to InBody
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
+                      <span className="text-xs leading-relaxed text-muted-foreground">
+                        Pick a template — we save the mesocycle; you generate
+                        workouts when ready.
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInitialPlanMode('ai')}
+                      className={cn(
+                        'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
+                        'from-violet-500/[0.06] via-background to-muted/20 hover:shadow-md',
+                        initialPlanMode === 'ai'
+                          ? 'border-violet-500/55 ring-2 ring-violet-500/35 shadow-md'
+                          : 'border-border/70 hover:border-violet-500/35'
+                      )}
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 text-white shadow-md dark:bg-violet-500">
+                        <Sparkles className="h-5 w-5" aria-hidden />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">
+                        AI custom plan
+                      </span>
+                      <span className="text-xs leading-relaxed text-muted-foreground">
+                        Generate a tailored direction from questionnaire +
+                        InBody.
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInitialPlanMode('manual')}
+                      className={cn(
+                        'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
+                        'from-amber-500/[0.07] via-background to-muted/20 hover:shadow-md',
+                        initialPlanMode === 'manual'
+                          ? 'border-amber-500/55 ring-2 ring-amber-500/35 shadow-md'
+                          : 'border-border/70 hover:border-amber-500/35'
+                      )}
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-600 text-white shadow-md dark:bg-amber-500">
+                        <PenLine className="h-5 w-5" aria-hidden />
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">
+                        Build manually
+                      </span>
+                      <span className="text-xs leading-relaxed text-muted-foreground">
+                        Shape the plan yourself in the editor.
+                      </span>
+                    </button>
+                  </div>
 
-              {!checkingScan &&
-                hasAnyScan === true &&
-                hasVerifiedScan === false && (
-                  <Alert className="mb-6 border-amber-500/40 bg-amber-500/[0.06]">
-                    <AlertDescription>
-                      <div className="flex items-center justify-between gap-3">
-                        <span>
-                          Verify your InBody scan (review extracted values and
-                          confirm) before applying a library template or
-                          generating a plan.
-                        </span>
+                  {initialPlanMode === 'library' && (
+                    <div className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/[0.06] via-muted/30 to-muted/10 shadow-sm dark:from-primary/10 dark:via-muted/20">
+                      <div className="border-b border-primary/15 bg-primary/[0.07] px-4 py-3 dark:bg-primary/10">
+                        <div className="flex flex-wrap items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                            <BookOpen className="h-5 w-5" aria-hidden />
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="text-base font-semibold tracking-tight text-foreground">
+                              Plan library
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Color shows{' '}
+                              <span className="font-medium text-foreground">
+                                goal
+                              </span>
+                              , pills show{' '}
+                              <span className="font-medium text-foreground">
+                                level &amp; phase type
+                              </span>
+                              . Click{' '}
+                              <span className="font-medium text-foreground">
+                                Use this plan
+                              </span>{' '}
+                              to save the mesocycle. Then go to the{' '}
+                              <span className="font-medium text-foreground">
+                                Workouts
+                              </span>{' '}
+                              tab, run{' '}
+                              <span className="font-medium text-foreground">
+                                Generate workouts
+                              </span>
+                              , review the draft, and save.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 p-4">
+                        <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-background/90 p-3 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+                          <div className="space-y-2 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              <Filter
+                                className="h-3.5 w-3.5 text-primary"
+                                aria-hidden
+                              />
+                              Narrow the list
+                            </div>
+                            <Label htmlFor="goal-filter" className="sr-only">
+                              Filter by goal
+                            </Label>
+                            <Select
+                              value={goalFilter}
+                              onValueChange={(v) =>
+                                setGoalFilter(
+                                  v as 'all' | PlanTemplateGoalCategory
+                                )
+                              }
+                            >
+                              <SelectTrigger
+                                id="goal-filter"
+                                className="h-10 w-full max-w-md border-primary/25 bg-background text-sm font-medium shadow-none sm:w-[min(100%,280px)]"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All goals</SelectItem>
+                                <SelectItem value="general_fitness">
+                                  General fitness
+                                </SelectItem>
+                                <SelectItem value="fat_loss">
+                                  Fat loss
+                                </SelectItem>
+                                <SelectItem value="muscle_gain">
+                                  Muscle gain
+                                </SelectItem>
+                                <SelectItem value="strength">
+                                  Strength
+                                </SelectItem>
+                                <SelectItem value="athletic_performance">
+                                  Athletic performance
+                                </SelectItem>
+                                <SelectItem value="health_longevity">
+                                  Health &amp; longevity
+                                </SelectItem>
+                                <SelectItem value="return_to_training">
+                                  Return to training
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <p className="text-xs leading-relaxed text-muted-foreground sm:max-w-md">
+                            {eligibleTrainers.length > 0 ? (
+                              <>
+                                Library templates use the{' '}
+                                <span className="font-medium text-foreground">
+                                  coach you selected in step 1
+                                </span>{' '}
+                                so workouts match that persona and your exercise
+                                library.
+                              </>
+                            ) : (
+                              <>
+                                Add trainers with personas in{' '}
+                                <Link
+                                  href="/trainers"
+                                  className="font-medium text-primary underline underline-offset-2"
+                                >
+                                  Trainers
+                                </Link>{' '}
+                                to steer AI-generated workouts from templates.
+                              </>
+                            )}
+                          </p>
+                        </div>
+
+                        {planTemplatesLoading && (
+                          <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/25 bg-background/80 py-10 text-sm font-medium text-muted-foreground">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            Loading templates…
+                          </div>
+                        )}
+
+                        {planTemplatesError && !planTemplatesLoading && (
+                          <Alert variant="destructive">
+                            <AlertDescription>
+                              {planTemplatesError}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
+                        {!planTemplatesLoading &&
+                          !planTemplatesError &&
+                          filteredPlanTemplates.length === 0 && (
+                            <div className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/40 py-10 text-center text-sm text-muted-foreground">
+                              No templates match this filter — try{' '}
+                              <span className="font-medium text-foreground">
+                                All goals
+                              </span>
+                              .
+                            </div>
+                          )}
+
+                        {!planTemplatesLoading && !planTemplatesError && (
+                          <ScrollArea className="h-[min(440px,52vh)] pr-2">
+                            <div className="space-y-3 pb-1">
+                              {filteredPlanTemplates.map((t) => {
+                                const gv = GOAL_VISUAL[t.goal_category];
+                                const ev = EXPERIENCE_BADGE[t.experience_level];
+                                const isCurrentPlan =
+                                  planLib.templateId != null &&
+                                  planLib.templateId === t.id;
+                                return (
+                                  <div
+                                    key={t.id}
+                                    className={cn(
+                                      'overflow-hidden rounded-xl border border-border/70 border-l-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md',
+                                      gv.leftBar,
+                                      isCurrentPlan &&
+                                        'ring-2 ring-primary/45 shadow-md'
+                                    )}
+                                  >
+                                    <div
+                                      className={cn('p-4 sm:p-5', gv.cardTint)}
+                                    >
+                                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="min-w-0 flex-1 space-y-3">
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <span
+                                              className={cn(
+                                                'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold',
+                                                gv.goalBadge
+                                              )}
+                                            >
+                                              {gv.shortLabel}
+                                            </span>
+                                            <span
+                                              className={cn(
+                                                'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold',
+                                                ev.className
+                                              )}
+                                            >
+                                              {ev.label}
+                                            </span>
+                                            {t.has_session_blueprints ? (
+                                              <span className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                                Exercise blueprint
+                                              </span>
+                                            ) : null}
+                                            {isCurrentPlan ? (
+                                              <span className="inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+                                                Your current plan
+                                              </span>
+                                            ) : null}
+                                          </div>
+                                          <div>
+                                            <h4 className="text-base font-semibold leading-snug text-foreground sm:text-lg">
+                                              {t.name}
+                                            </h4>
+                                            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                                              {t.summary}
+                                            </p>
+                                          </div>
+                                          <p className="text-xs font-medium uppercase tracking-wide text-primary/90">
+                                            {t.mesocycle_type}
+                                          </p>
+                                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                            <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
+                                              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                <Calendar className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                                Frequency
+                                              </div>
+                                              <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
+                                                {t.sessions_per_week}× / week
+                                              </p>
+                                            </div>
+                                            <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
+                                              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                <Clock className="h-3.5 w-3.5 shrink-0 text-milo-info" />
+                                                Session
+                                              </div>
+                                              <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
+                                                {t.session_length_minutes} min
+                                              </p>
+                                            </div>
+                                            <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
+                                              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                <Layers className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
+                                                Phase
+                                              </div>
+                                              <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
+                                                {t.phase_1_weeks} wk block
+                                              </p>
+                                            </div>
+                                            <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
+                                              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                <Flame className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" />
+                                                Intensity
+                                              </div>
+                                              <p className="mt-1 text-sm font-bold leading-tight text-foreground">
+                                                {t.intensity_label}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex w-full shrink-0 flex-col gap-2 sm:flex-row sm:items-stretch lg:w-auto lg:pt-1 lg:pl-2">
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="default"
+                                            className="w-full min-w-[9rem] font-semibold shadow-sm lg:w-auto"
+                                            onClick={() =>
+                                              setDetailTemplateId(t.id)
+                                            }
+                                          >
+                                            <Info
+                                              className="mr-2 h-4 w-4 opacity-80"
+                                              aria-hidden
+                                            />
+                                            Details
+                                          </Button>
+                                          <Button
+                                            size="default"
+                                            className="w-full min-w-[9rem] font-semibold shadow-sm lg:w-auto"
+                                            disabled={
+                                              applyingTemplateId !== null ||
+                                              checkingScan ||
+                                              hasVerifiedScan !== true ||
+                                              generating ||
+                                              (eligibleTrainers.length > 0 &&
+                                                selectedTrainerId == null)
+                                            }
+                                            onClick={() =>
+                                              void handleApplyPlanTemplate(t.id)
+                                            }
+                                          >
+                                            {applyingTemplateId === t.id ? (
+                                              <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Applying…
+                                              </>
+                                            ) : isCurrentPlan ? (
+                                              'Re-apply template'
+                                            ) : (
+                                              'Use this plan'
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </ScrollArea>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {initialPlanMode === 'ai' && (
+                    <div className="flex flex-col gap-3 rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/[0.06] to-background p-4 sm:flex-row sm:items-start sm:justify-between dark:from-violet-500/10">
+                      <div className="flex gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-violet-700 dark:text-violet-200">
+                          <Sparkles className="h-4 w-4" aria-hidden />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-foreground">
+                            Generate with AI
+                          </h4>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                            Tailored to questionnaire + InBody — runs as an
+                            async job (more time &amp; cost than the library).
+                          </p>
+                        </div>
+                      </div>
+                      <div className="shrink-0 sm:pt-0.5">{generateButton}</div>
+                    </div>
+                  )}
+
+                  {initialPlanMode === 'manual' && questionnaire && (
+                    <ManualMesocycleForm
+                      questionnaireId={questionnaire.id}
+                      trainerId={selectedTrainerId}
+                      coachRequired={eligibleTrainers.length > 0}
+                      disabled={
+                        checkingScan ||
+                        hasVerifiedScan !== true ||
+                        generating ||
+                        trainersLoading
+                      }
+                      onSubmit={handleManualPlanSubmit}
+                    />
+                  )}
+
+                  {initialPlanMode === null && (
+                    <div className="rounded-2xl border border-dashed border-muted-foreground/30 bg-gradient-to-b from-muted/30 to-muted/10 px-6 py-14 text-center shadow-inner">
+                      <p className="text-sm text-muted-foreground">
+                        Choose a path above — plan library, AI, or manual — to
+                        continue locking in the initial plan.
+                      </p>
+                    </div>
+                  )}
+
+                  {!checkingScan && hasAnyScan === false && (
+                    <Alert className="mb-6">
+                      <AlertDescription>
+                        <div className="flex items-center justify-between gap-3">
+                          <span>
+                            Upload at least one InBody scan, then verify
+                            extracted data before generating.
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const element = document.getElementById(
+                                'inbody-scans-section'
+                              );
+                              element?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                const element = document.getElementById(
+                                  'inbody-scans-section'
+                                );
+                                element?.scrollIntoView({ behavior: 'smooth' });
+                              }
+                            }}
+                          >
+                            Go to InBody
+                          </Button>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {!checkingScan &&
+                    hasAnyScan === true &&
+                    hasVerifiedScan === false && (
+                      <Alert variant="warning" className="mb-6">
+                        <AlertDescription>
+                          <div className="flex items-center justify-between gap-3">
+                            <span>
+                              Verify your InBody scan (review extracted values
+                              and confirm) before applying a library template or
+                              generating a plan.
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                document
+                                  .getElementById('inbody-scans-section')
+                                  ?.scrollIntoView({ behavior: 'smooth' });
+                              }}
+                            >
+                              Review scan
+                            </Button>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                  {generating && (
+                    <Alert variant="signal" className="mb-6">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <AlertDescription className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col gap-2 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {genMode === 'library'
+                                  ? 'Building mesocycle from library…'
+                                  : genMode === 'manual'
+                                    ? 'Saving manual mesocycle…'
+                                    : 'Generating AI mesocycle…'}
+                              </span>
+                            </div>
+                            {currentStep && (
+                              <span className="text-sm text-muted-foreground">
+                                {currentStep}
+                              </span>
+                            )}
+                            <span className="text-sm text-muted-foreground">
+                              {genMode === 'library' || genMode === 'manual'
+                                ? 'Saving the mesocycle only. Generate workouts from the Workouts tab when the job finishes.'
+                                : 'Saving the AI plan structure. Generate workouts from the Workouts tab when the job finishes.'}
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelJob}
+                            disabled={cancelling}
+                            className="ml-4"
+                          >
+                            {cancelling ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Cancelling…
+                              </>
+                            ) : (
+                              <>
+                                <X className="mr-2 h-3 w-3" />
+                                Cancel
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {cancelled && (
+                    <Alert variant="warning" className="mb-6">
+                      <AlertDescription className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col gap-2">
+                            <span className="font-medium text-foreground">
+                              Generation cancelled
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              The training plan generation was cancelled. You
+                              can start a new generation when ready.
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setCancelled(false);
+                              setCurrentStep('');
+                            }}
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {!recommendation && (
+                    <p className="text-sm text-muted-foreground">
+                      No training plan yet.{' '}
+                      {questionnaire
+                        ? 'Generate one to get started.'
+                        : 'Fill out the questionnaire first.'}
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : recommendation ? (
+              <LockedCoachPlanReadonly
+                clientId={clientId}
+                recommendation={recommendation}
+                planOrigin={planOrigin}
+                planLib={planLib}
+                trainer={lockedTrainer}
+              />
+            ) : null}
+
+            {recommendation && (
+              <div className="mt-6 space-y-4">
+                <Alert variant="success">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription className="space-y-3">
+                    <div>
+                      <p className="font-medium text-foreground">
+                        Mesocycle saved for this client
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {planLib.libraryBuiltWorkouts
+                          ? 'Sessions were built from the library template (with load refinement). Review the mesocycle to swap exercises or tune loads.'
+                          : 'Add or refine sessions from the Workouts tab — generate with AI, then review and save, or edit workouts directly.'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {planLib.libraryBuiltWorkouts ? (
                         <Button
-                          variant="outline"
                           size="sm"
+                          variant="default"
                           onClick={() => {
-                            document
-                              .getElementById('inbody-scans-section')
-                              ?.scrollIntoView({ behavior: 'smooth' });
+                            router.push(
+                              `/clients/${clientId}/recommendations/${recommendation.id}/workouts-review`
+                            );
                           }}
                         >
-                          Review scan
+                          Review mesocycle workouts
                         </Button>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-              {generating && (
-                <Alert className="mb-6 border-primary/50 bg-primary/5">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <AlertDescription className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-2 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {genMode === 'library'
-                              ? 'Building mesocycle from library…'
-                              : genMode === 'manual'
-                                ? 'Saving manual mesocycle…'
-                                : 'Generating AI mesocycle…'}
-                          </span>
-                        </div>
-                        {currentStep && (
-                          <span className="text-sm text-muted-foreground">
-                            {currentStep}
-                          </span>
-                        )}
-                        <span className="text-sm text-muted-foreground">
-                          {genMode === 'library' || genMode === 'manual'
-                            ? 'Saving the mesocycle only. Generate workouts from the Workouts tab when the job finishes.'
-                            : 'Saving the AI plan structure. Generate workouts from the Workouts tab when the job finishes.'}
-                        </span>
-                      </div>
+                      ) : null}
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={handleCancelJob}
-                        disabled={cancelling}
-                        className="ml-4"
-                      >
-                        {cancelling ? (
-                          <>
-                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                            Cancelling…
-                          </>
-                        ) : (
-                          <>
-                            <X className="mr-2 h-3 w-3" />
-                            Cancel
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {cancelled && (
-                <Alert className="mb-6 border-yellow-500/50 bg-yellow-500/5">
-                  <AlertDescription className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-2">
-                        <span className="font-medium text-yellow-700 dark:text-yellow-400">
-                          Generation cancelled
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          The training plan generation was cancelled. You can
-                          start a new generation when ready.
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
+                        variant={
+                          planLib.libraryBuiltWorkouts ? 'outline' : 'default'
+                        }
                         onClick={() => {
-                          setCancelled(false);
-                          setCurrentStep('');
+                          router.push(`/clients/${clientId}?tab=workouts`);
                         }}
                       >
-                        Dismiss
+                        Open Workouts tab
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          router.push(
+                            `/clients/${clientId}/recommendations/${recommendation.id}`
+                          );
+                        }}
+                      >
+                        Plan details
                       </Button>
                     </div>
                   </AlertDescription>
                 </Alert>
-              )}
-
-              {!recommendation && (
-                <p className="text-sm text-muted-foreground">
-                  No training plan yet.{' '}
-                  {questionnaire
-                    ? 'Generate one to get started.'
-                    : 'Fill out the questionnaire first.'}
-                </p>
-              )}
-            </div>
-          </>
-        ) : recommendation ? (
-          <LockedCoachPlanReadonly
-            clientId={clientId}
-            recommendation={recommendation}
-            planOrigin={planOrigin}
-            planLib={planLib}
-            trainer={lockedTrainer}
-          />
-        ) : null}
-
-        {recommendation && (
-          <div className="mt-6 space-y-4">
-            <Alert className="border-green-500/45 bg-green-500/[0.06]">
-              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <AlertDescription className="space-y-3">
-                <div>
-                  <p className="font-medium text-green-800 dark:text-green-200">
-                    Mesocycle saved for this client
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {planLib.libraryBuiltWorkouts
-                      ? 'Sessions were built from the library template (with load refinement). Review the mesocycle to swap exercises or tune loads.'
-                      : 'Add or refine sessions from the Workouts tab — generate with AI, then review and save, or edit workouts directly.'}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {planLib.libraryBuiltWorkouts ? (
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => {
-                        router.push(
-                          `/clients/${clientId}/recommendations/${recommendation.id}/workouts-review`
-                        );
-                      }}
-                    >
-                      Review mesocycle workouts
-                    </Button>
-                  ) : null}
-                  <Button
-                    size="sm"
-                    variant={
-                      planLib.libraryBuiltWorkouts ? 'outline' : 'default'
+                <Link
+                  href={
+                    generating
+                      ? '#'
+                      : `/clients/${clientId}/recommendations/${recommendation.id}`
+                  }
+                  className={
+                    generating
+                      ? 'pointer-events-none opacity-50 cursor-not-allowed'
+                      : ''
+                  }
+                  onClick={(e) => {
+                    if (generating) {
+                      e.preventDefault();
                     }
-                    onClick={() => {
-                      router.push(`/clients/${clientId}?tab=workouts`);
-                    }}
-                  >
-                    Open Workouts tab
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      router.push(
-                        `/clients/${clientId}/recommendations/${recommendation.id}`
-                      );
-                    }}
-                  >
-                    Plan details
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
-            <Link
-              href={
-                generating
-                  ? '#'
-                  : `/clients/${clientId}/recommendations/${recommendation.id}`
-              }
-              className={
-                generating
-                  ? 'pointer-events-none opacity-50 cursor-not-allowed'
-                  : ''
-              }
-              onClick={(e) => {
-                if (generating) {
-                  e.preventDefault();
-                }
-              }}
-            >
-              <Card className="transition-colors cursor-pointer hover:bg-muted">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold mb-1">
-                        {recommendation.client_type}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {recommendation.sessions_per_week} sessions/week •{' '}
-                        {recommendation.session_length_minutes} min/session
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {recommendation.training_style}
-                      </p>
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        Generate sessions from the Workouts tab (or below), then
-                        review and save.
-                      </p>
-                    </div>
-                    <Badge>{recommendation.status}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-            <GenerateWorkoutsPanel
-              clientId={clientId}
-              recommendation={recommendation}
-              onSaved={async () => {
-                await refreshWorkoutsForLock();
-                await onRefresh?.();
-              }}
-            />
-          </div>
-        )}
-      </>
+                  }}
+                >
+                  <Card className="transition-colors cursor-pointer hover:bg-muted">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold mb-1">
+                            {recommendation.client_type}
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {recommendation.sessions_per_week} sessions/week •{' '}
+                            {recommendation.session_length_minutes} min/session
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {recommendation.training_style}
+                          </p>
+                          <p className="mt-3 text-xs text-muted-foreground">
+                            Generate sessions from the Workouts tab (or below),
+                            then review and save.
+                          </p>
+                        </div>
+                        <Badge>{recommendation.status}</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+                <GenerateWorkoutsPanel
+                  clientId={clientId}
+                  recommendation={recommendation}
+                  onSaved={async () => {
+                    await refreshWorkoutsForLock();
+                    await onRefresh?.();
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
       </CardContent>
       <PlanTemplateDetailDialog

@@ -182,9 +182,7 @@ export function InBodyScansSection({
     <>
       <Card
         id="inbody-scans-section"
-        className={cn(
-          embedded && 'border-0 bg-muted/15 shadow-none'
-        )}
+        className={cn(embedded && 'border-0 bg-muted/15 shadow-none')}
       >
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           {!embedded ? (

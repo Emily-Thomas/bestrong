@@ -124,7 +124,9 @@ export default function EditWorkoutPage() {
           <Card className="shadow-md">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading workout...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading workout...
+              </p>
             </CardContent>
           </Card>
         </AppShell>

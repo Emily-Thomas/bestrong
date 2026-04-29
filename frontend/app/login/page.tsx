@@ -1,8 +1,16 @@
 'use client';
 
+import {
+  Brain,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
+  Users,
+  Zap,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import Image from 'next/image';
+import { MiloMark, MiloWordmark } from '@/components/MiloLogoMark';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,15 +25,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/contexts/AuthContext';
-import { MiloLogoMark } from '@/components/MiloLogoMark';
-import { 
-  Zap, 
-  Brain, 
-  Users, 
-  TrendingUp, 
-  Clock, 
-  CheckCircle2 
-} from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -53,7 +52,8 @@ export default function LoginPage() {
     {
       icon: Brain,
       title: 'AI-Powered Programming',
-      description: 'Smart workout generation that adapts to your coaching style and client needs',
+      description:
+        'Smart workout generation that adapts to your coaching style and client needs',
     },
     {
       icon: Clock,
@@ -63,12 +63,14 @@ export default function LoginPage() {
     {
       icon: Users,
       title: 'Scale Your Impact',
-      description: 'Manage 10-100+ clients without sacrificing quality or personalization',
+      description:
+        'Manage 10-100+ clients without sacrificing quality or personalization',
     },
     {
       icon: TrendingUp,
       title: 'Track Progress',
-      description: 'InBody integration, workout logging, and performance analytics',
+      description:
+        'InBody integration, workout logging, and performance analytics',
     },
   ];
 
@@ -84,25 +86,20 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-amber-200/20 bg-gradient-to-b from-amber-50/50 to-card/90 backdrop-blur-md dark:from-amber-950/20 dark:to-card/90 dark:border-amber-900/20">
+      <header className="sticky top-0 z-50 border-b border-milo-collar/20 bg-gradient-to-b from-milo-collar/10 to-card/90 backdrop-blur-md dark:from-milo-collar/15 dark:to-card/90 dark:border-milo-collar/20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 sm:min-h-[4.5rem] items-center justify-between gap-4 py-2">
             <a
               href="#login"
-              className="flex min-w-0 items-center gap-3 sm:gap-4 rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-w-0 items-center gap-2 sm:gap-3 rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Milo, AI training companion. Go to sign in"
             >
-              <MiloLogoMark size="header" withAlt={false} />
-              <div className="min-w-0 text-left">
-                <div
-                  className="text-lg font-bold leading-tight sm:text-2xl"
-                  style={{ fontFamily: 'var(--font-display)' }}
-                >
-                  Milo
-                </div>
-                <div className="text-xs text-muted-foreground sm:text-sm">
-                  AI Training Companion
-                </div>
-              </div>
+              <MiloWordmark
+                withAlt={false}
+                heightClass="h-7 sm:h-9"
+                className="max-w-[min(100%,12rem)] sm:max-w-[16rem]"
+                priority
+              />
             </a>
             <Button variant="ghost" size="sm" asChild>
               <a href="#login">Sign In</a>
@@ -120,18 +117,19 @@ export default function LoginPage() {
               <Zap className="h-4 w-4" />
               Your loyal programming companion
             </div>
-            
-            <h1 
+
+            <h1
               className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight"
               style={{ fontFamily: 'var(--font-display)' }}
             >
               Smart programming for coaches who{' '}
               <span className="text-primary">care</span>
             </h1>
-            
+
             <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed">
-              Build personalized training plans faster, without losing your coaching touch. 
-              Milo handles the heavy lifting so you can focus on what matters—your clients.
+              Build personalized training plans faster, without losing your
+              coaching touch. Milo handles the heavy lifting so you can focus on
+              what matters—your clients.
             </p>
 
             <div className="flex flex-wrap gap-4">
@@ -147,15 +145,21 @@ export default function LoginPage() {
             <div className="grid grid-cols-3 gap-6 pt-8 border-t border-border/40">
               <div>
                 <div className="text-3xl font-bold text-primary">10x</div>
-                <div className="text-sm text-muted-foreground">Faster Programming</div>
+                <div className="text-sm text-muted-foreground">
+                  Faster Programming
+                </div>
               </div>
               <div>
                 <div className="text-3xl font-bold text-primary">100+</div>
-                <div className="text-sm text-muted-foreground">Coaches Trust Milo</div>
+                <div className="text-sm text-muted-foreground">
+                  Coaches Trust Milo
+                </div>
               </div>
               <div>
                 <div className="text-3xl font-bold text-primary">1000+</div>
-                <div className="text-sm text-muted-foreground">Programs Generated</div>
+                <div className="text-sm text-muted-foreground">
+                  Programs Generated
+                </div>
               </div>
             </div>
           </div>
@@ -165,9 +169,7 @@ export default function LoginPage() {
             <Card className="shadow-2xl border-border/50">
               <CardHeader>
                 <CardTitle>Welcome back</CardTitle>
-                <CardDescription>
-                  Sign in to your Milo account
-                </CardDescription>
+                <CardDescription>Sign in to your Milo account</CardDescription>
               </CardHeader>
               <CardContent>
                 <form id="login-form" onSubmit={handleSubmit}>
@@ -223,7 +225,8 @@ export default function LoginPage() {
                   )}
                 </Button>
                 <p className="text-xs text-center text-muted-foreground mt-4">
-                  By signing in, you agree to our Terms of Service and Privacy Policy
+                  By signing in, you agree to our Terms of Service and Privacy
+                  Policy
                 </p>
               </CardFooter>
             </Card>
@@ -236,8 +239,13 @@ export default function LoginPage() {
                   Try Milo with these credentials:
                 </p>
                 <div className="space-y-1 text-xs font-mono bg-background/50 p-3 rounded-md">
-                  <div>Email: <span className="text-primary">matt@bestrong.com</span></div>
-                  <div>Password: <span className="text-primary">bestrong</span></div>
+                  <div>
+                    Email:{' '}
+                    <span className="text-primary">matt@bestrong.com</span>
+                  </div>
+                  <div>
+                    Password: <span className="text-primary">bestrong</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -248,20 +256,24 @@ export default function LoginPage() {
       {/* Features Section */}
       <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-border/40">
         <div className="text-center mb-16">
-          <h2 
+          <h2
             className="text-3xl sm:text-4xl font-bold mb-4"
             style={{ fontFamily: 'var(--font-display)' }}
           >
             Built for busy coaches
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Everything you need to create world-class training programs without the busywork
+            Everything you need to create world-class training programs without
+            the busywork
           </p>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature) => (
-            <Card key={feature.title} className="border-border/50 hover:shadow-lg transition-shadow">
+            <Card
+              key={feature.title}
+              className="border-border/50 hover:shadow-lg transition-shadow"
+            >
               <CardContent className="pt-6">
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <feature.icon className="h-6 w-6 text-primary" />
@@ -280,15 +292,16 @@ export default function LoginPage() {
       <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-border/40">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 
+            <h2
               className="text-3xl sm:text-4xl font-bold mb-6"
               style={{ fontFamily: 'var(--font-display)' }}
             >
               Everything you need, nothing you don't
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Milo is purpose-built for personal trainers and coaches who want to scale 
-              their impact without sacrificing the personal touch that makes their coaching special.
+              Milo is purpose-built for personal trainers and coaches who want
+              to scale their impact without sacrificing the personal touch that
+              makes their coaching special.
             </p>
             <div className="grid gap-4">
               {benefits.map((benefit) => (
@@ -299,15 +312,13 @@ export default function LoginPage() {
               ))}
             </div>
           </div>
-          
+
           <div className="relative">
-            <div className="aspect-square rounded-2xl bg-gradient-to-br from-primary/20 via-accent/10 to-primary/5 p-8 flex items-center justify-center">
-              <Image 
-                src="/milo-logo-gold.png" 
-                alt="Milo mascot" 
-                width={300} 
-                height={300}
-                className="opacity-60"
+            <div className="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 via-accent/10 to-primary/5 p-6 sm:p-8">
+              <MiloMark
+                size="lg"
+                withAlt
+                className="h-36 w-36 sm:h-40 sm:w-40 opacity-90"
               />
             </div>
           </div>
@@ -317,7 +328,7 @@ export default function LoginPage() {
       {/* CTA Section */}
       <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-border/40">
         <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-12 text-center text-primary-foreground">
-          <h2 
+          <h2
             className="text-3xl sm:text-4xl font-bold mb-4"
             style={{ fontFamily: 'var(--font-display)' }}
           >
@@ -335,14 +346,13 @@ export default function LoginPage() {
       {/* Footer */}
       <footer className="border-t border-border/40 py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <MiloLogoMark size="md" />
-              <span className="font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                Milo
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <MiloWordmark
+              withAlt={false}
+              heightClass="h-6 sm:h-7"
+              className="max-w-[10rem] sm:max-w-[12rem]"
+            />
+            <p className="text-sm text-muted-foreground text-center md:text-left">
               © 2026 Milo. Your loyal AI training companion.
             </p>
           </div>

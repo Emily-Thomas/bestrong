@@ -88,9 +88,9 @@ export function ClientSetupWorkspace({
                 {showWelcomeBanner ? 'Welcome — intake' : 'Intake'}
               </CardTitle>
               <CardDescription>
-                Complete the questionnaire and upload an InBody scan. Review
-                and verify the scan when extraction finishes — then this page
-                moves on to coach &amp; training plan.
+                Complete the questionnaire and upload an InBody scan. Review and
+                verify the scan when extraction finishes — then this page moves
+                on to coach &amp; training plan.
               </CardDescription>
             </div>
             {showWelcomeBanner && (
@@ -110,10 +110,10 @@ export function ClientSetupWorkspace({
 
         <CardContent className="space-y-4 pt-0">
           {hasScan === true && hasVerifiedScan === false && (
-            <Alert className="border-amber-500/40 bg-amber-500/[0.06]">
+            <Alert variant="warning">
               <AlertDescription className="text-sm">
-                You have a scan waiting — open it below and verify the
-                extracted data to continue.
+                You have a scan waiting — open it below and verify the extracted
+                data to continue.
               </AlertDescription>
             </Alert>
           )}
@@ -124,7 +124,10 @@ export function ClientSetupWorkspace({
             defaultValue={intakeDefaultOpen}
             className="w-full rounded-lg border border-border/70 bg-muted/15"
           >
-            <AccordionItem value="questionnaire" className="border-border/60 px-2">
+            <AccordionItem
+              value="questionnaire"
+              className="border-border/60 px-2"
+            >
               <AccordionTrigger className="py-3 hover:no-underline">
                 <span className="flex items-center gap-2 text-left">
                   <StepStatus done={intakeDone} />
@@ -193,8 +196,8 @@ export function ClientSetupWorkspace({
       id="client-setup-workspace"
       className="space-y-4 animate-in fade-in duration-300"
     >
-      <Alert className="border-emerald-500/35 bg-emerald-500/[0.06]">
-        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+      <Alert variant="success">
+        <CheckCircle2 className="h-4 w-4" />
         <AlertDescription>
           Intake is complete. Pick a coach and lock in the initial plan — then
           use the Workouts tab to build sessions.
@@ -211,7 +214,9 @@ export function ClientSetupWorkspace({
         <CardHeader className="space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="space-y-1">
-              <CardTitle className="text-base">Coach &amp; training plan</CardTitle>
+              <CardTitle className="text-base">
+                Coach &amp; training plan
+              </CardTitle>
               <CardDescription>
                 Compare trainer personas if you like, then generate and lock the
                 recommendation your client will start from.
