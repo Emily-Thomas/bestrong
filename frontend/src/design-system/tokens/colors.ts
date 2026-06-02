@@ -1,8 +1,9 @@
 /**
  * Scout Design System — Color Tokens
  *
- * Paper (bone) base, ink type, signal (primary action), fog neutrals, collar (terracotta warmth)
- * @see `frontend/app/globals.css` for CSS variable wiring and dark theme
+ * Dark-first product UI: ink surfaces, bone type, signal (primary action), fog neutrals, collar (terracotta warmth).
+ * Literal `core` / `neutral` hex values are brand constants (signal-on-ink CTAs).
+ * @see `frontend/app/globals.css` for semantic token wiring
  */
 
 export const colors = {
@@ -22,7 +23,6 @@ export const colors = {
     fog1: '#E5E5E1',
     fog2: '#CFCFCA',
     fog3: '#9A9A95',
-    /** Same value as `fog` — use for type hierarchy */
     inkMute: '#6E6E75',
     inkSoft: '#2E2E33',
     ink: '#141416',
@@ -34,8 +34,17 @@ export const colors = {
     success: '#2E8B57',
     info: '#3B6EA8',
     danger: '#D64545',
-    /** Caution: attention without irreversible action */
     warning: '#B8860B',
+  },
+
+  /** Dark-first surface mapping (CSS variables in globals.css) */
+  surfaces: {
+    background: '#141416',
+    foreground: '#F8F8F5',
+    card: '#2E2E33',
+    muted: '#2E2E33',
+    mutedForeground: '#9A9A95',
+    border: 'color-mix(in srgb, #F8F8F5 12%, transparent)',
   },
 } as const;
 
@@ -43,7 +52,7 @@ export const colors = {
 export const chartColors = {
   1: '#D4FB3C',
   2: '#E07856',
-  3: '#3B6EA8',
-  4: '#2E8B57',
+  3: '#5B8CCE',
+  4: '#3CB87A',
   5: '#9A9A95',
 } as const;

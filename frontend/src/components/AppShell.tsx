@@ -46,10 +46,9 @@ function NavLinkList({ pathname, onNavigate, className }: NavLinkListProps) {
               className={cn(
                 'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                 'outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                'dark:focus-visible:ring-offset-scout-ink',
                 active
-                  ? 'bg-primary/[0.14] font-semibold text-foreground dark:bg-primary/20'
-                  : 'text-scout-ink-mute hover:bg-scout-bone-deep/90 hover:text-foreground dark:text-scout-fog-2 dark:hover:bg-scout-ink-soft/50 dark:hover:text-scout-bone'
+                  ? 'bg-primary/20 font-semibold text-foreground'
+                  : 'text-muted-foreground hover:bg-sidebar-accent/80 hover:text-foreground'
               )}
             >
               {active ? (
@@ -64,7 +63,7 @@ function NavLinkList({ pathname, onNavigate, className }: NavLinkListProps) {
                     'h-4 w-4 shrink-0 transition-transform duration-200',
                     active
                       ? 'text-foreground'
-                      : 'text-scout-fog-3 group-hover:text-foreground/90 dark:text-scout-fog-3 dark:group-hover:text-scout-bone'
+                      : 'text-scout-fog-3 group-hover:text-foreground/90'
                   )}
                 />
               </span>
@@ -89,19 +88,19 @@ function UserPanel({
   return (
     <div
       className={cn(
-        'rounded-xl border border-scout-fog-1 bg-scout-bone-deep/70 p-3 shadow-sm dark:border-white/10 dark:bg-scout-ink-soft/60',
+        'rounded-xl border border-border bg-sidebar-accent/60 p-3 shadow-sm',
         className
       )}
     >
       <p className="text-sm font-semibold leading-snug text-foreground">
         {user?.name || user?.email || 'Coach'}
       </p>
-      <p className="text-xs text-scout-ink-mute dark:text-scout-fog-3">Admin</p>
+      <p className="text-xs text-muted-foreground">Admin</p>
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        className="mt-2 h-8 w-full justify-start px-2 text-scout-ink-mute hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/15"
+        className="mt-2 h-8 w-full justify-start px-2 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
         onClick={onLogout}
       >
         <LogOut className="mr-2 h-3.5 w-3.5" />
@@ -126,8 +125,7 @@ function BrandLockup({
       onClick={onNavigate}
       className={cn(
         'group flex min-w-0 items-center gap-2 rounded-xl outline-offset-2 transition-opacity hover:opacity-95',
-        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-        'dark:focus-visible:ring-offset-scout-ink',
+        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         className
       )}
     >
@@ -177,23 +175,16 @@ export function AppShell({
   const hasPageHeader = Boolean(title || description || action || backAction);
 
   return (
-    <div
-      className={cn(
-        'flex w-full min-h-0 h-[100dvh] max-h-[100dvh] flex-row overflow-hidden',
-        'bg-scout-bone text-foreground dark:bg-scout-ink'
-      )}
-    >
-      {/* —— Desktop sidebar: viewport-tall; nav scrolls; profile + logout stay at bottom —— */}
+    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full flex-row overflow-hidden bg-background text-foreground">
+      {/* Desktop sidebar */}
       <aside
         className={cn(
           'hidden h-full min-h-0 w-[17.5rem] shrink-0 flex-col',
-          'border-r border-scout-fog-1 bg-scout-bone-soft',
-          'shadow-[2px_0_24px_-4px_hsl(240_6%_8%/0.08)]',
-          'dark:border-scout-ink-soft/40 dark:bg-scout-ink',
+          'border-r border-sidebar-border bg-sidebar shadow-lg',
           'lg:flex'
         )}
       >
-        <div className="shrink-0 border-b border-scout-fog-1 px-4 py-5 dark:border-scout-ink-soft/30">
+        <div className="shrink-0 border-b border-sidebar-border px-4 py-5">
           <BrandLockup />
         </div>
 
@@ -204,33 +195,25 @@ export function AppShell({
           <NavLinkList pathname={pathname} />
         </nav>
 
-        <div className="shrink-0 border-t border-scout-fog-1 bg-scout-bone-soft p-3 dark:border-scout-ink-soft/30">
+        <div className="shrink-0 border-t border-sidebar-border bg-sidebar p-3">
           <UserPanel user={user} onLogout={handleLogout} />
         </div>
       </aside>
 
-      {/* —— Main column (scrolls) —— */}
-      <div
-        className={cn(
-          'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-          'bg-scout-bone/80',
-          'dark:bg-gradient-to-b dark:from-scout-ink dark:to-scout-ink-soft/80'
-        )}
-      >
-        {/* Top bar: mobile (menu, brand, logout) */}
+      {/* Main column */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gradient-to-b from-background to-scout-ink-soft/80">
         <header
           className={cn(
             'grid shrink-0 grid-cols-[2.5rem,1fr,2.5rem] items-center gap-1',
-            'border-b border-scout-fog-1 bg-scout-bone-soft/90 px-2 py-2.5 backdrop-blur-md',
-            'pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden',
-            'dark:border-scout-ink-soft/40 dark:bg-scout-ink/90'
+            'border-b border-border bg-background/90 px-2 py-2.5 backdrop-blur-md',
+            'pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden'
           )}
         >
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 text-scout-ink hover:bg-scout-bone-deep/80 dark:text-scout-bone"
+            className="h-9 w-9 text-foreground hover:bg-sidebar-accent"
             onClick={() => {
               setMobileOpen(true);
             }}
@@ -238,7 +221,7 @@ export function AppShell({
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="min-w-0 flex justify-center">
+          <div className="flex min-w-0 justify-center">
             <BrandLockup className="gap-2" compact />
           </div>
           <div className="flex justify-end">
@@ -246,7 +229,7 @@ export function AppShell({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-scout-ink-mute hover:text-foreground"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
               onClick={handleLogout}
               aria-label="Log out"
             >
@@ -258,23 +241,17 @@ export function AppShell({
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-6 lg:px-10 lg:py-8">
           <div className="mx-auto w-full max-w-7xl">
             {hasPageHeader && (
-              <div
-                className={cn(
-                  'mb-6 sm:mb-8',
-                  'border-b border-scout-fog-1/70 pb-6',
-                  'dark:border-scout-ink-soft/25'
-                )}
-              >
+              <div className="mb-6 border-b border-border/70 pb-6 sm:mb-8">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0 flex-1 space-y-1">
                     {backAction && <div>{backAction}</div>}
                     {title && (
-                      <h1 className="text-2xl font-semibold leading-tight tracking-tight text-scout-ink sm:text-3xl dark:text-scout-bone">
+                      <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
                         {title}
                       </h1>
                     )}
                     {description && (
-                      <p className="text-sm text-scout-ink-mute dark:text-scout-fog-2">
+                      <p className="text-sm text-muted-foreground">
                         {description}
                       </p>
                     )}
@@ -294,13 +271,9 @@ export function AppShell({
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="left"
-          className={cn(
-            'h-dvh w-[min(100%,20rem)] border-scout-fog-1 p-0 sm:max-w-sm',
-            'bg-scout-bone-soft dark:border-scout-ink-soft/40 dark:bg-scout-ink',
-            'flex min-h-0 max-h-dvh flex-col'
-          )}
+          className="flex h-dvh max-h-dvh min-h-0 w-[min(100%,20rem)] flex-col border-border bg-sidebar p-0 sm:max-w-sm"
         >
-          <div className="shrink-0 border-b border-scout-fog-1 px-4 py-4 dark:border-scout-ink-soft/30">
+          <div className="shrink-0 border-b border-sidebar-border px-4 py-4">
             <SheetTitle className="sr-only">Main menu</SheetTitle>
             <BrandLockup onNavigate={closeMenu} />
           </div>
@@ -310,7 +283,7 @@ export function AppShell({
           >
             <NavLinkList pathname={pathname} onNavigate={closeMenu} />
           </nav>
-          <div className="shrink-0 border-t border-scout-fog-1 bg-scout-bone-soft p-3 dark:border-scout-ink-soft/30">
+          <div className="shrink-0 border-t border-sidebar-border bg-sidebar p-3">
             <UserPanel user={user} onLogout={handleLogout} />
           </div>
         </SheetContent>

@@ -575,7 +575,7 @@ export default function WorkoutExecutionPage() {
 
           {surveyResponse ? (
             <details
-              className="group overflow-hidden rounded-xl border border-scout-info/25 bg-scout-info/[0.06] dark:bg-scout-info/15"
+              className="group overflow-hidden rounded-xl border border-scout-info/25 bg-scout-info/15"
               aria-label="Pre-workout check-in summary"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">

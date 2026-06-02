@@ -86,7 +86,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-scout-collar/20 bg-gradient-to-b from-scout-collar/10 to-card/90 backdrop-blur-md dark:from-scout-collar/15 dark:to-card/90 dark:border-scout-collar/20">
+      <header className="sticky top-0 z-50 border-b border-scout-collar/20 bg-gradient-to-b from-scout-collar/15 to-card/90 backdrop-blur-md">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 sm:min-h-[4.5rem] items-center justify-between gap-4 py-2">
             <a

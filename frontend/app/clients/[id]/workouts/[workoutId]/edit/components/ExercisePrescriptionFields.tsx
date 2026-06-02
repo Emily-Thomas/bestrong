@@ -15,6 +15,50 @@ import { cn } from '@/lib/utils';
 import type { Exercise } from '@/lib/api';
 import { touchActionClass } from '@/lib/touch-targets';
 
+function parseOptionalNonNegativeInt(raw: string): number | undefined {
+  const trimmed = raw.trim();
+  if (trimmed === '') return undefined;
+  const parsed = parseInt(trimmed, 10);
+  return Number.isNaN(parsed) ? undefined : Math.max(0, parsed);
+}
+
+function parseOptionalRir(raw: string): number | undefined {
+  const parsed = parseOptionalNonNegativeInt(raw);
+  if (parsed === undefined) return undefined;
+  return Math.min(5, parsed);
+}
+
+function formatOptionalInt(value: number | undefined): string {
+  return value !== undefined ? String(value) : '';
+}
+
+interface OptionalNumericInputProps {
+  id: string;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+  placeholder?: string;
+  parse?: (raw: string) => number | undefined;
+}
+
+function OptionalNumericInput({
+  id,
+  value,
+  onChange,
+  placeholder,
+  parse = parseOptionalNonNegativeInt,
+}: OptionalNumericInputProps) {
+  return (
+    <Input
+      id={id}
+      type="text"
+      inputMode="numeric"
+      value={formatOptionalInt(value)}
+      onChange={(e) => onChange(parse(e.target.value))}
+      placeholder={placeholder}
+    />
+  );
+}
+
 function hasAdvancedPrescription(exercise: Exercise): boolean {
   return Boolean(
     exercise.weight?.trim() ||
@@ -48,16 +92,11 @@ export function ExercisePrescriptionFields({
     <>
       <div className="space-y-2">
         <Label htmlFor={`sets-${index}`}>Sets</Label>
-        <Input
+        <OptionalNumericInput
           id={`sets-${index}`}
-          type="number"
-          min={0}
-          value={exercise.sets ?? ''}
-          onChange={(e) =>
-            onChange({
-              sets: e.target.value ? parseInt(e.target.value, 10) : undefined,
-            })
-          }
+          value={exercise.sets}
+          onChange={(sets) => onChange({ sets })}
+          placeholder="—"
         />
       </div>
       <div className="space-y-2">
@@ -75,18 +114,11 @@ export function ExercisePrescriptionFields({
       </div>
       <div className="space-y-2">
         <Label htmlFor={`rest-${index}`}>Rest (seconds)</Label>
-        <Input
+        <OptionalNumericInput
           id={`rest-${index}`}
-          type="number"
-          min={0}
-          value={exercise.rest_seconds ?? ''}
-          onChange={(e) =>
-            onChange({
-              rest_seconds: e.target.value
-                ? parseInt(e.target.value, 10)
-                : undefined,
-            })
-          }
+          value={exercise.rest_seconds}
+          onChange={(rest_seconds) => onChange({ rest_seconds })}
+          placeholder="—"
         />
       </div>
     </>
@@ -114,17 +146,12 @@ export function ExercisePrescriptionFields({
       </div>
       <div className="space-y-2">
         <Label htmlFor={`rir-${index}`}>RIR (0-5)</Label>
-        <Input
+        <OptionalNumericInput
           id={`rir-${index}`}
-          type="number"
-          min={0}
-          max={5}
-          value={exercise.rir !== undefined ? exercise.rir : ''}
-          onChange={(e) =>
-            onChange({
-              rir: e.target.value ? parseInt(e.target.value, 10) : undefined,
-            })
-          }
+          value={exercise.rir}
+          onChange={(rir) => onChange({ rir })}
+          parse={parseOptionalRir}
+          placeholder="—"
         />
       </div>
       <div className="space-y-2 sm:col-span-2">

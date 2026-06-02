@@ -9,10 +9,13 @@ export function exerciseFromLibrary(
     library_exercise_id: lib.id,
     library_exercise_name: lib.name,
     is_custom: false,
-    sets: prev.sets ?? lib.default_sets ?? 3,
+    sets: 'sets' in prev ? prev.sets : lib.default_sets ?? undefined,
     reps:
-      prev.reps ??
-      (lib.default_reps != null ? String(lib.default_reps) : '8-10'),
+      'reps' in prev
+        ? prev.reps
+        : lib.default_reps != null
+          ? String(lib.default_reps)
+          : undefined,
     weight: prev.weight ?? lib.default_load ?? undefined,
     rest_seconds: prev.rest_seconds ?? lib.default_rest_seconds ?? undefined,
     tempo: prev.tempo ?? lib.default_tempo ?? undefined,

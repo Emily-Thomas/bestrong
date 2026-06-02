@@ -111,7 +111,7 @@ components:
 
 **Creative North Star: "The Floor Coach"**
 
-Scout's interface should feel like a capable colleague on the gym floor: energetic enough to keep momentum, direct enough to respect a coach's time, warm enough to feel human. The visual system is **restrained product UI** on a paper-and-ink base: bone surfaces, fog neutrals, chartreuse signal for primary action, terracotta collar for secondary warmth. Density is practical (tables, forms, client records), not marketing-sparse.
+Scout's interface should feel like a capable colleague on the gym floor: energetic enough to keep momentum, direct enough to respect a coach's time, warm enough to feel human. The visual system is **restrained product UI** on an ink-and-bone base: dark ink surfaces, fog neutrals, chartreuse signal for primary action, terracotta collar for secondary warmth. Density is practical (tables, forms, client records), not marketing-sparse.
 
 This system explicitly rejects generic B2B SaaS (navy-purple gradients, hero-metric dashboards, identical icon-card grids) and obvious AI UI grammar (gradient text, glass cards, uppercase eyebrows on every section). Familiarity matters: buttons, inputs, and navigation should match what coaches expect from serious tools (Linear, Notion, Stripe-class polish), with Scout's accent used sparingly so signal stays meaningful.
 
@@ -126,7 +126,7 @@ This system explicitly rejects generic B2B SaaS (navy-purple gradients, hero-met
 
 ## Colors
 
-The palette reads as **paper, ink, and two accents**: chartreuse for "go" and terracotta for human warmth.
+The palette reads as **ink, bone type, and two accents**: chartreuse for "go" and terracotta for human warmth. The app ships **dark-first**: ink background, ink-soft cards, bone foreground, 12% bone-mix borders.
 
 ### Primary
 
@@ -143,13 +143,12 @@ The palette reads as **paper, ink, and two accents**: chartreuse for "go" and te
 
 ### Neutral
 
-- **Bone Soft** (#FFFFFF): Card and popover surfaces on bone background.
-- **Bone** (#F8F8F5): App background, sidebar base (light).
-- **Bone Deep** (#EEEEE8): Secondary fills, muted areas, nav hover (light).
-- **Fog 1–3** (#E5E5E1 → #9A9A95): Borders, dividers, disabled chrome, chart muted series.
-- **Ink Mute** (#6E6E75): Secondary text, placeholders (verify 4.5:1 on bone; bump toward ink-soft if borderline).
-- **Ink Soft** (#2E2E33): Strong secondary headings, dark-mode elevated surfaces.
-- **Ink** (#141416): Primary text, primary button label on signal.
+- **Ink** (#141416): App background, sidebar base (dark-first default).
+- **Ink Soft** (#2E2E33): Card and popover surfaces, secondary fills, nav hover.
+- **Bone** (#F8F8F5): Primary text on dark surfaces.
+- **Bone Soft / Bone Deep** (#FFFFFF / #EEEEE8): Light-mode legacy surfaces; destructive button text on dark.
+- **Fog 1–3** (#E5E5E1 → #9A9A95): Borders (light legacy), muted text (#9A9A95 on dark), chart muted series.
+- **Ink Mute** (#6E6E75): Secondary text on light surfaces; on dark use fog-3 for muted foreground.
 
 ### Semantic
 
@@ -186,9 +185,9 @@ The palette reads as **paper, ink, and two accents**: chartreuse for "go" and te
 
 ## Elevation
 
-Surfaces are **flat by default** on bone. Depth comes from subtle **ink-tinted shadows** (`--ink-shadow`: hsl(240 5% 6%)) and tonal steps (bone → bone-soft → bone-deep), not heavy drop shadows or glass blur.
+Surfaces are **flat by default** on ink. Depth comes from subtle **ink-tinted shadows** and tonal steps (ink → ink-soft), not heavy drop shadows or glass blur.
 
-Cards use `shadow-sm` at rest; hover on primary buttons may use `shadow` without scaling layout. Modals and sheets step up to `shadow-lg` / `shadow-xl`. Dark mode uses ink/ink-soft surfaces with low-contrast borders (12% bone mix), not inverted cream.
+Cards use `shadow-sm` at rest; hover on primary buttons may use `shadow` without scaling layout. Modals and sheets step up to `shadow-lg` / `shadow-xl`. Borders use low-contrast bone mix (12%), not inverted cream.
 
 ### Shadow Vocabulary
 
@@ -223,7 +222,7 @@ Product chrome built on shadcn/ui + Radix. Default radius **10px** (`--radius: 0
 ### Cards / Containers
 
 - **Corner Style:** 12px (`rounded-xl`).
-- **Background:** Bone-soft (`bg-card`) on bone page.
+- **Background:** Ink-soft (`bg-card`) on ink page.
 - **Shadow Strategy:** `shadow-sm` at rest; avoid nested cards.
 - **Border:** 1px fog-1 (`border`).
 - **Internal Padding:** 24px horizontal (`px-6`), 24px vertical block (`py-6`).
@@ -237,7 +236,7 @@ Product chrome built on shadcn/ui + Radix. Default radius **10px** (`--radius: 0
 
 ### Navigation
 
-- **App shell:** Sidebar on bone; nav links `rounded-xl`, 14px medium. Active: signal tint background (~14%), semibold text, **left signal bar** (4px × 28px) as wayfinding (not a card side-stripe).
+- **App shell:** Sidebar on ink; nav links `rounded-xl`, 14px medium. Active: signal tint background (~20%), semibold text, **left signal bar** (4px × 28px) as wayfinding (not a card side-stripe).
 - **Focus:** 2px signal ring with offset.
 - **Mobile:** Sheet drawer with same nav list; Scout wordmark uses display font.
 

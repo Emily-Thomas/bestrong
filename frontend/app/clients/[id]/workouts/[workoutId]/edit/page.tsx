@@ -51,6 +51,7 @@ import {
   WORKOUT_EXERCISE_ROW_GRID,
 } from './lib/edit-ui-classes';
 import { exerciseFromLibrary } from './lib/exercise-from-library';
+import { mergeExerciseUpdates } from './lib/merge-exercise-updates';
 
 type PickerTarget = { type: 'new' } | { type: 'replace'; index: number };
 
@@ -170,7 +171,7 @@ export default function EditWorkoutPage() {
       setWorkoutData((prev) => {
         if (!prev) return prev;
         const newExercises = [...prev.exercises];
-        newExercises[index] = { ...newExercises[index], ...updates };
+        newExercises[index] = mergeExerciseUpdates(newExercises[index], updates);
         return { ...prev, exercises: newExercises };
       });
       bumpEdit();
@@ -212,8 +213,6 @@ export default function EditWorkoutPage() {
       if (!prev) return prev;
       const newExercise: Exercise = {
         name: '',
-        sets: 3,
-        reps: '8-10',
         is_custom: true,
       };
       return {

@@ -18,9 +18,9 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-lg text-gray-600">Loading...</div>
+          <div className="text-lg text-muted-foreground">Loading...</div>
         </div>
       </div>
     );

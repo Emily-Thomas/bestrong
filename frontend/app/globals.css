@@ -7,11 +7,14 @@
 @custom-variant dark (&:is(.dark *));
 
 /**
- * Scout design tokens — paper (bone), ink, signal (chartreuse), fog neutrals, collar (terracotta)
- * `fog` and `ink-mute` are the same value (#6E6E75); ink-mute is the canonical name for type.
+ * Scout design tokens — dark-first product UI
+ * Literal `--scout-*` hex values stay fixed (signal-on-ink rule for CTAs).
+ * Semantic shadcn tokens map surfaces and type for dark mode.
  */
 :root {
-  /* Core palette (hex) */
+  color-scheme: dark;
+
+  /* Core palette (hex) — brand literals, unchanged */
   --scout-bone-soft: #ffffff;
   --scout-bone: #f8f8f5;
   --scout-bone-deep: #eeeee8;
@@ -27,103 +30,20 @@
   --scout-success: #2e8b57;
   --scout-info: #3b6ea8;
   --scout-danger: #d64545;
-  /* Caution: reversible / attention — not destructive */
   --scout-warning: #b8860b;
 
-  /* Slightly dimmed signal for hovers/pressed (no layout shift) */
   --scout-signal-emphasis: color-mix(
     in srgb,
     var(--scout-signal) 90%,
     var(--scout-ink) 10%
   );
 
-  /* Legacy — map to the new system */
   --brand-primary: var(--scout-signal);
   --brand-primary-dark: var(--scout-signal-emphasis);
   --brand-companion: var(--scout-collar);
   --brand-accent: var(--scout-collar);
 
-  /* shadcn semantic (light) */
-  --background: var(--scout-bone);
-  --foreground: var(--scout-ink);
-  --card: var(--scout-bone-soft);
-  --card-foreground: var(--scout-ink);
-  --popover: var(--scout-bone-soft);
-  --popover-foreground: var(--scout-ink);
-  --primary: var(--scout-signal);
-  --primary-foreground: var(--scout-ink);
-  --secondary: var(--scout-bone-deep);
-  --secondary-foreground: var(--scout-ink);
-  --muted: var(--scout-bone-deep);
-  --muted-foreground: var(--scout-ink-mute);
-  --accent: var(--scout-collar);
-  /* Ink on terracotta meets contrast for controls better than white */
-  --accent-foreground: var(--scout-ink);
-  --destructive: var(--scout-danger);
-  --destructive-foreground: var(--scout-bone-soft);
-  --border: var(--scout-fog-1);
-  --input: var(--scout-fog-1);
-  --ring: var(--scout-signal);
-
-  --success: var(--scout-success);
-  --success-foreground: var(--scout-bone-soft);
-  --info: var(--scout-info);
-  --info-foreground: var(--scout-bone-soft);
-  --warning: var(--scout-warning);
-  --warning-foreground: var(--scout-ink);
-
-  /* Charts — aligned to core + semantic (not default blue) */
-  --chart-1: var(--scout-signal);
-  --chart-2: var(--scout-collar);
-  --chart-3: var(--scout-info);
-  --chart-4: var(--scout-success);
-  --chart-5: var(--scout-fog-3);
-
-  /* Sidebar */
-  --sidebar: var(--scout-bone);
-  --sidebar-foreground: var(--scout-ink);
-  --sidebar-primary: var(--scout-signal);
-  --sidebar-primary-foreground: var(--scout-ink);
-  --sidebar-accent: var(--scout-bone-deep);
-  --sidebar-accent-foreground: var(--scout-ink);
-  --sidebar-border: var(--scout-fog-1);
-  --sidebar-ring: var(--scout-signal);
-
-  /* Typography */
-  --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono:
-    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, "Liberation Mono", "Courier New", monospace;
-
-  /* Spacing & layout */
-  --radius: 0.625rem;
-
-  /* Elevation — neutral ink tint (replaces generic amber) */
-  --ink-shadow: 240 5% 6%;
-  --shadow-2xs: 0 0.5px 1.5px 0 hsl(var(--ink-shadow) / 0.04);
-  --shadow-xs: 0 1px 2px 0px hsl(var(--ink-shadow) / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(var(--ink-shadow) / 0.1), 0 1px 2px -1px
-    hsl(var(--ink-shadow) / 0.1);
-  --shadow:
-    0 1px 3px 0px hsl(var(--ink-shadow) / 0.1), 0 1px 2px -1px
-    hsl(var(--ink-shadow) / 0.1);
-  --shadow-md:
-    0 4px 6px -1px hsl(var(--ink-shadow) / 0.1), 0 2px 4px -2px
-    hsl(var(--ink-shadow) / 0.1);
-  --shadow-lg:
-    0 10px 15px -3px hsl(var(--ink-shadow) / 0.1), 0 4px 6px -4px
-    hsl(var(--ink-shadow) / 0.1);
-  --shadow-xl:
-    0 20px 25px -5px hsl(var(--ink-shadow) / 0.1), 0 8px 10px -6px
-    hsl(var(--ink-shadow) / 0.1);
-  --shadow-2xl: 0 25px 50px -12px hsl(var(--ink-shadow) / 0.25);
-}
-
-.dark {
-  /* Dark surfaces: ink family, not inverted bone */
+  /* shadcn semantic — dark-first */
   --background: var(--scout-ink);
   --foreground: var(--scout-bone);
   --card: var(--scout-ink-soft);
@@ -155,7 +75,7 @@
   --chart-2: var(--scout-collar);
   --chart-3: #5b8cce;
   --chart-4: #3cb87a;
-  --chart-5: #9a9a95;
+  --chart-5: var(--scout-fog-3);
 
   --sidebar: var(--scout-ink);
   --sidebar-foreground: var(--scout-bone);
@@ -165,6 +85,36 @@
   --sidebar-accent-foreground: var(--scout-bone);
   --sidebar-border: color-mix(in srgb, var(--scout-bone) 12%, transparent);
   --sidebar-ring: var(--scout-signal);
+
+  --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --radius: 0.625rem;
+
+  /* Elevation — deeper shadows on dark surfaces */
+  --ink-shadow: 240 10% 2%;
+  --shadow-2xs: 0 0.5px 1.5px 0 hsl(var(--ink-shadow) / 0.35);
+  --shadow-xs: 0 1px 2px 0px hsl(var(--ink-shadow) / 0.4);
+  --shadow-sm:
+    0 1px 3px 0px hsl(var(--ink-shadow) / 0.45),
+    0 1px 2px -1px hsl(var(--ink-shadow) / 0.35);
+  --shadow:
+    0 1px 3px 0px hsl(var(--ink-shadow) / 0.45),
+    0 1px 2px -1px hsl(var(--ink-shadow) / 0.35);
+  --shadow-md:
+    0 4px 6px -1px hsl(var(--ink-shadow) / 0.5),
+    0 2px 4px -2px hsl(var(--ink-shadow) / 0.4);
+  --shadow-lg:
+    0 10px 15px -3px hsl(var(--ink-shadow) / 0.55),
+    0 4px 6px -4px hsl(var(--ink-shadow) / 0.45);
+  --shadow-xl:
+    0 20px 25px -5px hsl(var(--ink-shadow) / 0.6),
+    0 8px 10px -6px hsl(var(--ink-shadow) / 0.5);
+  --shadow-2xl: 0 25px 50px -12px hsl(var(--ink-shadow) / 0.65);
 }
 
 @theme inline {
@@ -207,7 +157,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Explicit Scout palette (Tailwind: bg-scout-bone, text-scout-ink, etc.) */
   --color-scout-bone-soft: var(--scout-bone-soft);
   --color-scout-bone: var(--scout-bone);
   --color-scout-bone-deep: var(--scout-bone-deep);
