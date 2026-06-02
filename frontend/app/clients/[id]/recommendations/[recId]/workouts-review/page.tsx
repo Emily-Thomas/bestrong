@@ -185,7 +185,7 @@ export default function WorkoutsReviewPage() {
                 <>
                   <header className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                         <Sparkles className="h-3.5 w-3.5" />
                         Coach review
                       </span>
@@ -200,47 +200,32 @@ export default function WorkoutsReviewPage() {
                     </p>
                   </header>
 
-                  <section className="grid gap-3 sm:grid-cols-3">
-                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-md ring-1 ring-border/30 backdrop-blur-sm">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-200">
-                        <CalendarDays className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Weeks
-                        </p>
-                        <p className="text-2xl font-bold tabular-nums text-foreground">
-                          {stats.weeks}
-                        </p>
-                      </div>
+                  <dl className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:grid-cols-3 sm:gap-6">
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">
+                        Weeks
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-foreground">
+                        {stats.weeks}
+                      </dd>
                     </div>
-                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-md ring-1 ring-border/30 backdrop-blur-sm">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                        <Layers className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Sessions
-                        </p>
-                        <p className="text-2xl font-bold tabular-nums text-foreground">
-                          {stats.sessions}
-                        </p>
-                      </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">
+                        Sessions
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-foreground">
+                        {stats.sessions}
+                      </dd>
                     </div>
-                    <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/90 p-4 shadow-md ring-1 ring-border/30 backdrop-blur-sm">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                        <Dumbbell className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Exercises
-                        </p>
-                        <p className="text-2xl font-bold tabular-nums text-foreground">
-                          {stats.exercises}
-                        </p>
-                      </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">
+                        Exercises
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-foreground">
+                        {stats.exercises}
+                      </dd>
                     </div>
-                  </section>
+                  </dl>
 
                   {weekNumbers.length > 0 && selectedWeek !== null ? (
                     <MesocycleWeekRail

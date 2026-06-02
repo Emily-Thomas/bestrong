@@ -108,8 +108,8 @@ export function PlanTemplateDetailDialog({
 
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     Frequency
                   </div>
                   <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
@@ -117,8 +117,8 @@ export function PlanTemplateDetailDialog({
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5 shrink-0 text-milo-info" />
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 shrink-0 text-info" />
                     Session
                   </div>
                   <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
@@ -126,8 +126,8 @@ export function PlanTemplateDetailDialog({
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Layers className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     Phase
                   </div>
                   <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
@@ -135,8 +135,8 @@ export function PlanTemplateDetailDialog({
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/60 bg-muted/30 px-2.5 py-2">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Flame className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" />
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Flame className="h-3.5 w-3.5 shrink-0 text-warning" />
                     Intensity
                   </div>
                   <p className="mt-1 text-sm font-bold leading-tight text-foreground">
@@ -160,7 +160,7 @@ export function PlanTemplateDetailDialog({
                   </span>
                   {detail.client_type}
                 </p>
-                <p className="mt-1 text-xs font-medium uppercase tracking-wide text-primary/90">
+                <p className="mt-1 text-xs font-medium text-muted-foreground">
                   {detail.mesocycle_type}
                 </p>
               </section>

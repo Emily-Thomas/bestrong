@@ -337,7 +337,7 @@ export default function RecommendationDetailPage() {
     <ProtectedRoute>
       <AppShell
         title={recommendation.client_type}
-        description="How Milo shaped this block; workouts are built week by week"
+        description="How Scout shaped this block; workouts are built week by week"
         action={
           !editing && (
             <Button variant="outline" onClick={() => setEditing(true)}>
@@ -357,7 +357,7 @@ export default function RecommendationDetailPage() {
           Back to Client
         </Button>
 
-        <Card className="shadow-lg">
+        <Card className="shadow-sm">
           <CardHeader className="space-y-1">
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{recommendation.status}</Badge>

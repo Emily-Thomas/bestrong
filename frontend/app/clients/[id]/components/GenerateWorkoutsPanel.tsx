@@ -210,7 +210,7 @@ export function GenerateWorkoutsPanel({
     <>
       <div
         className={cn(
-          'rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-500/[0.06] to-muted/20 p-4 shadow-sm dark:from-violet-500/10',
+          'rounded-xl border border-border bg-muted/20 p-4 shadow-sm',
           className
         )}
       >

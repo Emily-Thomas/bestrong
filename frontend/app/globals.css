@@ -7,87 +7,87 @@
 @custom-variant dark (&:is(.dark *));
 
 /**
- * Milo design tokens — paper (bone), ink, signal (chartreuse), fog neutrals, collar (terracotta)
+ * Scout design tokens — paper (bone), ink, signal (chartreuse), fog neutrals, collar (terracotta)
  * `fog` and `ink-mute` are the same value (#6E6E75); ink-mute is the canonical name for type.
  */
 :root {
   /* Core palette (hex) */
-  --milo-bone-soft: #ffffff;
-  --milo-bone: #f8f8f5;
-  --milo-bone-deep: #eeeee8;
-  --milo-fog-1: #e5e5e1;
-  --milo-fog-2: #cfcfca;
-  --milo-fog-3: #9a9a95;
-  --milo-ink-mute: #6e6e75;
-  --milo-ink-soft: #2e2e33;
-  --milo-ink: #141416;
-  --milo-signal: #d4fb3c;
-  --milo-collar: #e07856;
-  --milo-fog: #6e6e75;
-  --milo-success: #2e8b57;
-  --milo-info: #3b6ea8;
-  --milo-danger: #d64545;
+  --scout-bone-soft: #ffffff;
+  --scout-bone: #f8f8f5;
+  --scout-bone-deep: #eeeee8;
+  --scout-fog-1: #e5e5e1;
+  --scout-fog-2: #cfcfca;
+  --scout-fog-3: #9a9a95;
+  --scout-ink-mute: #6e6e75;
+  --scout-ink-soft: #2e2e33;
+  --scout-ink: #141416;
+  --scout-signal: #d4fb3c;
+  --scout-collar: #e07856;
+  --scout-fog: #6e6e75;
+  --scout-success: #2e8b57;
+  --scout-info: #3b6ea8;
+  --scout-danger: #d64545;
   /* Caution: reversible / attention — not destructive */
-  --milo-warning: #b8860b;
+  --scout-warning: #b8860b;
 
   /* Slightly dimmed signal for hovers/pressed (no layout shift) */
-  --milo-signal-emphasis: color-mix(
+  --scout-signal-emphasis: color-mix(
     in srgb,
-    var(--milo-signal) 90%,
-    var(--milo-ink) 10%
+    var(--scout-signal) 90%,
+    var(--scout-ink) 10%
   );
 
   /* Legacy — map to the new system */
-  --brand-primary: var(--milo-signal);
-  --brand-primary-dark: var(--milo-signal-emphasis);
-  --brand-companion: var(--milo-collar);
-  --brand-accent: var(--milo-collar);
+  --brand-primary: var(--scout-signal);
+  --brand-primary-dark: var(--scout-signal-emphasis);
+  --brand-companion: var(--scout-collar);
+  --brand-accent: var(--scout-collar);
 
   /* shadcn semantic (light) */
-  --background: var(--milo-bone);
-  --foreground: var(--milo-ink);
-  --card: var(--milo-bone-soft);
-  --card-foreground: var(--milo-ink);
-  --popover: var(--milo-bone-soft);
-  --popover-foreground: var(--milo-ink);
-  --primary: var(--milo-signal);
-  --primary-foreground: var(--milo-ink);
-  --secondary: var(--milo-bone-deep);
-  --secondary-foreground: var(--milo-ink);
-  --muted: var(--milo-bone-deep);
-  --muted-foreground: var(--milo-ink-mute);
-  --accent: var(--milo-collar);
+  --background: var(--scout-bone);
+  --foreground: var(--scout-ink);
+  --card: var(--scout-bone-soft);
+  --card-foreground: var(--scout-ink);
+  --popover: var(--scout-bone-soft);
+  --popover-foreground: var(--scout-ink);
+  --primary: var(--scout-signal);
+  --primary-foreground: var(--scout-ink);
+  --secondary: var(--scout-bone-deep);
+  --secondary-foreground: var(--scout-ink);
+  --muted: var(--scout-bone-deep);
+  --muted-foreground: var(--scout-ink-mute);
+  --accent: var(--scout-collar);
   /* Ink on terracotta meets contrast for controls better than white */
-  --accent-foreground: var(--milo-ink);
-  --destructive: var(--milo-danger);
-  --destructive-foreground: var(--milo-bone-soft);
-  --border: var(--milo-fog-1);
-  --input: var(--milo-fog-1);
-  --ring: var(--milo-signal);
+  --accent-foreground: var(--scout-ink);
+  --destructive: var(--scout-danger);
+  --destructive-foreground: var(--scout-bone-soft);
+  --border: var(--scout-fog-1);
+  --input: var(--scout-fog-1);
+  --ring: var(--scout-signal);
 
-  --success: var(--milo-success);
-  --success-foreground: var(--milo-bone-soft);
-  --info: var(--milo-info);
-  --info-foreground: var(--milo-bone-soft);
-  --warning: var(--milo-warning);
-  --warning-foreground: var(--milo-ink);
+  --success: var(--scout-success);
+  --success-foreground: var(--scout-bone-soft);
+  --info: var(--scout-info);
+  --info-foreground: var(--scout-bone-soft);
+  --warning: var(--scout-warning);
+  --warning-foreground: var(--scout-ink);
 
   /* Charts — aligned to core + semantic (not default blue) */
-  --chart-1: var(--milo-signal);
-  --chart-2: var(--milo-collar);
-  --chart-3: var(--milo-info);
-  --chart-4: var(--milo-success);
-  --chart-5: var(--milo-fog-3);
+  --chart-1: var(--scout-signal);
+  --chart-2: var(--scout-collar);
+  --chart-3: var(--scout-info);
+  --chart-4: var(--scout-success);
+  --chart-5: var(--scout-fog-3);
 
   /* Sidebar */
-  --sidebar: var(--milo-bone);
-  --sidebar-foreground: var(--milo-ink);
-  --sidebar-primary: var(--milo-signal);
-  --sidebar-primary-foreground: var(--milo-ink);
-  --sidebar-accent: var(--milo-bone-deep);
-  --sidebar-accent-foreground: var(--milo-ink);
-  --sidebar-border: var(--milo-fog-1);
-  --sidebar-ring: var(--milo-signal);
+  --sidebar: var(--scout-bone);
+  --sidebar-foreground: var(--scout-ink);
+  --sidebar-primary: var(--scout-signal);
+  --sidebar-primary-foreground: var(--scout-ink);
+  --sidebar-accent: var(--scout-bone-deep);
+  --sidebar-accent-foreground: var(--scout-ink);
+  --sidebar-border: var(--scout-fog-1);
+  --sidebar-ring: var(--scout-signal);
 
   /* Typography */
   --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
@@ -124,47 +124,47 @@
 
 .dark {
   /* Dark surfaces: ink family, not inverted bone */
-  --background: var(--milo-ink);
-  --foreground: var(--milo-bone);
-  --card: var(--milo-ink-soft);
-  --card-foreground: var(--milo-bone);
-  --popover: var(--milo-ink-soft);
-  --popover-foreground: var(--milo-bone);
-  --primary: var(--milo-signal);
-  --primary-foreground: var(--milo-ink);
-  --secondary: var(--milo-ink-soft);
-  --secondary-foreground: var(--milo-bone);
-  --muted: var(--milo-ink-soft);
-  --muted-foreground: var(--milo-fog-3);
-  --accent: var(--milo-collar);
-  --accent-foreground: var(--milo-ink);
-  --destructive: var(--milo-danger);
-  --destructive-foreground: var(--milo-bone-soft);
-  --border: color-mix(in srgb, var(--milo-bone) 12%, transparent);
-  --input: var(--milo-ink-soft);
-  --ring: var(--milo-signal);
+  --background: var(--scout-ink);
+  --foreground: var(--scout-bone);
+  --card: var(--scout-ink-soft);
+  --card-foreground: var(--scout-bone);
+  --popover: var(--scout-ink-soft);
+  --popover-foreground: var(--scout-bone);
+  --primary: var(--scout-signal);
+  --primary-foreground: var(--scout-ink);
+  --secondary: var(--scout-ink-soft);
+  --secondary-foreground: var(--scout-bone);
+  --muted: var(--scout-ink-soft);
+  --muted-foreground: var(--scout-fog-3);
+  --accent: var(--scout-collar);
+  --accent-foreground: var(--scout-ink);
+  --destructive: var(--scout-danger);
+  --destructive-foreground: var(--scout-bone-soft);
+  --border: color-mix(in srgb, var(--scout-bone) 12%, transparent);
+  --input: var(--scout-ink-soft);
+  --ring: var(--scout-signal);
 
-  --success: var(--milo-success);
-  --success-foreground: var(--milo-bone-soft);
-  --info: var(--milo-info);
-  --info-foreground: var(--milo-bone-soft);
-  --warning: var(--milo-warning);
-  --warning-foreground: var(--milo-ink);
+  --success: var(--scout-success);
+  --success-foreground: var(--scout-bone-soft);
+  --info: var(--scout-info);
+  --info-foreground: var(--scout-bone-soft);
+  --warning: var(--scout-warning);
+  --warning-foreground: var(--scout-ink);
 
-  --chart-1: var(--milo-signal);
-  --chart-2: var(--milo-collar);
+  --chart-1: var(--scout-signal);
+  --chart-2: var(--scout-collar);
   --chart-3: #5b8cce;
   --chart-4: #3cb87a;
   --chart-5: #9a9a95;
 
-  --sidebar: var(--milo-ink);
-  --sidebar-foreground: var(--milo-bone);
-  --sidebar-primary: var(--milo-signal);
-  --sidebar-primary-foreground: var(--milo-ink);
-  --sidebar-accent: var(--milo-ink-soft);
-  --sidebar-accent-foreground: var(--milo-bone);
-  --sidebar-border: color-mix(in srgb, var(--milo-bone) 12%, transparent);
-  --sidebar-ring: var(--milo-signal);
+  --sidebar: var(--scout-ink);
+  --sidebar-foreground: var(--scout-bone);
+  --sidebar-primary: var(--scout-signal);
+  --sidebar-primary-foreground: var(--scout-ink);
+  --sidebar-accent: var(--scout-ink-soft);
+  --sidebar-accent-foreground: var(--scout-bone);
+  --sidebar-border: color-mix(in srgb, var(--scout-bone) 12%, transparent);
+  --sidebar-ring: var(--scout-signal);
 }
 
 @theme inline {
@@ -207,23 +207,23 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Explicit Milo palette (Tailwind: bg-milo-bone, text-milo-ink, etc.) */
-  --color-milo-bone-soft: var(--milo-bone-soft);
-  --color-milo-bone: var(--milo-bone);
-  --color-milo-bone-deep: var(--milo-bone-deep);
-  --color-milo-fog-1: var(--milo-fog-1);
-  --color-milo-fog-2: var(--milo-fog-2);
-  --color-milo-fog-3: var(--milo-fog-3);
-  --color-milo-fog: var(--milo-fog);
-  --color-milo-ink-mute: var(--milo-ink-mute);
-  --color-milo-ink-soft: var(--milo-ink-soft);
-  --color-milo-ink: var(--milo-ink);
-  --color-milo-signal: var(--milo-signal);
-  --color-milo-collar: var(--milo-collar);
-  --color-milo-success: var(--milo-success);
-  --color-milo-info: var(--milo-info);
-  --color-milo-danger: var(--milo-danger);
-  --color-milo-warning: var(--milo-warning);
+  /* Explicit Scout palette (Tailwind: bg-scout-bone, text-scout-ink, etc.) */
+  --color-scout-bone-soft: var(--scout-bone-soft);
+  --color-scout-bone: var(--scout-bone);
+  --color-scout-bone-deep: var(--scout-bone-deep);
+  --color-scout-fog-1: var(--scout-fog-1);
+  --color-scout-fog-2: var(--scout-fog-2);
+  --color-scout-fog-3: var(--scout-fog-3);
+  --color-scout-fog: var(--scout-fog);
+  --color-scout-ink-mute: var(--scout-ink-mute);
+  --color-scout-ink-soft: var(--scout-ink-soft);
+  --color-scout-ink: var(--scout-ink);
+  --color-scout-signal: var(--scout-signal);
+  --color-scout-collar: var(--scout-collar);
+  --color-scout-success: var(--scout-success);
+  --color-scout-info: var(--scout-info);
+  --color-scout-danger: var(--scout-danger);
+  --color-scout-warning: var(--scout-warning);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -250,5 +250,16 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

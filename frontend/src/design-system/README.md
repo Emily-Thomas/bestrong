@@ -1,10 +1,10 @@
-# Milo Design System
+# Scout Design System
 
-Welcome to the Milo Design System—a comprehensive set of design tokens, components, and guidelines for building the Milo AI Training Companion.
+Welcome to the Scout Design System—a comprehensive set of design tokens, components, and guidelines for building the Scout AI Training Companion.
 
 ## Overview
 
-The Milo Design System embodies our brand philosophy: **intelligent assistance that empowers coaches without taking over**. Just like a loyal gym dog, our design is supportive, reliable, and never in the way.
+The Scout Design System embodies our brand philosophy: **intelligent assistance that empowers coaches without taking over**. Just like a loyal gym dog, our design is supportive, reliable, and never in the way.
 
 ## Quick Start
 
@@ -24,11 +24,11 @@ const displayFont = typography.fontFamily.display
 
 ```tsx
 // In React components
-<h1 style={{ fontFamily: 'var(--font-display)' }}>Milo</h1>
+<h1 style={{ fontFamily: 'var(--font-display)' }}>Scout</h1>
 
-// shadcn + explicit Milo palette in Tailwind
+// shadcn + explicit Scout palette in Tailwind
 <div className="text-primary-foreground bg-primary shadow-lg">Primary CTA</div>
-<div className="bg-milo-bone text-milo-ink">Paper surface</div>
+<div className="bg-scout-bone text-scout-ink">Paper surface</div>
 ```
 
 ## Structure
@@ -50,7 +50,7 @@ design-system/
 ## Key Design Principles
 
 ### 1. Loyal & Reliable
-Design choices should feel dependable and consistent. Users should trust that Milo will work the same way every time.
+Design choices should feel dependable and consistent. Users should trust that Scout will work the same way every time.
 
 ### 2. Intelligent but Humble
 Smart features should feel helpful, not showy. The AI assists but doesn't take center stage.
@@ -70,13 +70,13 @@ UI elements should help without getting in the way. Like a gym dog that knows wh
 ```typescript
 import { colors, chartColors } from '@/design-system/tokens';
 
-colors.core.signal   // #D4FB3C — maps to `primary`, `--milo-signal`
-colors.core.collar   // #E07856 — maps to `accent`, `--milo-collar`
+colors.core.signal   // #D4FB3C — maps to `primary`, `--scout-signal`
+colors.core.collar   // #E07856 — maps to `accent`, `--scout-collar`
 colors.neutral.ink
 chartColors[1]       // chart series aligned to globals.css --chart-1..5
 ```
 
-UI mapping: `primary` / `bg-primary` = **signal** (ink foreground); `accent` = **collar**. Raw palette: `bg-milo-bone`, `text-milo-ink-mute`, etc.
+UI mapping: `primary` / `bg-primary` = **signal** (ink foreground); `accent` = **collar**. Raw palette: `bg-scout-bone`, `text-scout-ink-mute`, etc.
 
 ## Typography
 
@@ -96,7 +96,7 @@ UI mapping: `primary` / `bg-primary` = **signal** (ink foreground); `accent` = *
 ```tsx
 // Display font for brand moments
 <h1 className="text-4xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-  Welcome to Milo
+  Welcome to Scout
 </h1>
 
 // UI font for interface
@@ -142,7 +142,7 @@ All UI components live in `/src/components/ui/` and are built on:
 
 Components automatically use design tokens from the system.
 
-`Alert` supports `variant="default" | "destructive" | "success" | "info" | "warning" | "signal"` (aligned to Milo semantic colors; `signal` = in-progress / primary callout).
+`Alert` supports `variant="default" | "destructive" | "success" | "info" | "warning" | "signal"` (aligned to Scout semantic colors; `signal` = in-progress / primary callout).
 
 ## Voice & Tone
 
@@ -163,7 +163,7 @@ Components automatically use design tokens from the system.
 ```typescript
 // Good
 "Ready to build your first program?"
-"Milo's working on it..."
+"Scout's working on it..."
 "Got it! Your program is ready."
 
 // Avoid
@@ -175,7 +175,7 @@ Components automatically use design tokens from the system.
 ## Documentation
 
 For complete brand guidelines, see:
-- **[Milo Brand Guide](./docs/MILO_BRAND_GUIDE.md)** - Comprehensive brand identity, visual system, and usage guidelines
+- **[Scout Brand Guide](./docs/MILO_BRAND_GUIDE.md)** - Comprehensive brand identity, visual system, and usage guidelines
 
 ## Contributing
 
@@ -194,4 +194,4 @@ When in doubt, ask:
 2. Is it professional enough for B2B?
 3. Does it make the coach's life easier?
 
-If yes to all three, you're thinking like Milo!
+If yes to all three, you're thinking like Scout!

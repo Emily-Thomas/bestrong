@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Milo - Your AI Training Companion',
+  title: 'Scout - Your AI Training Companion',
   description: 'Smart programming for coaches who care. Build personalized training plans faster, without losing your coaching touch.',
   keywords: ['fitness', 'training', 'AI', 'gym management', 'workout programming', 'personal training'],
 };

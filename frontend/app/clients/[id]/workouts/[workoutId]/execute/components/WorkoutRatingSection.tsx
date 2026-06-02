@@ -59,6 +59,7 @@ export function WorkoutRatingSection({
               variant={workoutRating === 'happy' ? 'default' : 'outline'}
               size="lg"
               onClick={() => onRatingChange('happy')}
+              aria-label="Rate session great"
               className={cn(
                 'touch-manipulation flex-col gap-0.5 rounded-2xl p-0',
                 compact ? 'h-[4.5rem] w-[4.5rem]' : 'h-20 w-20 rounded-full'
@@ -67,13 +68,14 @@ export function WorkoutRatingSection({
               <Smile
                 className={cn(compact ? 'h-9 w-9' : 'h-10 w-10', 'mb-0.5')}
               />
-              <span className="text-[10px] font-medium">Great</span>
+              <span className="text-xs font-medium">Great</span>
             </Button>
             <Button
               type="button"
               variant={workoutRating === 'meh' ? 'default' : 'outline'}
               size="lg"
               onClick={() => onRatingChange('meh')}
+              aria-label="Rate session okay"
               className={cn(
                 'touch-manipulation flex-col gap-0.5 rounded-2xl p-0',
                 compact ? 'h-[4.5rem] w-[4.5rem]' : 'h-20 w-20 rounded-full'
@@ -82,13 +84,14 @@ export function WorkoutRatingSection({
               <Meh
                 className={cn(compact ? 'h-9 w-9' : 'h-10 w-10', 'mb-0.5')}
               />
-              <span className="text-[10px] font-medium">OK</span>
+              <span className="text-xs font-medium">OK</span>
             </Button>
             <Button
               type="button"
               variant={workoutRating === 'sad' ? 'default' : 'outline'}
               size="lg"
               onClick={() => onRatingChange('sad')}
+              aria-label="Rate session tough"
               className={cn(
                 'touch-manipulation flex-col gap-0.5 rounded-2xl p-0',
                 compact ? 'h-[4.5rem] w-[4.5rem]' : 'h-20 w-20 rounded-full'
@@ -97,7 +100,7 @@ export function WorkoutRatingSection({
               <Frown
                 className={cn(compact ? 'h-9 w-9' : 'h-10 w-10', 'mb-0.5')}
               />
-              <span className="text-[10px] font-medium">Tough</span>
+              <span className="text-xs font-medium">Tough</span>
             </Button>
           </div>
         </div>

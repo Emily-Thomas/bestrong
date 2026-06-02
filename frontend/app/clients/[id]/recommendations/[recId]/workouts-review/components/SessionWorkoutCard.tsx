@@ -41,22 +41,17 @@ export function SessionWorkoutCard({
   const title = workout.workout_name ?? `Session ${workout.session_number}`;
 
   return (
-    <Card
-      className={cn(
-        'overflow-hidden border-border/70 bg-card/80 shadow-md backdrop-blur-sm transition-shadow hover:shadow-lg',
-        'ring-1 ring-border/40'
-      )}
-    >
-      <CardHeader className="space-y-3 border-b border-border/50 bg-gradient-to-r from-violet-500/[0.08] via-transparent to-emerald-500/[0.06] px-4 py-4 sm:px-5">
+    <Card className="overflow-hidden border border-border/70 bg-card shadow-sm transition-colors hover:bg-muted/20">
+      <CardHeader className="space-y-3 border-b border-border/50 bg-muted/20 px-4 py-4 sm:px-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant="secondary"
-                className="rounded-md px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide"
+                className="rounded-md px-2 py-0.5 font-mono text-xs"
               >
-                <Hash className="mr-1 inline h-3 w-3 opacity-70" />S
-                {workout.session_number}
+                <Hash className="mr-1 inline h-3 w-3 opacity-70" aria-hidden />
+                Session {workout.session_number}
               </Badge>
               <span className="text-xs font-medium text-muted-foreground">
                 Week {workout.week_number} · Session {workout.session_number} of{' '}
@@ -68,11 +63,11 @@ export function SessionWorkoutCard({
             </h3>
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground sm:text-sm">
               <span className="inline-flex items-center gap-1.5">
-                <Dumbbell className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                <Dumbbell className="h-3.5 w-3.5 text-muted-foreground" />
                 {exercises.length} exercises
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                 ~{duration} min
               </span>
             </div>
@@ -114,14 +109,14 @@ export function SessionWorkoutCard({
                     {ex.library_exercise_id ? (
                       <Badge
                         variant="outline"
-                        className="h-5 border-primary/25 bg-primary/5 text-[10px] font-normal text-primary"
+                        className="h-5 border-primary/25 bg-primary/5 text-xs font-normal text-primary"
                       >
                         Library
                       </Badge>
                     ) : (
                       <Badge
                         variant="outline"
-                        className="h-5 text-[10px] font-normal"
+                        className="h-5 text-xs font-normal"
                       >
                         Custom
                       </Badge>

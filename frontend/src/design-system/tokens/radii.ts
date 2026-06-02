@@ -1,5 +1,5 @@
 /**
- * Milo Design System - Border Radius Tokens
+ * Scout Design System - Border Radius Tokens
  * 
  * Consistent border radius scale
  */

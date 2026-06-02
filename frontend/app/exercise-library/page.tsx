@@ -255,7 +255,7 @@ export default function ExerciseLibraryPage() {
     <ProtectedRoute>
       <AppShell
         title="Exercise library"
-        description="Reusable moves Milo can drop into client workouts"
+        description="Reusable moves Scout can drop into client workouts"
       >
         <div className="space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -380,7 +380,7 @@ export default function ExerciseLibraryPage() {
                       Ready to add your first exercise?
                     </h3>
                     <p className="mb-6 max-w-sm text-sm text-muted-foreground">
-                      Build your library so Milo can reference it when you program
+                      Build your library so Scout can reference it when you program
                       sessions.
                     </p>
                     <Button size="sm" onClick={startCreate}>

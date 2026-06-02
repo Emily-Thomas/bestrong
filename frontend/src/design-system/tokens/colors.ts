@@ -1,5 +1,5 @@
 /**
- * Milo Design System — Color Tokens
+ * Scout Design System — Color Tokens
  *
  * Paper (bone) base, ink type, signal (primary action), fog neutrals, collar (terracotta warmth)
  * @see `frontend/app/globals.css` for CSS variable wiring and dark theme

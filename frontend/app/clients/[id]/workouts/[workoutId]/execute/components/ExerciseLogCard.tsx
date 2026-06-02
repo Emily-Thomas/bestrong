@@ -166,7 +166,7 @@ export function ExerciseLogCard({
       className={cn(
         'rounded-2xl border-2 bg-card shadow-sm transition-shadow',
         status === 'completed'
-          ? 'border-emerald-500/70 bg-emerald-500/[0.06]'
+          ? 'border-success/70 bg-success/[0.06]'
           : 'border-border hover:border-primary/40',
         expanded && 'ring-2 ring-primary/30 shadow-md'
       )}
@@ -178,7 +178,7 @@ export function ExerciseLogCard({
       >
         <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-current bg-background">
           {status === 'completed' ? (
-            <Check className="h-5 w-5 text-emerald-600" strokeWidth={2.5} />
+            <Check className="h-5 w-5 text-success" strokeWidth={2.5} />
           ) : (
             <span className="text-sm font-bold tabular-nums text-muted-foreground">
               {exerciseIndex + 1}
@@ -191,7 +191,7 @@ export function ExerciseLogCard({
               {exercise.exercise_name}
             </h3>
             {status === 'completed' && (
-              <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+              <Badge className="bg-success text-success-foreground hover:bg-success">
                 Logged
               </Badge>
             )}
@@ -223,7 +223,7 @@ export function ExerciseLogCard({
         </div>
         <ChevronDown
           className={cn(
-            'mt-1 h-7 w-7 shrink-0 text-muted-foreground transition-transform',
+            'mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform sm:h-6 sm:w-6',
             expanded && 'rotate-180'
           )}
         />
@@ -454,7 +454,7 @@ export function ExerciseLogCard({
                   onClick={() => setExerciseRating(k)}
                 >
                   <Icon className="h-9 w-9 sm:h-10 sm:w-10" />
-                  <span className="text-[10px] font-medium sm:text-xs">
+                  <span className="text-xs font-medium">
                     {label}
                   </span>
                 </Button>

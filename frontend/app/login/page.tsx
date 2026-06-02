@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { MiloMark, MiloWordmark } from '@/components/MiloLogoMark';
+import { ScoutMark, ScoutWordmark } from '@/components/ScoutLogoMark';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +41,7 @@ export default function LoginPage() {
 
     const success = await login(email, password);
     if (success) {
-      router.push('/dashboard');
+      router.push('/clients');
     } else {
       setError('Invalid email or password');
     }
@@ -86,15 +86,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-milo-collar/20 bg-gradient-to-b from-milo-collar/10 to-card/90 backdrop-blur-md dark:from-milo-collar/15 dark:to-card/90 dark:border-milo-collar/20">
+      <header className="sticky top-0 z-50 border-b border-scout-collar/20 bg-gradient-to-b from-scout-collar/10 to-card/90 backdrop-blur-md dark:from-scout-collar/15 dark:to-card/90 dark:border-scout-collar/20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 sm:min-h-[4.5rem] items-center justify-between gap-4 py-2">
             <a
               href="#login"
               className="flex min-w-0 items-center gap-2 sm:gap-3 rounded-lg outline-offset-2 focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Milo, AI training companion. Go to sign in"
+              aria-label="Scout, AI training companion. Go to sign in"
             >
-              <MiloWordmark
+              <ScoutWordmark
                 withAlt={false}
                 heightClass="h-7 sm:h-9"
                 className="max-w-[min(100%,12rem)] sm:max-w-[16rem]"
@@ -128,7 +128,7 @@ export default function LoginPage() {
 
             <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed">
               Build personalized training plans faster, without losing your
-              coaching touch. Milo handles the heavy lifting so you can focus on
+              coaching touch. Scout handles the heavy lifting so you can focus on
               what matters—your clients.
             </p>
 
@@ -152,7 +152,7 @@ export default function LoginPage() {
               <div>
                 <div className="text-3xl font-bold text-primary">100+</div>
                 <div className="text-sm text-muted-foreground">
-                  Coaches Trust Milo
+                  Coaches Trust Scout
                 </div>
               </div>
               <div>
@@ -169,7 +169,7 @@ export default function LoginPage() {
             <Card className="shadow-2xl border-border/50">
               <CardHeader>
                 <CardTitle>Welcome back</CardTitle>
-                <CardDescription>Sign in to your Milo account</CardDescription>
+                <CardDescription>Sign in to your Scout account</CardDescription>
               </CardHeader>
               <CardContent>
                 <form id="login-form" onSubmit={handleSubmit}>
@@ -236,7 +236,7 @@ export default function LoginPage() {
               <CardContent className="pt-6">
                 <p className="text-sm font-medium mb-2">Demo Account</p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Try Milo with these credentials:
+                  Try Scout with these credentials:
                 </p>
                 <div className="space-y-1 text-xs font-mono bg-background/50 p-3 rounded-md">
                   <div>
@@ -299,7 +299,7 @@ export default function LoginPage() {
               Everything you need, nothing you don't
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Milo is purpose-built for personal trainers and coaches who want
+              Scout is purpose-built for personal trainers and coaches who want
               to scale their impact without sacrificing the personal touch that
               makes their coaching special.
             </p>
@@ -315,7 +315,7 @@ export default function LoginPage() {
 
           <div className="relative">
             <div className="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 via-accent/10 to-primary/5 p-6 sm:p-8">
-              <MiloMark
+              <ScoutMark
                 size="lg"
                 withAlt
                 className="h-36 w-36 sm:h-40 sm:w-40 opacity-90"
@@ -335,7 +335,7 @@ export default function LoginPage() {
             Ready to meet your new training companion?
           </h2>
           <p className="text-lg opacity-90 mb-8 max-w-2xl mx-auto">
-            Join coaches who are building better programs in less time with Milo
+            Join coaches who are building better programs in less time with Scout
           </p>
           <Button size="lg" variant="secondary" className="shadow-xl" asChild>
             <a href="#login">Get Started Today</a>
@@ -347,13 +347,13 @@ export default function LoginPage() {
       <footer className="border-t border-border/40 py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <MiloWordmark
+            <ScoutWordmark
               withAlt={false}
               heightClass="h-6 sm:h-7"
               className="max-w-[10rem] sm:max-w-[12rem]"
             />
             <p className="text-sm text-muted-foreground text-center md:text-left">
-              © 2026 Milo. Your loyal AI training companion.
+              © 2026 Scout. Your loyal AI training companion.
             </p>
           </div>
         </div>

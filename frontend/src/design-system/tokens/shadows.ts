@@ -1,5 +1,5 @@
 /**
- * Milo Design System - Shadow tokens
+ * Scout Design System - Shadow tokens
  *
  * Elevation with a neutral ~ink-tinted shadow (see `--ink-shadow` in `globals.css`)
  */

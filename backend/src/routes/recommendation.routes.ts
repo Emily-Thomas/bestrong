@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth';
 import * as aiService from '../services/ai.service';
 import * as clientService from '../services/client.service';
 import * as exerciseLibraryService from '../services/exercise-library.service';
+import * as importedProgramService from '../services/imported-program.service';
 import * as inbodyScanService from '../services/inbody-scan.service';
 import { refineLibraryTemplateLoads } from '../services/library-load-refinement-ai.service';
 import * as jobService from '../services/job.service';
@@ -345,7 +346,9 @@ router.post('/manual-plan/start', async (req: Request, res: Response) => {
 
     const hasVerifiedScan =
       await inbodyScanService.hasVerifiedInBodyScan(questionnaire.client_id);
-    if (!hasVerifiedScan) {
+    const isImportedProgram =
+      client.onboarding_track === 'imported_program';
+    if (!hasVerifiedScan && !isImportedProgram) {
       res.status(400).json({
         success: false,
         error:
@@ -2259,6 +2262,176 @@ router.delete('/:id', async (req: Request, res: Response) => {
     res.json({
       success: true,
       message: 'Recommendation deleted successfully',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Copy week workouts to other weeks (imported program builder)
+router.post('/:id/clone-week', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid recommendation ID',
+      });
+      return;
+    }
+
+    const recommendation =
+      await recommendationService.getRecommendationById(id);
+    if (!recommendation) {
+      res.status(404).json({
+        success: false,
+        error: 'Recommendation not found',
+      });
+      return;
+    }
+
+    const { sourceWeek, targetWeeks } =
+      importedProgramService.parseCloneWeekRequest(
+        req.body as Record<string, unknown>
+      );
+
+    const result = await importedProgramService.cloneWeekWorkouts(
+      id,
+      sourceWeek,
+      targetWeeks
+    );
+
+    res.json({
+      success: true,
+      data: result,
+      message: `Copied week ${sourceWeek} into ${result.updated} session(s)`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ success: false, error: message });
+  }
+});
+
+// Ensure all week × session slots exist (imported programs)
+router.post('/:id/ensure-sessions', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid recommendation ID',
+      });
+      return;
+    }
+
+    const recommendation =
+      await recommendationService.getRecommendationById(id);
+    if (!recommendation) {
+      res.status(404).json({
+        success: false,
+        error: 'Recommendation not found',
+      });
+      return;
+    }
+
+    const workouts = await importedProgramService.ensureAllSessionsForRecommendation(
+      recommendation
+    );
+
+    res.json({
+      success: true,
+      data: workouts,
+      message: 'Program sessions are up to date',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+// Create a single empty workout session (manual / imported programs)
+router.post('/:id/workouts', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid recommendation ID',
+      });
+      return;
+    }
+
+    const recommendation =
+      await recommendationService.getRecommendationById(id);
+    if (!recommendation) {
+      res.status(404).json({
+        success: false,
+        error: 'Recommendation not found',
+      });
+      return;
+    }
+
+    const body = req.body as Record<string, unknown>;
+    const week_number =
+      typeof body.week_number === 'number'
+        ? body.week_number
+        : parseInt(String(body.week_number ?? ''), 10);
+    const session_number =
+      typeof body.session_number === 'number'
+        ? body.session_number
+        : parseInt(String(body.session_number ?? ''), 10);
+
+    if (Number.isNaN(week_number) || Number.isNaN(session_number)) {
+      res.status(400).json({
+        success: false,
+        error: 'week_number and session_number are required',
+      });
+      return;
+    }
+
+    if (week_number < 1 || session_number < 1) {
+      res.status(400).json({
+        success: false,
+        error: 'week_number and session_number must be positive',
+      });
+      return;
+    }
+
+    const existing = await workoutService.getWorkoutByWeekAndSession(
+      id,
+      week_number,
+      session_number
+    );
+    if (existing) {
+      res.status(409).json({
+        success: false,
+        error: 'A session already exists for that week and slot',
+      });
+      return;
+    }
+
+    const workout_name =
+      typeof body.workout_name === 'string' && body.workout_name.trim()
+        ? body.workout_name.trim()
+        : `Week ${week_number} · Session ${session_number}`;
+
+    const workout = await workoutService.createWorkout({
+      recommendation_id: id,
+      week_number,
+      session_number,
+      workout_name,
+      workout_data: { exercises: [] },
+      workout_reasoning: undefined,
+    });
+    const scheduled = await workoutService.updateWorkout(workout.id, {
+      status: 'scheduled',
+    });
+
+    res.status(201).json({
+      success: true,
+      data: scheduled ?? workout,
+      message: 'Session created. Add exercises in the editor.',
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

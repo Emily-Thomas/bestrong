@@ -12,7 +12,7 @@ export default function Home() {
     // Wait for auth to finish loading before redirecting
     if (!loading) {
       if (isAuthenticated) {
-        router.push('/dashboard');
+        router.push('/clients');
       } else {
         router.push('/login');
       }
@@ -23,7 +23,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
-        <div className="text-lg text-muted-foreground">Milo's getting ready...</div>
+        <div className="text-lg text-muted-foreground">Scout's getting ready...</div>
       </div>
     </div>
   );

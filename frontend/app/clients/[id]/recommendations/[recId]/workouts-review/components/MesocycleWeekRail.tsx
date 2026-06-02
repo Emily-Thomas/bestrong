@@ -28,7 +28,7 @@ export function MesocycleWeekRail({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.07] via-background to-violet-500/[0.06] p-4 shadow-sm dark:from-primary/10 dark:to-violet-950/20 sm:p-5',
+        'rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5',
         className
       )}
     >
@@ -38,7 +38,7 @@ export function MesocycleWeekRail({
             <CalendarRange className="h-5 w-5" aria-hidden />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Mesocycle map
             </p>
             <p className="mt-0.5 text-sm font-medium text-foreground">

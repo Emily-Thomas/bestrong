@@ -181,7 +181,7 @@ function TrainersPageContent() {
     <ProtectedRoute>
       <AppShell
         title="Trainers"
-        description="Coaching profiles that help Milo understand your style and approach"
+        description="Coaching profiles that help Scout understand your style and approach"
         action={
           <Button size="sm" onClick={openAdd}>
             <Plus className="h-4 w-4 mr-2" />
@@ -202,7 +202,7 @@ function TrainersPageContent() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Ready to add your first trainer?</h3>
               <CardDescription className="mb-6 max-w-sm mx-auto">
-                Create coaching profiles that help Milo understand your unique style and approach
+                Create coaching profiles that help Scout understand your unique style and approach
               </CardDescription>
               <Button onClick={openAdd}>
                 <Plus className="h-4 w-4 mr-2" />

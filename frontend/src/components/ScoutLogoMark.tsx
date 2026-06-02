@@ -1,10 +1,10 @@
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-/** @see `/public/milo-mark.svg` (asset from brand package) */
-const MARK = '/milo-mark.svg';
-/** @see `/public/milo-wordmark.svg` (mark + “milo” wordmark) */
-const WORDMARK = '/milo-wordmark.svg';
+/** @see `/public/scout-mark.svg` (asset from brand package) */
+const MARK = '/scout-mark.svg';
+/** @see `/public/scout-wordmark.svg` (mark + “scout” wordmark) */
+const WORDMARK = '/scout-wordmark.svg';
 
 const MARK_VIEW = 120;
 
@@ -14,24 +14,24 @@ const markSizeClass: Record<'sm' | 'md' | 'lg', string> = {
   lg: 'h-10 w-10',
 };
 
-type MiloMarkProps = {
+type ScoutMarkProps = {
   size?: keyof typeof markSizeClass;
   className?: string;
   withAlt?: boolean;
 };
 
 /**
- * Logomark only (round dog + signal collar). For nav icons and compact touchpoints.
+ * Logomark only. For nav icons and compact touchpoints.
  */
-export function MiloMark({
+export function ScoutMark({
   size = 'md',
   className,
   withAlt = true,
-}: MiloMarkProps) {
+}: ScoutMarkProps) {
   return (
     <Image
       src={MARK}
-      alt={withAlt ? 'Milo' : ''}
+      alt={withAlt ? 'Scout' : ''}
       width={MARK_VIEW}
       height={MARK_VIEW}
       unoptimized
@@ -40,7 +40,7 @@ export function MiloMark({
   );
 }
 
-type MiloWordmarkProps = {
+type ScoutWordmarkProps = {
   className?: string;
   withAlt?: boolean;
   /** Tailwind height utilities (default keeps ~3.1:1 width via w-auto) */
@@ -49,19 +49,19 @@ type MiloWordmarkProps = {
 };
 
 /**
- * Mark + “milo” typesetting. SVG text uses General Sans; ensure the font is loaded
+ * Mark + “scout” typesetting. SVG text uses General Sans; ensure the font is loaded
  * in `app/layout.tsx` or accept system-ui fallback in the wordmark.
  */
-export function MiloWordmark({
+export function ScoutWordmark({
   className,
   withAlt = true,
   heightClass = 'h-7',
   priority = false,
-}: MiloWordmarkProps) {
+}: ScoutWordmarkProps) {
   return (
     <Image
       src={WORDMARK}
-      alt={withAlt ? 'Milo — AI training companion' : ''}
+      alt={withAlt ? 'Scout — AI training companion' : ''}
       width={340}
       height={110}
       unoptimized
@@ -75,4 +75,4 @@ export function MiloWordmark({
   );
 }
 
-export { MiloMark as MiloLogoMark };
+export { ScoutMark as ScoutLogoMark };

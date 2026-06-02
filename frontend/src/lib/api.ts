@@ -1,19 +1,28 @@
-// NEXT_PUBLIC_API_URL wins. In the browser on local hostnames, call Express
-// directly on :3001 — Next dev rewrites to the backend often return plain-text
-// "Internal Server Error" (500) instead of JSON when the proxy hiccups.
+// NEXT_PUBLIC_API_URL wins. In the browser during local dev, call Express on
+// :3001 directly — Next rewrites can 404 on newer routes or return HTML errors.
+function isLocalDevBrowserHost(hostname: string): boolean {
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]'
+  ) {
+    return true;
+  }
+  // LAN / private IPs (e.g. http://192.168.x.x:3000 from `next dev --hostname 0.0.0.0`)
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+    return true;
+  }
+  return false;
+}
+
 function resolveApiBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
   }
-  if (typeof window !== 'undefined') {
-    const { hostname } = window.location;
-    if (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname === '[::1]'
-    ) {
-      return 'http://127.0.0.1:3001/api';
-    }
+  if (typeof window !== 'undefined' && isLocalDevBrowserHost(window.location.hostname)) {
+    return 'http://127.0.0.1:3001/api';
   }
   return '/api';
 }
@@ -275,9 +284,44 @@ export const clientsApi = {
   create: (data: CreateClientInput) => apiClient.post<Client>('/clients', data),
   update: (
     id: number,
-    data: Partial<CreateClientInput & { status?: Client['status'] }>
+    data: Partial<
+      CreateClientInput & {
+        status?: Client['status'];
+        onboarding_track?: ClientOnboardingTrack;
+      }
+    >
   ) => apiClient.put<Client>(`/clients/${id}`, data),
   delete: (id: number) => apiClient.delete(`/clients/${id}`),
+  bootstrapImportedProgram: (
+    clientId: number,
+    data: BootstrapImportedProgramInput
+  ) =>
+    apiClient.post<BootstrapImportedProgramResult>(
+      `/clients/${clientId}/import-program/bootstrap`,
+      data
+    ),
+  ensureImportedProgramSessions: (
+    clientId: number,
+    recommendationId?: number
+  ) =>
+    apiClient.post<Workout[]>(
+      `/clients/${clientId}/import-program/ensure-sessions`,
+      recommendationId != null ? { recommendation_id: recommendationId } : {}
+    ),
+  cloneImportedProgramWeek: (
+    clientId: number,
+    body: {
+      recommendation_id?: number;
+      source_week: number;
+      target_weeks?: number[];
+      target_week_from?: number;
+      target_week_to?: number;
+    }
+  ) =>
+    apiClient.post<{ updated: number; workouts: Workout[] }>(
+      `/clients/${clientId}/import-program/clone-week`,
+      body
+    ),
 };
 
 // Questionnaires API
@@ -350,6 +394,36 @@ export const recommendationsApi = {
   delete: (id: number) => apiClient.delete(`/recommendations/${id}`),
   getWorkouts: (id: number) =>
     apiClient.get<Workout[]>(`/recommendations/${id}/workouts`),
+  createWorkout: (
+    recommendationId: number,
+    data: {
+      week_number: number;
+      session_number: number;
+      workout_name?: string;
+    }
+  ) =>
+    apiClient.post<Workout>(
+      `/recommendations/${recommendationId}/workouts`,
+      data
+    ),
+  ensureSessions: (recommendationId: number) =>
+    apiClient.post<Workout[]>(
+      `/recommendations/${recommendationId}/ensure-sessions`,
+      {}
+    ),
+  cloneWeek: (
+    recommendationId: number,
+    body: {
+      source_week: number;
+      target_weeks?: number[];
+      target_week_from?: number;
+      target_week_to?: number;
+    }
+  ) =>
+    apiClient.post<{ updated: number; workouts: Workout[] }>(
+      `/recommendations/${recommendationId}/clone-week`,
+      body
+    ),
   getWorkoutsByWeek: (id: number, weekNumber: number) =>
     apiClient.get<Workout[]>(
       `/recommendations/${id}/week/${weekNumber}/workouts`
@@ -548,6 +622,8 @@ export const inbodyScansApi = {
 };
 
 // Types
+export type ClientOnboardingTrack = 'standard' | 'imported_program';
+
 export interface Client {
   id: number;
   first_name: string;
@@ -556,6 +632,7 @@ export interface Client {
   phone?: string;
   date_of_birth?: string;
   status?: 'prospect' | 'active' | 'inactive' | 'archived';
+  onboarding_track?: ClientOnboardingTrack;
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -567,6 +644,19 @@ export interface CreateClientInput {
   email?: string;
   phone?: string;
   date_of_birth?: string;
+  onboarding_track?: ClientOnboardingTrack;
+}
+
+export interface BootstrapImportedProgramInput {
+  phase_weeks: number;
+  sessions_per_week: number;
+  session_length_minutes: number;
+}
+
+export interface BootstrapImportedProgramResult {
+  questionnaire: Questionnaire;
+  recommendation: Recommendation;
+  workouts: Workout[];
 }
 
 export interface TrainerPersonaPillar {

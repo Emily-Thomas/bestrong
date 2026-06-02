@@ -1,6 +1,7 @@
 import { type Request, type Response, Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import * as clientService from '../services/client.service';
+import * as importedProgramService from '../services/imported-program.service';
 import * as recommendationService from '../services/recommendation.service';
 import type { CreateClientInput, UpdateClientInput } from '../types';
 
@@ -107,6 +108,167 @@ router.put('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: message });
   }
 });
+
+// Scaffold program + empty sessions for off-platform / imported clients
+router.post('/:id/import-program/bootstrap', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    const clientId = parseInt(req.params.id, 10);
+    if (Number.isNaN(clientId)) {
+      res.status(400).json({ success: false, error: 'Invalid client ID' });
+      return;
+    }
+
+    const body = req.body as Record<string, unknown>;
+    const phase_weeks =
+      typeof body.phase_weeks === 'number'
+        ? body.phase_weeks
+        : parseInt(String(body.phase_weeks ?? ''), 10);
+    const sessions_per_week =
+      typeof body.sessions_per_week === 'number'
+        ? body.sessions_per_week
+        : parseInt(String(body.sessions_per_week ?? ''), 10);
+    const session_length_minutes =
+      typeof body.session_length_minutes === 'number'
+        ? body.session_length_minutes
+        : parseInt(String(body.session_length_minutes ?? ''), 10);
+
+    if (
+      Number.isNaN(phase_weeks) ||
+      Number.isNaN(sessions_per_week) ||
+      Number.isNaN(session_length_minutes)
+    ) {
+      res.status(400).json({
+        success: false,
+        error:
+          'phase_weeks, sessions_per_week, and session_length_minutes are required',
+      });
+      return;
+    }
+
+    const result = await importedProgramService.bootstrapImportedProgram(
+      clientId,
+      { phase_weeks, sessions_per_week, session_length_minutes },
+      req.user.userId
+    );
+
+    res.status(201).json({
+      success: true,
+      data: result,
+      message:
+        'Program scaffold ready. Open each session to add exercises, then start training.',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+router.post(
+  '/:id/import-program/ensure-sessions',
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Not authenticated' });
+        return;
+      }
+
+      const clientId = parseInt(req.params.id, 10);
+      if (Number.isNaN(clientId)) {
+        res.status(400).json({ success: false, error: 'Invalid client ID' });
+        return;
+      }
+
+      const body = req.body as Record<string, unknown>;
+      const rawRecId = body.recommendation_id;
+      const recommendationId =
+        rawRecId === undefined || rawRecId === null
+          ? undefined
+          : typeof rawRecId === 'number'
+            ? rawRecId
+            : parseInt(String(rawRecId), 10);
+
+      const recommendation =
+        await importedProgramService.resolveRecommendationForClient(
+          clientId,
+          recommendationId !== undefined && !Number.isNaN(recommendationId)
+            ? recommendationId
+            : undefined
+        );
+
+      const workouts =
+        await importedProgramService.ensureAllSessionsForRecommendation(
+          recommendation
+        );
+
+      res.json({
+        success: true,
+        data: workouts,
+        message: 'Program sessions are up to date',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(400).json({ success: false, error: message });
+    }
+  }
+);
+
+router.post(
+  '/:id/import-program/clone-week',
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Not authenticated' });
+        return;
+      }
+
+      const clientId = parseInt(req.params.id, 10);
+      if (Number.isNaN(clientId)) {
+        res.status(400).json({ success: false, error: 'Invalid client ID' });
+        return;
+      }
+
+      const body = req.body as Record<string, unknown>;
+      const rawRecId = body.recommendation_id;
+      const recommendationId =
+        rawRecId === undefined || rawRecId === null
+          ? undefined
+          : typeof rawRecId === 'number'
+            ? rawRecId
+            : parseInt(String(rawRecId), 10);
+
+      const recommendation =
+        await importedProgramService.resolveRecommendationForClient(
+          clientId,
+          recommendationId !== undefined && !Number.isNaN(recommendationId)
+            ? recommendationId
+            : undefined
+        );
+
+      const { sourceWeek, targetWeeks } =
+        importedProgramService.parseCloneWeekRequest(body);
+
+      const result = await importedProgramService.cloneWeekWorkouts(
+        recommendation.id,
+        sourceWeek,
+        targetWeeks
+      );
+
+      res.json({
+        success: true,
+        data: result,
+        message: `Copied week ${sourceWeek} into ${result.updated} session(s)`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(400).json({ success: false, error: message });
+    }
+  }
+);
 
 // Activate client and accept recommendation
 router.post('/:id/activate', async (req: Request, res: Response) => {

@@ -10,6 +10,6 @@
     <circle cx="74" cy="54" r="3.8" fill="#F8F8F5"></circle>
     <path d="M60 72 L60 80 Q56 84 52 82 M60 80 Q64 84 68 82" stroke="#F8F8F5" stroke-width="2.2" stroke-linecap="round" fill="none"></path>
   </g>
-  <text x="120" y="66" font-family="&#39;General Sans&#39;, sans-serif" font-size="58" font-weight="700" fill="#141416" letter-spacing="-2">milo</text>
+  <text x="120" y="66" font-family="&#39;General Sans&#39;, sans-serif" font-size="58" font-weight="700" fill="#141416" letter-spacing="-2">scout</text>
   <circle cx="135" cy="22" r="5" fill="#D4FB3C"></circle>
 </svg>

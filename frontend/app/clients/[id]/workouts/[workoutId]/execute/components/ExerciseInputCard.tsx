@@ -147,9 +147,10 @@ export function ExerciseInputCard({
                       variant="ghost"
                       size="sm"
                       onClick={() => removeRound(roundIndex)}
-                      className="h-8 w-8 p-0"
+                      className="h-11 w-11 min-h-11 min-w-11 shrink-0 touch-manipulation p-0"
+                      aria-label={`Remove round ${round.round_number}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" aria-hidden />
                     </Button>
                   </div>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -237,9 +238,10 @@ export function ExerciseInputCard({
               }
               size="lg"
               onClick={() => setExerciseRating('happy')}
-              className="h-16 w-16 rounded-full p-0"
+              className="h-11 min-h-11 w-11 min-w-11 rounded-full p-0 touch-manipulation"
+              aria-label="Felt great"
             >
-              <Smile className="h-8 w-8" />
+              <Smile className="h-6 w-6" aria-hidden />
             </Button>
             <Button
               type="button"
@@ -248,9 +250,10 @@ export function ExerciseInputCard({
               }
               size="lg"
               onClick={() => setExerciseRating('meh')}
-              className="h-16 w-16 rounded-full p-0"
+              className="h-11 min-h-11 w-11 min-w-11 rounded-full p-0 touch-manipulation"
+              aria-label="Felt okay"
             >
-              <Meh className="h-8 w-8" />
+              <Meh className="h-6 w-6" aria-hidden />
             </Button>
             <Button
               type="button"
@@ -259,9 +262,10 @@ export function ExerciseInputCard({
               }
               size="lg"
               onClick={() => setExerciseRating('sad')}
-              className="h-16 w-16 rounded-full p-0"
+              className="h-11 min-h-11 w-11 min-w-11 rounded-full p-0 touch-manipulation"
+              aria-label="Felt tough"
             >
-              <Frown className="h-8 w-8" />
+              <Frown className="h-6 w-6" aria-hidden />
             </Button>
           </div>
 

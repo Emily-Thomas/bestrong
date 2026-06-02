@@ -27,13 +27,28 @@ const alertVariants = cva(
   }
 );
 
+function alertRoleForVariant(
+  variant: VariantProps<typeof alertVariants>['variant']
+): 'alert' | 'status' {
+  if (variant === 'destructive') return 'alert';
+  if (
+    variant === 'success' ||
+    variant === 'info' ||
+    variant === 'warning' ||
+    variant === 'signal'
+  ) {
+    return 'status';
+  }
+  return 'status';
+}
+
 const Alert = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
->(({ className, variant, ...props }, ref) => (
+>(({ className, variant, role, ...props }, ref) => (
   <div
     ref={ref}
-    role="alert"
+    role={role ?? alertRoleForVariant(variant)}
     className={cn(alertVariants({ variant }), className)}
     {...props}
   />

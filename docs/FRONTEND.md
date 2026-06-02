@@ -10,13 +10,13 @@ The frontend is built with Next.js 16, React 19, TypeScript, and Tailwind CSS. I
 frontend/
 ├── app/
 │   ├── layout.tsx                    # Root layout with AuthProvider
-│   ├── page.tsx                       # Home page (redirects to login/dashboard)
+│   ├── page.tsx                       # Home (redirects to login or /clients)
 │   ├── login/
 │   │   └── page.tsx                   # Login page
 │   ├── dashboard/
-│   │   └── page.tsx                   # Dashboard with client overview
+│   │   └── page.tsx                   # Redirects to /clients (legacy URL)
 │   └── clients/
-│       ├── page.tsx                   # Client list
+│       ├── page.tsx                   # Coach home: searchable client roster
 │       ├── new/
 │       │   └── page.tsx               # Create new client
 │       └── [id]/
@@ -44,13 +44,11 @@ frontend/
 - **Protected Routes** - Automatic redirect to login if not authenticated
 - **JWT Token Management** - Stored in localStorage
 
-### 2. Dashboard
-- **Overview** (`/dashboard`) - Shows total clients and recent client list
-- **Quick Actions** - Link to create new clients
-- **Client Cards** - Display client info with links to detail pages
+### 2. Coach home (client roster)
+- **Clients** (`/clients`) - Post-login home: search, sort, open profiles, add clients
+- **`/dashboard`** - Redirects to `/clients` for bookmarks and old links
 
 ### 3. Client Management
-- **Client List** (`/clients`) - View all clients
 - **Create Client** (`/clients/new`) - Form to add new clients
 - **Client Detail** (`/clients/[id]`) - View client info, questionnaire, and recommendations
   - Shows client information

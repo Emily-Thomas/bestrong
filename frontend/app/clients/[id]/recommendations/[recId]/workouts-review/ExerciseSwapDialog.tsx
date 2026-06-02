@@ -20,32 +20,7 @@ import {
   exerciseLibraryApi,
 } from '@/lib/api';
 import { ExerciseLibraryPicker } from '../../../workouts/[workoutId]/edit/components/ExerciseLibraryPicker';
-
-function exerciseFromLibrary(
-  lib: ExerciseLibraryExercise,
-  prev: Exercise
-): Exercise {
-  return {
-    ...prev,
-    name: lib.name,
-    library_exercise_id: lib.id,
-    library_exercise_name: lib.name,
-    is_custom: false,
-    sets: prev.sets ?? lib.default_sets ?? undefined,
-    reps:
-      prev.reps ?? (lib.default_reps != null ? lib.default_reps : undefined),
-    weight: prev.weight ?? lib.default_load ?? undefined,
-    rest_seconds: prev.rest_seconds ?? lib.default_rest_seconds ?? undefined,
-    tempo: prev.tempo ?? lib.default_tempo ?? undefined,
-    library_metadata: {
-      primary_muscle_group: lib.primary_muscle_group,
-      secondary_muscle_groups: lib.secondary_muscle_groups,
-      movement_pattern: lib.movement_pattern,
-      equipment: lib.equipment,
-      category: lib.category,
-    },
-  };
-}
+import { exerciseFromLibrary } from '../../../workouts/[workoutId]/edit/lib/exercise-from-library';
 
 export interface ExerciseSwapDialogProps {
   open: boolean;
@@ -111,7 +86,7 @@ export function ExerciseSwapDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="grid max-h-[90vh] w-full max-w-lg grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-lg">
-          <DialogHeader className="space-y-3 border-b border-border/60 bg-gradient-to-br from-violet-500/[0.08] to-transparent px-6 py-5">
+          <DialogHeader className="space-y-3 border-b border-border/60 bg-muted/20 px-6 py-5">
             <div className="flex items-center gap-2 text-primary">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
                 <RefreshCw className="h-4 w-4" aria-hidden />
@@ -147,7 +122,7 @@ export function ExerciseSwapDialog({
               {currentExercise.library_exercise_id != null &&
               similar.length > 0 ? (
                 <div>
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Label className="text-xs font-medium text-muted-foreground">
                     Similar in your library
                   </Label>
                   <ScrollArea className="mt-2 h-[min(240px,40vh)] pr-3">
@@ -160,7 +135,7 @@ export function ExerciseSwapDialog({
                           className="h-auto justify-start gap-3 border-border/80 py-3 text-left transition-all hover:border-primary/40 hover:bg-primary/5"
                           onClick={() => handlePick(lib)}
                         >
-                          <Library className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" />
+                          <Library className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="min-w-0 flex-1">
                             <span className="block font-medium leading-snug">
                               {lib.name}

@@ -306,10 +306,10 @@ export default function WorkoutExecutionPage() {
             </Alert>
           )}
 
-          <div className="sticky top-0 z-20 -mx-2 rounded-xl border border-border/60 bg-background/90 px-3 py-3 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/75 sm:-mx-0 sm:px-4">
+          <div className="sticky top-0 z-20 -mx-2 rounded-xl border border-border/60 bg-background px-3 py-3 shadow-sm sm:-mx-0 sm:px-4">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-medium text-muted-foreground">
                   Progress
                 </p>
                 <p className="truncate text-sm font-bold text-foreground">
@@ -324,7 +324,7 @@ export default function WorkoutExecutionPage() {
           </div>
 
           {surveyResponse && (
-            <details className="group rounded-2xl border border-milo-info/25 bg-milo-info/[0.06] dark:bg-milo-info/15">
+            <details className="group rounded-2xl border border-scout-info/25 bg-scout-info/[0.06] dark:bg-scout-info/15">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
                 <span>Check-in summary</span>
                 <div className="flex items-center gap-2">
@@ -350,7 +350,7 @@ export default function WorkoutExecutionPage() {
                   <ChevronDown className="h-4 w-4 shrink-0 transition group-open:rotate-180" />
                 </div>
               </summary>
-              <div className="space-y-2 border-t border-milo-info/20 px-4 py-3 text-sm">
+              <div className="space-y-2 border-t border-scout-info/20 px-4 py-3 text-sm">
                 <div>
                   <span className="text-muted-foreground">Rested: </span>
                   {formatYesNo(surveyResponse.rested_enough)}
@@ -485,7 +485,7 @@ export default function WorkoutExecutionPage() {
 
         <div
           className={cn(
-            'fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md',
+            'fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background',
             'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3',
             'lg:left-64'
           )}

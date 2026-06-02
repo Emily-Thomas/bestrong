@@ -1,12 +1,13 @@
 'use client';
 
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, BookOpen, Library, Loader2, PenLine, Save } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -20,14 +21,24 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   type Exercise,
+  type ExerciseLibraryExercise,
   type Workout,
   type WorkoutData,
   workoutsApi,
 } from '@/lib/api';
+import { ExerciseLibraryPicker } from './components/ExerciseLibraryPicker';
+import { ExercisePrescriptionFields } from './components/ExercisePrescriptionFields';
+import {
+  exerciseFromLibrary,
+  isLibraryLinkedExercise,
+} from './lib/exercise-from-library';
+
+type PickerTarget = { type: 'new' } | { type: 'replace'; index: number };
 
 export default function EditWorkoutPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const clientId = Number(params.id);
   const workoutId = Number(params.workoutId);
 
@@ -38,6 +49,22 @@ export default function EditWorkoutPage() {
   const [workoutData, setWorkoutData] = useState<WorkoutData | null>(null);
   const [workoutName, setWorkoutName] = useState('');
   const [workoutReasoning, setWorkoutReasoning] = useState('');
+  const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
+
+  const clientBackHref = (() => {
+    const q = new URLSearchParams();
+    const tab = searchParams.get('tab');
+    if (tab) q.set('tab', tab);
+    if (
+      searchParams.get('imported') === '1' ||
+      searchParams.get('track') === 'imported_program'
+    ) {
+      q.set('imported', '1');
+    }
+    const qs = q.toString();
+    return qs ? `/clients/${clientId}?${qs}` : `/clients/${clientId}`;
+  })();
 
   const loadWorkout = useCallback(async () => {
     setLoading(true);
@@ -63,7 +90,7 @@ export default function EditWorkoutPage() {
 
   useEffect(() => {
     if (workoutId) {
-      loadWorkout();
+      void loadWorkout();
     }
   }, [workoutId, loadWorkout]);
 
@@ -74,12 +101,35 @@ export default function EditWorkoutPage() {
     setWorkoutData({ ...workoutData, exercises: newExercises });
   };
 
-  const addExercise = () => {
+  const openLibraryPicker = (target: PickerTarget) => {
+    setPickerTarget(target);
+    setLibraryPickerOpen(true);
+  };
+
+  const handleLibrarySelect = (lib: ExerciseLibraryExercise) => {
+    if (!workoutData || !pickerTarget) return;
+
+    if (pickerTarget.type === 'new') {
+      setWorkoutData({
+        ...workoutData,
+        exercises: [...workoutData.exercises, exerciseFromLibrary(lib)],
+      });
+    } else {
+      const prev = workoutData.exercises[pickerTarget.index];
+      const newExercises = [...workoutData.exercises];
+      newExercises[pickerTarget.index] = exerciseFromLibrary(lib, prev ?? {});
+      setWorkoutData({ ...workoutData, exercises: newExercises });
+    }
+    setPickerTarget(null);
+  };
+
+  const addCustomExercise = () => {
     if (!workoutData) return;
     const newExercise: Exercise = {
       name: '',
       sets: 3,
       reps: '8-10',
+      is_custom: true,
     };
     setWorkoutData({
       ...workoutData,
@@ -96,6 +146,14 @@ export default function EditWorkoutPage() {
   const handleSave = async () => {
     if (!workout || !workoutData) return;
 
+    const unnamed = workoutData.exercises.some(
+      (ex) => !ex.name?.trim()
+    );
+    if (unnamed) {
+      setError('Every exercise needs a name. Pick from the library or enter a custom name.');
+      return;
+    }
+
     setSaving(true);
     setError('');
 
@@ -106,7 +164,7 @@ export default function EditWorkoutPage() {
         workout_reasoning: workoutReasoning || undefined,
       });
       if (response.success) {
-        router.push(`/clients/${clientId}`);
+        router.push(clientBackHref);
       } else {
         setError(response.error || 'Failed to update workout');
       }
@@ -180,12 +238,12 @@ export default function EditWorkoutPage() {
     <ProtectedRoute>
       <AppShell
         title={`Edit: ${workoutName || `Week ${workout.week_number}, Session ${workout.session_number}`}`}
-        description="Tweak the plan before your client runs it"
+        description="Add movements from your exercise library, then set sets and load"
         backAction={
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/clients/${clientId}`}>
+            <Link href={clientBackHref}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Client
+              Back to client
             </Link>
           </Button>
         }
@@ -201,7 +259,7 @@ export default function EditWorkoutPage() {
             <CardHeader>
               <CardTitle>Workout Details</CardTitle>
               <CardDescription>
-                Week {workout.week_number} • Session {workout.session_number}
+                Week {workout.week_number} · Session {workout.session_number}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -230,146 +288,179 @@ export default function EditWorkoutPage() {
 
           <Card className="shadow-md">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <CardTitle>Exercises</CardTitle>
-                  <CardDescription>Modify exercise details</CardDescription>
+                  <CardDescription>
+                    Choose from your library so prescriptions stay consistent
+                    across clients.
+                  </CardDescription>
                 </div>
-                <Button size="sm" variant="outline" onClick={addExercise}>
-                  Add Exercise
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    type="button"
+                    onClick={() => openLibraryPicker({ type: 'new' })}
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Add from library
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    type="button"
+                    className="gap-2"
+                    onClick={addCustomExercise}
+                  >
+                    <PenLine className="h-4 w-4" />
+                    Add custom
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {workoutData.exercises.map((exercise, index) => (
-                <Card
-                  key={`ex-${index}-${exercise.name || 'ex'}`}
-                  className="border-border/60 shadow-sm"
-                >
-                  <CardContent className="p-4 space-y-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">Exercise {index + 1}</h4>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeExercise(index)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor={`exercise-name-${index}`}>
-                          Exercise Name
-                        </Label>
-                        <Input
-                          id={`exercise-name-${index}`}
-                          value={exercise.name}
-                          onChange={(e) =>
-                            updateExercise(index, { name: e.target.value })
+              {workoutData.exercises.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 px-6 py-10 text-center">
+                  <Library className="mx-auto h-8 w-8 text-muted-foreground/60" />
+                  <p className="mt-3 text-sm font-medium text-foreground">
+                    No exercises yet
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Start with{' '}
+                    <span className="font-medium text-foreground">
+                      Add from library
+                    </span>{' '}
+                    to pull from your roster. Use custom only when the movement
+                    is not in the library.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-4 gap-2"
+                    onClick={() => openLibraryPicker({ type: 'new' })}
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Browse exercise library
+                  </Button>
+                </div>
+              ) : (
+                workoutData.exercises.map((exercise, index) => {
+                  const fromLibrary = isLibraryLinkedExercise(exercise);
+                  const meta = exercise.library_metadata;
+                  return (
+                    <Card
+                      key={`ex-${index}-${exercise.library_exercise_id ?? (exercise.name || 'custom')}`}
+                      className="border-border/60 shadow-sm"
+                    >
+                      <CardContent className="space-y-4 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-medium">
+                                Exercise {index + 1}
+                              </h4>
+                              {fromLibrary ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="gap-1 text-xs font-normal"
+                                >
+                                  <Library className="h-3 w-3" />
+                                  Library
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs">
+                                  Custom
+                                </Badge>
+                              )}
+                            </div>
+                            {fromLibrary ? (
+                              <p className="text-sm font-semibold leading-snug text-foreground">
+                                {exercise.name}
+                              </p>
+                            ) : null}
+                            {fromLibrary && meta ? (
+                              <p className="text-xs text-muted-foreground">
+                                {[
+                                  meta.primary_muscle_group,
+                                  meta.equipment,
+                                  meta.category,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              type="button"
+                              className="gap-1.5"
+                              onClick={() =>
+                                openLibraryPicker({
+                                  type: 'replace',
+                                  index,
+                                })
+                              }
+                            >
+                              <BookOpen className="h-3.5 w-3.5" />
+                              {fromLibrary ? 'Change' : 'Pick from library'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              type="button"
+                              onClick={() => removeExercise(index)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+
+                        {!fromLibrary ? (
+                          <div className="space-y-2">
+                            <Label htmlFor={`exercise-name-${index}`}>
+                              Exercise name
+                            </Label>
+                            <Input
+                              id={`exercise-name-${index}`}
+                              value={exercise.name}
+                              onChange={(e) =>
+                                updateExercise(index, {
+                                  name: e.target.value,
+                                  is_custom: true,
+                                })
+                              }
+                              placeholder="e.g., Barbell Bench Press"
+                            />
+                          </div>
+                        ) : null}
+
+                        <ExercisePrescriptionFields
+                          exercise={exercise}
+                          index={index}
+                          onChange={(updates) =>
+                            updateExercise(index, updates)
                           }
-                          placeholder="e.g., Barbell Bench Press"
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`sets-${index}`}>Sets</Label>
-                        <Input
-                          id={`sets-${index}`}
-                          type="number"
-                          min="0"
-                          value={exercise.sets || ''}
-                          onChange={(e) =>
-                            updateExercise(index, {
-                              sets: e.target.value
-                                ? parseInt(e.target.value, 10)
-                                : undefined,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`reps-${index}`}>Reps</Label>
-                        <Input
-                          id={`reps-${index}`}
-                          value={exercise.reps || ''}
-                          onChange={(e) =>
-                            updateExercise(index, { reps: e.target.value })
-                          }
-                          placeholder="e.g., 8-10 or 8"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`weight-${index}`}>Weight/Load</Label>
-                        <Input
-                          id={`weight-${index}`}
-                          value={exercise.weight || ''}
-                          onChange={(e) =>
-                            updateExercise(index, { weight: e.target.value })
-                          }
-                          placeholder="e.g., RIR 2 or 185 lbs"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`rest-${index}`}>Rest (seconds)</Label>
-                        <Input
-                          id={`rest-${index}`}
-                          type="number"
-                          min="0"
-                          value={exercise.rest_seconds || ''}
-                          onChange={(e) =>
-                            updateExercise(index, {
-                              rest_seconds: e.target.value
-                                ? parseInt(e.target.value, 10)
-                                : undefined,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`rir-${index}`}>RIR (0-5)</Label>
-                        <Input
-                          id={`rir-${index}`}
-                          type="number"
-                          min="0"
-                          max="5"
-                          value={exercise.rir !== undefined ? exercise.rir : ''}
-                          onChange={(e) =>
-                            updateExercise(index, {
-                              rir: e.target.value
-                                ? parseInt(e.target.value, 10)
-                                : undefined,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor={`notes-${index}`}>Notes</Label>
-                        <Textarea
-                          id={`notes-${index}`}
-                          value={exercise.notes || ''}
-                          onChange={(e) =>
-                            updateExercise(index, { notes: e.target.value })
-                          }
-                          placeholder="Exercise-specific notes..."
-                          rows={2}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
 
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"
-              onClick={() => router.push(`/clients/${clientId}`)}
+              onClick={() => router.push(clientBackHref)}
               disabled={saving}
             >
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={() => void handleSave()} disabled={saving}>
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -378,12 +469,21 @@ export default function EditWorkoutPage() {
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+                  Save changes
                 </>
               )}
             </Button>
           </div>
         </div>
+
+        <ExerciseLibraryPicker
+          open={libraryPickerOpen}
+          onOpenChange={(open) => {
+            setLibraryPickerOpen(open);
+            if (!open) setPickerTarget(null);
+          }}
+          onSelect={handleLibrarySelect}
+        />
       </AppShell>
     </ProtectedRoute>
   );

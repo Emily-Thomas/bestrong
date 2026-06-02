@@ -47,6 +47,7 @@ import {
 } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { GenerateWorkoutsPanel } from './GenerateWorkoutsPanel';
+import { ImportedProgramBuilder } from './ImportedProgramBuilder';
 
 function groupWorkoutsByWeek(list: Workout[]): [number, Workout[]][] {
   const m = new Map<number, Workout[]>();
@@ -106,12 +107,21 @@ function WeekProgressRing({ percent }: { percent: number }) {
 interface WorkoutsSectionProps {
   clientId: number;
   recommendation: Recommendation | null;
+  importedProgram?: boolean;
   onWorkoutUpdate?: () => void;
+  onWorkoutsPresenceChange?: (hasWorkouts: boolean) => void;
+  onImportedBuilderProgressChange?: (progress: {
+    ready: number;
+    total: number;
+  }) => void;
 }
 
 export function WorkoutsSection({
   clientId,
   recommendation,
+  importedProgram = false,
+  onWorkoutsPresenceChange,
+  onImportedBuilderProgressChange,
   onWorkoutUpdate,
 }: WorkoutsSectionProps) {
   const router = useRouter();
@@ -133,6 +143,7 @@ export function WorkoutsSection({
   const loadWorkouts = useCallback(async () => {
     if (!recommendation) {
       setLoading(false);
+      onWorkoutsPresenceChange?.(false);
       return;
     }
 
@@ -143,6 +154,7 @@ export function WorkoutsSection({
       const response = await recommendationsApi.getWorkouts(recommendation.id);
       if (response.success && response.data) {
         setWorkouts(response.data);
+        onWorkoutsPresenceChange?.(response.data.length > 0);
         const currentWeekNum = recommendation.current_week || 1;
         setCurrentWeek(currentWeekNum);
 
@@ -163,11 +175,12 @@ export function WorkoutsSection({
     } finally {
       setLoading(false);
     }
-  }, [recommendation]);
+  }, [recommendation, onWorkoutsPresenceChange]);
 
   useEffect(() => {
+    if (importedProgram) return;
     loadWorkouts();
-  }, [loadWorkouts]);
+  }, [loadWorkouts, importedProgram]);
 
   const handleStartWorkout = async (workoutId: number) => {
     setStartingWorkout(workoutId);
@@ -199,7 +212,8 @@ export function WorkoutsSection({
   };
 
   const handleEditWorkout = (workoutId: number) => {
-    router.push(`/clients/${clientId}/workouts/${workoutId}/edit`);
+    const q = importedProgram ? '?tab=workouts&imported=1' : '';
+    router.push(`/clients/${clientId}/workouts/${workoutId}/edit${q}`);
   };
 
   const [skippingWorkout, setSkippingWorkout] = useState<number | null>(null);
@@ -288,14 +302,14 @@ export function WorkoutsSection({
         return (
           <Badge
             variant="outline"
-            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+            className="border-success/40 bg-success/10 text-success"
           >
             Scheduled
           </Badge>
         );
       case 'in_progress':
         return (
-          <Badge className="bg-amber-500/90 text-amber-50 hover:bg-amber-500/90">
+          <Badge className="bg-warning/15 text-warning hover:bg-warning/15">
             In progress
           </Badge>
         );
@@ -314,32 +328,17 @@ export function WorkoutsSection({
     }
   };
 
-  const cardAccent = (status: Workout['status']) => {
-    switch (status) {
-      case 'scheduled':
-        return 'border-l-emerald-500';
-      case 'in_progress':
-        return 'border-l-amber-500';
-      case 'completed':
-        return 'border-l-primary/50';
-      default:
-        return 'border-l-muted-foreground/30';
-    }
-  };
-
   const WorkoutCard = ({ workout }: { workout: Workout }) => (
     <div
       className={cn(
-        'overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-colors hover:bg-muted/20',
-        'border-l-4',
-        cardAccent(workout.status)
+        'overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-colors hover:bg-muted/20'
       )}
     >
       <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              W{workout.week_number} · S{workout.session_number}
+            <span className="font-mono text-xs text-muted-foreground">
+              Week {workout.week_number} · Session {workout.session_number}
             </span>
             {getStatusBadge(workout.status)}
           </div>
@@ -453,7 +452,7 @@ export function WorkoutsSection({
               <Button
                 size="default"
                 variant="default"
-                className="w-full gap-2 bg-amber-600 font-semibold hover:bg-amber-600/90"
+                className="w-full gap-2 bg-warning font-semibold text-foreground hover:bg-warning/90"
                 onClick={() => handleContinueWorkout(workout.id)}
               >
                 <Clock className="h-4 w-4 shrink-0" />
@@ -514,7 +513,7 @@ export function WorkoutsSection({
               className="w-full"
               onClick={() => handleViewWorkout(workout.id)}
             >
-              <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="mr-2 h-4 w-4 text-success " />
               View log
             </Button>
           )}
@@ -548,7 +547,9 @@ export function WorkoutsSection({
             {emptyLabel}
           </p>
           <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-            Sessions appear here as you generate them from the plan above.
+            {importedProgram
+              ? 'Sessions show up after you scaffold the program or add a session manually.'
+              : 'Sessions appear here as you generate them from the plan above.'}
           </p>
         </div>
       );
@@ -558,13 +559,13 @@ export function WorkoutsSection({
         {groups.map(([week, items]) => (
           <div key={week} className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 Week {week}
               </span>
               {week === currentWeek && (
                 <Badge
                   variant="secondary"
-                  className="h-5 text-[10px] font-semibold uppercase"
+                  className="h-5 text-xs font-medium"
                 >
                   Current phase
                 </Badge>
@@ -601,6 +602,17 @@ export function WorkoutsSection({
     );
   }
 
+  if (importedProgram) {
+    return (
+      <ImportedProgramBuilder
+        clientId={clientId}
+        recommendation={recommendation}
+        onWorkoutsPresenceChange={onWorkoutsPresenceChange}
+        onBuilderProgressChange={onImportedBuilderProgressChange}
+      />
+    );
+  }
+
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm ring-1 ring-border/40">
       <div
@@ -612,7 +624,7 @@ export function WorkoutsSection({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
                   <Activity className="h-3 w-3" />
                   Training
                 </span>
@@ -630,9 +642,11 @@ export function WorkoutsSection({
                 Workouts
               </CardTitle>
               <CardDescription className="max-w-xl text-base leading-relaxed">
-                {recommendation.status === 'active'
-                  ? 'Run sessions from the locked plan and track week-by-week progress.'
-                  : 'Generate sessions from the plan, then activate the client when they should start training.'}
+                {importedProgram
+                  ? 'Edit each session to match what they already run elsewhere, then start training here.'
+                  : recommendation.status === 'active'
+                    ? 'Run sessions from the locked plan and track week-by-week progress.'
+                    : 'Generate sessions from the plan, then activate the client when they should start training.'}
               </CardDescription>
             </div>
 
@@ -641,7 +655,7 @@ export function WorkoutsSection({
                 <div className="flex items-center gap-4">
                   <WeekProgressRing percent={weekProgressPercent} />
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs font-medium text-muted-foreground">
                       Week {currentWeek}
                     </p>
                     <p className="text-lg font-bold leading-tight text-foreground">
@@ -663,11 +677,11 @@ export function WorkoutsSection({
           {workouts.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/80 p-3 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/15 text-info ">
                   <CalendarDays className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     Upcoming
                   </p>
                   <p className="text-xl font-bold tabular-nums">
@@ -676,11 +690,11 @@ export function WorkoutsSection({
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/80 p-3 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/15 text-warning">
                   <Activity className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     In progress
                   </p>
                   <p className="text-xl font-bold tabular-nums">
@@ -689,11 +703,11 @@ export function WorkoutsSection({
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/80 p-3 shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/15 text-success ">
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     Completed
                   </p>
                   <p className="text-xl font-bold tabular-nums">
@@ -706,16 +720,18 @@ export function WorkoutsSection({
         </CardHeader>
 
         <CardContent className="space-y-8 pt-0">
-          <GenerateWorkoutsPanel
-            clientId={clientId}
-            recommendation={recommendation}
-            onSaved={async () => {
-              await loadWorkouts();
-              onWorkoutUpdate?.();
-            }}
-          />
+          {!importedProgram ? (
+            <GenerateWorkoutsPanel
+              clientId={clientId}
+              recommendation={recommendation}
+              onSaved={async () => {
+                await loadWorkouts();
+                onWorkoutUpdate?.();
+              }}
+            />
+          ) : null}
 
-          {recommendation.status !== 'active' && (
+          {recommendation.status !== 'active' && !importedProgram && (
             <Alert>
               <AlertDescription className="text-sm leading-relaxed">
                 Activate this client when they should start executing sessions.

@@ -62,66 +62,44 @@ const GOAL_VISUAL: Record<
   PlanTemplateGoalCategory,
   {
     shortLabel: string;
-    leftBar: string;
     cardTint: string;
     goalBadge: string;
   }
 > = {
   general_fitness: {
     shortLabel: 'General fitness',
-    leftBar: 'border-l-emerald-500',
-    cardTint:
-      'bg-gradient-to-br from-emerald-500/[0.09] via-background to-background dark:from-emerald-500/[0.12]',
-    goalBadge:
-      'bg-emerald-500/20 text-emerald-950 dark:bg-emerald-500/25 dark:text-emerald-50',
+    cardTint: 'bg-muted/20',
+    goalBadge: 'bg-success/15 text-success',
   },
   fat_loss: {
     shortLabel: 'Fat loss',
-    leftBar: 'border-l-orange-500',
-    cardTint:
-      'bg-gradient-to-br from-orange-500/[0.09] via-background to-background dark:from-orange-500/[0.12]',
-    goalBadge:
-      'bg-orange-500/20 text-orange-950 dark:bg-orange-500/25 dark:text-orange-50',
+    cardTint: 'bg-muted/20',
+    goalBadge: 'bg-accent/15 text-accent',
   },
   muscle_gain: {
     shortLabel: 'Muscle gain',
-    leftBar: 'border-l-violet-500',
-    cardTint:
-      'bg-gradient-to-br from-violet-500/[0.09] via-background to-background dark:from-violet-500/[0.12]',
-    goalBadge:
-      'bg-violet-500/20 text-violet-950 dark:bg-violet-500/25 dark:text-violet-50',
+    cardTint: 'bg-muted/20',
+    goalBadge: 'bg-primary/15 text-foreground',
   },
   strength: {
     shortLabel: 'Strength',
-    leftBar: 'border-l-milo-info',
-    cardTint:
-      'bg-gradient-to-br from-milo-info/[0.09] via-background to-background dark:from-milo-info/[0.12]',
-    goalBadge:
-      'bg-milo-info/20 text-milo-ink dark:bg-milo-info/25 dark:text-milo-bone',
+    cardTint: 'bg-muted/20',
+    goalBadge: 'bg-info/15 text-info',
   },
   athletic_performance: {
     shortLabel: 'Athletic',
-    leftBar: 'border-l-amber-500',
-    cardTint:
-      'bg-gradient-to-br from-amber-500/[0.1] via-background to-background dark:from-amber-500/[0.14]',
-    goalBadge:
-      'bg-amber-500/20 text-amber-950 dark:bg-amber-500/25 dark:text-amber-50',
+    cardTint: 'bg-muted/20',
+    goalBadge: 'bg-warning/15 text-warning',
   },
   health_longevity: {
     shortLabel: 'Health',
-    leftBar: 'border-l-teal-500',
-    cardTint:
-      'bg-gradient-to-br from-teal-500/[0.09] via-background to-background dark:from-teal-500/[0.12]',
-    goalBadge:
-      'bg-teal-500/20 text-teal-950 dark:bg-teal-500/25 dark:text-teal-50',
+    cardTint: 'bg-muted/20',
+    goalBadge: 'bg-info/10 text-info',
   },
   return_to_training: {
     shortLabel: 'Return',
-    leftBar: 'border-l-cyan-500',
-    cardTint:
-      'bg-gradient-to-br from-cyan-500/[0.09] via-background to-background dark:from-cyan-500/[0.12]',
-    goalBadge:
-      'bg-cyan-500/20 text-cyan-950 dark:bg-cyan-500/25 dark:text-cyan-50',
+    cardTint: 'bg-muted/20',
+    goalBadge: 'bg-muted text-muted-foreground',
   },
 };
 
@@ -154,7 +132,7 @@ function LockedCoachPlanReadonly({
 
       <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-medium text-muted-foreground">
             Coach on this plan
           </p>
           {trainer ? (
@@ -163,7 +141,7 @@ function LockedCoachPlanReadonly({
                 {trainer.image_url ? (
                   <AvatarImage
                     src={trainer.image_url}
-                    alt=""
+                    alt={`${trainer.first_name ?? ''} ${trainer.last_name ?? ''}`.trim() || 'Coach photo'}
                     className="object-cover"
                   />
                 ) : null}
@@ -195,7 +173,7 @@ function LockedCoachPlanReadonly({
         </div>
 
         <div className="border-t border-border/60 pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-medium text-muted-foreground">
             Plan source
           </p>
           <p className="mt-2 text-sm text-foreground">
@@ -445,7 +423,11 @@ export function TrainingPlansSection({
           const recResponse = await recommendationsApi.getById(
             job.recommendation_id
           );
-          if (recResponse.success && recResponse.data) {
+          if (
+            recResponse.success &&
+            recResponse.data &&
+            recResponse.data.id !== recommendation?.id
+          ) {
             onRecommendationUpdate(recResponse.data);
             const wRes = await recommendationsApi.getWorkouts(
               job.recommendation_id
@@ -477,7 +459,7 @@ export function TrainingPlansSection({
         setGenMode(null);
       }
     },
-    [onRecommendationUpdate, clientId, router]
+    [onRecommendationUpdate, clientId, router, recommendation?.id]
   );
 
   const checkForExistingJob = useCallback(
@@ -512,7 +494,11 @@ export function TrainingPlansSection({
           } else if (job.status === 'completed' && job.recommendation_id) {
             const recResponse =
               await recommendationsApi.getByQuestionnaireId(questionnaireId);
-            if (recResponse.success && recResponse.data) {
+            if (
+              recResponse.success &&
+              recResponse.data &&
+              recResponse.data.id !== recommendation?.id
+            ) {
               onRecommendationUpdate(recResponse.data);
               const wRes = await recommendationsApi.getWorkouts(
                 job.recommendation_id
@@ -527,7 +513,7 @@ export function TrainingPlansSection({
         // Job might not exist
       }
     },
-    [pollJobStatus, onRecommendationUpdate]
+    [pollJobStatus, onRecommendationUpdate, recommendation?.id]
   );
 
   useEffect(() => {
@@ -1002,12 +988,12 @@ export function TrainingPlansSection({
                                 className={cn(
                                   'relative rounded-xl border-2 bg-background/90 p-3 text-left transition-shadow',
                                   isAiPick
-                                    ? 'border-emerald-500/60 shadow-md ring-2 ring-emerald-500/20'
+                                    ? 'border-success/60 shadow-md ring-2 ring-success/20'
                                     : 'border-border/70 hover:border-primary/35'
                                 )}
                               >
                                 {isAiPick && (
-                                  <span className="absolute -top-2.5 left-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+                                  <span className="absolute -top-2.5 left-3 rounded-full bg-success px-2 py-0.5 text-xs font-semibold text-success-foreground shadow">
                                     AI pick
                                   </span>
                                 )}
@@ -1027,7 +1013,7 @@ export function TrainingPlansSection({
                                     {t.image_url ? (
                                       <AvatarImage
                                         src={t.image_url}
-                                        alt=""
+                                        alt={`${t.first_name ?? ''} ${t.last_name ?? ''}`.trim() || 'Coach photo'}
                                         className="object-cover"
                                       />
                                     ) : null}
@@ -1084,10 +1070,10 @@ export function TrainingPlansSection({
                   </div>
 
                   {recommendation ? (
-                    <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.07] p-4 shadow-sm dark:bg-emerald-500/[0.09]">
+                    <div className="rounded-2xl border border-success/35 bg-success/[0.07] p-4 shadow-sm dark:bg-success/[0.09]">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 space-y-1">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-100">
+                          <p className="text-[11px] font-medium text-success dark:text-success">
                             Current mesocycle
                           </p>
                           <p className="text-sm text-foreground">
@@ -1124,7 +1110,7 @@ export function TrainingPlansSection({
                         </div>
                         <Badge
                           variant="secondary"
-                          className="shrink-0 border-emerald-500/30 bg-emerald-500/15 text-emerald-950 dark:text-emerald-50"
+                          className="shrink-0 border-success/30 bg-success/15 text-success dark:text-success-foreground"
                         >
                           Active
                         </Badge>
@@ -1137,71 +1123,60 @@ export function TrainingPlansSection({
                   ) : null}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <button
-                      type="button"
-                      onClick={() => setInitialPlanMode('library')}
-                      className={cn(
-                        'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
-                        'from-primary/[0.08] via-background to-muted/20 hover:shadow-md',
-                        initialPlanMode === 'library'
-                          ? 'border-primary/60 ring-2 ring-primary/35 shadow-md'
-                          : 'border-border/70 hover:border-primary/35'
-                      )}
-                    >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-                        <BookOpen className="h-5 w-5" aria-hidden />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">
-                        Plan library
-                      </span>
-                      <span className="text-xs leading-relaxed text-muted-foreground">
-                        Pick a template — we save the mesocycle; you generate
-                        workouts when ready.
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInitialPlanMode('ai')}
-                      className={cn(
-                        'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
-                        'from-violet-500/[0.06] via-background to-muted/20 hover:shadow-md',
-                        initialPlanMode === 'ai'
-                          ? 'border-violet-500/55 ring-2 ring-violet-500/35 shadow-md'
-                          : 'border-border/70 hover:border-violet-500/35'
-                      )}
-                    >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 text-white shadow-md dark:bg-violet-500">
-                        <Sparkles className="h-5 w-5" aria-hidden />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">
-                        AI custom plan
-                      </span>
-                      <span className="text-xs leading-relaxed text-muted-foreground">
-                        Generate a tailored direction from questionnaire +
-                        InBody.
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInitialPlanMode('manual')}
-                      className={cn(
-                        'group relative flex w-full flex-col gap-2 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all duration-200',
-                        'from-amber-500/[0.07] via-background to-muted/20 hover:shadow-md',
-                        initialPlanMode === 'manual'
-                          ? 'border-amber-500/55 ring-2 ring-amber-500/35 shadow-md'
-                          : 'border-border/70 hover:border-amber-500/35'
-                      )}
-                    >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-600 text-white shadow-md dark:bg-amber-500">
-                        <PenLine className="h-5 w-5" aria-hidden />
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">
-                        Build manually
-                      </span>
-                      <span className="text-xs leading-relaxed text-muted-foreground">
-                        Shape the plan yourself in the editor.
-                      </span>
-                    </button>
+                    {(
+                      [
+                        {
+                          mode: 'library' as const,
+                          label: 'Plan library',
+                          hint: 'Pick a template — we save the mesocycle; you generate workouts when ready.',
+                          icon: BookOpen,
+                        },
+                        {
+                          mode: 'ai' as const,
+                          label: 'AI custom plan',
+                          hint: 'Generate a tailored direction from questionnaire and InBody.',
+                          icon: Sparkles,
+                        },
+                        {
+                          mode: 'manual' as const,
+                          label: 'Build manually',
+                          hint: 'Shape the plan yourself in the editor.',
+                          icon: PenLine,
+                        },
+                      ] as const
+                    ).map(({ mode, label, hint, icon: Icon }) => {
+                      const selected = initialPlanMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setInitialPlanMode(mode)}
+                          className={cn(
+                            'flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left shadow-sm transition-colors',
+                            selected
+                              ? 'border-primary/50 ring-2 ring-primary/30 bg-primary/[0.04]'
+                              : 'border-border hover:border-primary/25 hover:bg-muted/30'
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              'flex h-10 w-10 items-center justify-center rounded-lg',
+                              selected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
+                            )}
+                          >
+                            <Icon className="h-5 w-5" aria-hidden />
+                          </div>
+                          <span className="text-sm font-semibold text-foreground">
+                            {label}
+                          </span>
+                          <span className="text-xs leading-relaxed text-muted-foreground">
+                            {hint}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {initialPlanMode === 'library' && (
@@ -1245,7 +1220,7 @@ export function TrainingPlansSection({
                       <div className="space-y-4 p-4">
                         <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-background/90 p-3 shadow-sm sm:flex-row sm:items-end sm:justify-between">
                           <div className="space-y-2 min-w-0 flex-1">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                               <Filter
                                 className="h-3.5 w-3.5 text-primary"
                                 aria-hidden
@@ -1361,10 +1336,8 @@ export function TrainingPlansSection({
                                   <div
                                     key={t.id}
                                     className={cn(
-                                      'overflow-hidden rounded-xl border border-border/70 border-l-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md',
-                                      gv.leftBar,
-                                      isCurrentPlan &&
-                                        'ring-2 ring-primary/45 shadow-md'
+                                      'overflow-hidden rounded-xl border border-border/70 shadow-sm transition-colors hover:border-primary/30 hover:bg-muted/15',
+                                      isCurrentPlan && 'ring-2 ring-primary/45'
                                     )}
                                   >
                                     <div
@@ -1395,7 +1368,7 @@ export function TrainingPlansSection({
                                               </span>
                                             ) : null}
                                             {isCurrentPlan ? (
-                                              <span className="inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+                                              <span className="inline-flex items-center rounded-md border border-success/40 bg-success/15 px-2 py-0.5 text-xs font-semibold text-success dark:text-success">
                                                 Your current plan
                                               </span>
                                             ) : null}
@@ -1408,13 +1381,13 @@ export function TrainingPlansSection({
                                               {t.summary}
                                             </p>
                                           </div>
-                                          <p className="text-xs font-medium uppercase tracking-wide text-primary/90">
+                                          <p className="text-xs font-medium text-muted-foreground">
                                             {t.mesocycle_type}
                                           </p>
                                           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                             <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-                                              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                <Calendar className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                                <Calendar className="h-3.5 w-3.5 shrink-0 text-success " />
                                                 Frequency
                                               </div>
                                               <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
@@ -1422,8 +1395,8 @@ export function TrainingPlansSection({
                                               </p>
                                             </div>
                                             <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-                                              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                <Clock className="h-3.5 w-3.5 shrink-0 text-milo-info" />
+                                              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                                <Clock className="h-3.5 w-3.5 shrink-0 text-info" />
                                                 Session
                                               </div>
                                               <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
@@ -1431,8 +1404,8 @@ export function TrainingPlansSection({
                                               </p>
                                             </div>
                                             <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-                                              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                <Layers className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
+                                              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                                <Layers className="h-3.5 w-3.5 shrink-0 text-info" />
                                                 Phase
                                               </div>
                                               <p className="mt-1 text-sm font-bold tabular-nums text-foreground">
@@ -1440,7 +1413,7 @@ export function TrainingPlansSection({
                                               </p>
                                             </div>
                                             <div className="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
-                                              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                                                 <Flame className="h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" />
                                                 Intensity
                                               </div>
@@ -1506,9 +1479,9 @@ export function TrainingPlansSection({
                   )}
 
                   {initialPlanMode === 'ai' && (
-                    <div className="flex flex-col gap-3 rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/[0.06] to-background p-4 sm:flex-row sm:items-start sm:justify-between dark:from-violet-500/10">
+                    <div className="flex flex-col gap-3 rounded-xl border border-info/25 bg-gradient-to-br from-info/[0.06] to-background p-4 sm:flex-row sm:items-start sm:justify-between dark:from-info/10">
                       <div className="flex gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-violet-700 dark:text-violet-200">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-info/20 text-info dark:text-info">
                           <Sparkles className="h-4 w-4" aria-hidden />
                         </div>
                         <div>

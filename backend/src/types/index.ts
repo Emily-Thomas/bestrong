@@ -23,6 +23,8 @@ export interface LoginInput {
 }
 
 // Client Types
+export type ClientOnboardingTrack = 'standard' | 'imported_program';
+
 export interface Client {
   id: number;
   first_name: string;
@@ -31,6 +33,7 @@ export interface Client {
   phone?: string;
   date_of_birth?: Date;
   status: 'prospect' | 'active' | 'inactive' | 'archived';
+  onboarding_track?: ClientOnboardingTrack;
   created_by: number;
   created_at: Date;
   updated_at: Date;
@@ -42,6 +45,7 @@ export interface CreateClientInput {
   email?: string;
   phone?: string;
   date_of_birth?: string;
+  onboarding_track?: ClientOnboardingTrack;
 }
 
 export interface UpdateClientInput {
@@ -51,6 +55,7 @@ export interface UpdateClientInput {
   phone?: string;
   date_of_birth?: string;
   status?: 'prospect' | 'active' | 'inactive' | 'archived';
+  onboarding_track?: ClientOnboardingTrack;
 }
 
 // Questionnaire Types

@@ -91,8 +91,8 @@ export const MUSCLE_CATEGORY_META: Record<
   },
   legs: {
     label: 'Legs',
-    segment: 'bg-violet-500 dark:bg-violet-400',
-    dot: 'bg-violet-500',
+    segment: 'bg-chart-3',
+    dot: 'bg-chart-3',
   },
   glutes: {
     label: 'Glutes',
@@ -101,8 +101,8 @@ export const MUSCLE_CATEGORY_META: Record<
   },
   core: {
     label: 'Core',
-    segment: 'bg-emerald-500 dark:bg-emerald-400',
-    dot: 'bg-emerald-500',
+    segment: 'bg-chart-4',
+    dot: 'bg-chart-4',
   },
   cardio: {
     label: 'Conditioning',

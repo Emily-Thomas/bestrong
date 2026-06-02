@@ -1,5 +1,5 @@
 /**
- * Milo Design System - Design Tokens
+ * Scout Design System - Design Tokens
  * 
  * Central export for all design tokens
  */

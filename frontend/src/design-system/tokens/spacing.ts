@@ -1,5 +1,5 @@
 /**
- * Milo Design System - Spacing Tokens
+ * Scout Design System - Spacing Tokens
  * 
  * Consistent spacing scale for margins, padding, and gaps
  */

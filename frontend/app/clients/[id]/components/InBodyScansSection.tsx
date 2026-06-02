@@ -23,7 +23,7 @@ interface InBodyScansSectionProps {
   clientId: number;
   /** Softer frame when nested in setup accordion */
   embedded?: boolean;
-  /** Called after scans list changes (upload, review, load) */
+  /** Called after scans list changes (upload, review, verify) */
   onUpdate?: () => void | Promise<void>;
 }
 
@@ -54,9 +54,12 @@ export function InBodyScansSection({
       setError(err instanceof Error ? err.message : 'Failed to load scans');
     } finally {
       setLoading(false);
-      await Promise.resolve(onUpdate?.());
     }
-  }, [clientId, onUpdate]);
+  }, [clientId]);
+
+  const notifyParent = useCallback(async () => {
+    await Promise.resolve(onUpdate?.());
+  }, [onUpdate]);
 
   useEffect(() => {
     loadScans();
@@ -115,14 +118,13 @@ export function InBodyScansSection({
   }, [pollingScans]);
 
   const handleUploadSuccess = (scanId: number) => {
-    // Reload scans to get the new one
-    loadScans();
-    // Start polling for this scan
+    void loadScans().then(() => notifyParent());
     setPollingScans((prev) => new Set(prev).add(scanId));
   };
 
   const handleReviewComplete = async () => {
     await loadScans();
+    await notifyParent();
     setReviewModalOpen(false);
     setSelectedScan(null);
   };
@@ -340,7 +342,10 @@ export function InBodyScansSection({
             open={detailsModalOpen}
             onOpenChange={setDetailsModalOpen}
             scan={selectedScan}
-            onUpdate={loadScans}
+            onUpdate={async () => {
+              await loadScans();
+              await notifyParent();
+            }}
           />
         </>
       )}

@@ -190,13 +190,13 @@ backend/
 
 ---
 
-## Milo Brand & Design System
+## Scout Brand & Design System
 
 ### Brand Identity
 
-**Product Name:** Milo  
+**Product Name:** Scout  
 **Tagline:** Your AI Training Companion  
-**Philosophy:** Like a loyal gym dog - supportive, intelligent, never in the way
+**Philosophy:** Like a loyal training companion — supportive, intelligent, never in the way
 
 **Brand Personality:**
 - **Loyal & Reliable** - Always at your side, dependable
@@ -209,26 +209,26 @@ backend/
 
 **All design tokens and guidelines:** `/frontend/src/design-system/`
 - Tokens: `/frontend/src/design-system/tokens/` (TypeScript)
-- Documentation: `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
+- Documentation: `/frontend/src/design-system/README.md` (brand guide; add `docs/SCOUT_BRAND_GUIDE.md` when split out)
 - Quick Start: `/frontend/src/design-system/README.md`
 
 ### Visual Identity
 
 #### Logo Usage
-- **Brand Logo (everywhere):** `/frontend/public/milo-logo-gold.png` — use in navigation, headers, marketing, and all UI
-- Logo represents a cream-colored goldendoodle (Milo) in sitting position
+- **Brand Logo (everywhere):** `/frontend/public/scout-logo-gold.png` — use in navigation, headers, marketing, and all UI
+- Logo mark + wordmark in `/frontend/public/scout-mark.svg` and `scout-wordmark.svg` (legacy goldendoodle assets may remain until new brand art ships)
 - Minimum size: 32x32px
 - Use Next.js `Image` with this asset; keep aspect ratio
 
 #### Color palette
 
-**Core (see `--milo-*` in `frontend/app/globals.css`):** bone, ink, **signal** (primary CTA, chartreuse; `bg-primary` / `text-primary`), **collar** (warm terracotta; `bg-accent` / `accent-foreground` uses **ink** on solid terracotta), **fog** and fog-1/2/3, ink-mute, ink-soft.
+**Core (see `--scout-*` in `frontend/app/globals.css`):** bone, ink, **signal** (primary CTA, chartreuse; `bg-primary` / `text-primary`), **collar** (warm terracotta; `bg-accent` / `accent-foreground` uses **ink** on solid terracotta), **fog** and fog-1/2/3, ink-mute, ink-soft.
 
 **Semantic:** success, info, danger, warning — for feedback and `Alert` variants: `default`, `destructive`, `success`, `info`, `warning`, `signal`.
 
-**Bridge:** shadcn `primary` = signal, `ring` = signal, `destructive` = danger. Tailwind: `bg-milo-bone`, `text-milo-info`, `border-milo-fog-1`, etc. Charts: `--chart-1`..`5`.
+**Bridge:** shadcn `primary` = signal, `ring` = signal, `destructive` = danger. Tailwind: `bg-scout-bone`, `text-scout-info`, `border-scout-fog-1`, etc. Charts: `--chart-1`..`5`.
 
-**Logo:** `milo-logo-gold.png` (default). `milo-logo-blue.png` is optional legacy, not the product default.
+**Logo:** `scout-logo-gold.png` (default). `scout-logo-blue.png` is optional legacy, not the product default.
 
 #### Typography
 
@@ -236,7 +236,7 @@ backend/
 1. **Manrope** (`--font-display`) - Display/Brand
    - Use for: Hero headings, page titles, brand moments
    - Apply with: `style={{ fontFamily: 'var(--font-display)' }}`
-   - Always use for "Milo" brand name
+   - Always use for "Scout" brand name
 
 2. **Geist** (`--font-sans`) - UI/Interface
    - Use for: Body text, UI components, navigation
@@ -246,7 +246,7 @@ backend/
    - Use for: Numbers, metrics, code blocks, tabular data
 
 **Typography Rules:**
-- Display font for brand name "Milo" (not generic sans)
+- Display font for brand name "Scout" (not generic sans)
 - Sans font for all other UI text
 - Mono font for metrics and data-heavy content
 
@@ -290,11 +290,11 @@ backend/
 
 **Example Microcopy:**
 
-| Context | Milo Voice |
+| Context | Scout Voice |
 |---------|------------|
-| Welcome | "Hey! Milo here. Let's get you set up." |
+| Welcome | "Hey! Scout here. Let's get you set up." |
 | Empty state | "Ready to build your first program?" |
-| Loading | "Milo's working on it..." |
+| Loading | "Scout's working on it..." |
 | Success | "Got it! Your program is ready." |
 | Error | "Something went wrong—let's try that again" |
 | Helper tip | "Pro tip: You can duplicate this week to save time" |
@@ -323,10 +323,10 @@ backend/
 - Never just say "No data" or "Empty"
 - Use encouraging copy: "Ready to create your first...?"
 - Include clear CTA button
-- Optional: Subtle Milo mascot or icon
+- Optional: Subtle Scout mascot or icon
 
 #### Loading States
-- Use "Milo's working on it..." or similar
+- Use "Scout's working on it..." or similar
 - Show what's happening ("Building your program...")
 - Spinner or progress indicator
 - Never just spinning wheel with no context
@@ -340,7 +340,7 @@ When creating new UI components:
    import { colors, typography, spacing } from '@/design-system/tokens';
    ```
 
-2. **Follow Milo Voice**
+2. **Follow Scout Voice**
    - Review `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
    - Use supportive, clear language
    - Avoid generic corporate speak
@@ -348,8 +348,8 @@ When creating new UI components:
 3. **Apply brand colors**
    ```tsx
    <Button className="bg-primary text-primary-foreground" /> // signal + ink
-   <div className="bg-milo-bone text-milo-ink" />
-   <div style={{ color: "var(--milo-signal)" }} />
+   <div className="bg-scout-bone text-scout-ink" />
+   <div style={{ color: "var(--scout-signal)" }} />
    ```
 
 4. **Elevation**
@@ -360,7 +360,7 @@ When creating new UI components:
 5. **Apply Typography Correctly**
    ```tsx
    // Brand name (always display font)
-   <span style={{ fontFamily: 'var(--font-display)' }}>Milo</span>
+   <span style={{ fontFamily: 'var(--font-display)' }}>Scout</span>
    
    // UI text (default sans)
    <p>Regular interface text</p>
@@ -373,7 +373,7 @@ When creating new UI components:
 
 - All interactive elements need focus states (ring uses **signal**)
 - Color contrast meets WCAG 2.1 AA
-- Alt text for all images ("Milo logo", "Milo mascot")
+- Alt text for all images ("Scout logo", "Scout mascot")
 - Keyboard navigation support
 - Screen reader friendly labels
 
@@ -394,9 +394,9 @@ When creating new UI components:
 Before considering UI work complete, verify:
 
 - [ ] Uses design tokens (not hardcoded colors)
-- [ ] Logo is `milo-logo-gold.png` (all surfaces)
-- [ ] "Milo" uses display font (Manrope)
-- [ ] Copy uses Milo voice (supportive, clear, warm)
+- [ ] Logo is `scout-logo-gold.png` (all surfaces)
+- [ ] "Scout" uses display font (Manrope)
+- [ ] Copy uses Scout voice (supportive, clear, warm)
 - [ ] Shadows use the design system (not ad-hoc flat gray)
 - [ ] Empty states are encouraging (not sterile)
 - [ ] Loading states explain what's happening
@@ -409,7 +409,7 @@ Before considering UI work complete, verify:
 ### Key Reminders
 
 **Brand Consistency:**
-- Always "Milo", never "MILO" or "milo" (except in code)
+- Always "Scout", never "SCOUT" or "scout" in prose (CSS/Tailwind tokens use `scout-*` prefixes in code)
 - Tagline: "Your AI Training Companion" or "AI Training Companion"
 - Use goldendoodle/golden retriever inspiration (warm, loyal, friendly)
 
@@ -433,6 +433,6 @@ Before considering UI work complete, verify:
 
 - **Brand Guide:** `/frontend/src/design-system/docs/MILO_BRAND_GUIDE.md`
 - **Design Tokens:** `/frontend/src/design-system/tokens/`
-- **Logo File:** `/frontend/public/milo-logo-gold.png`
+- **Logo File:** `/frontend/public/scout-logo-gold.png`
 - **Summary:** `/MILO_REBRAND_SUMMARY.md`
 

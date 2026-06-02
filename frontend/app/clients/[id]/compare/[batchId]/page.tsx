@@ -95,7 +95,7 @@ export default function ClientCompareCoachesPage() {
               {plans.map(({ recommendation: r, trainer: t }) => (
                 <Card
                   key={r.id}
-                  className="flex flex-col border-border/80 shadow-md transition-shadow hover:shadow-lg"
+                  className="flex flex-col border-border/80 shadow-sm transition-shadow hover:shadow-md"
                 >
                   <CardHeader className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
@@ -110,13 +110,13 @@ export default function ClientCompareCoachesPage() {
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col gap-4">
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">
                         Client archetype
                       </p>
                       <p className="text-sm font-medium">{r.client_type}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">
                         Training style
                       </p>
                       <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">

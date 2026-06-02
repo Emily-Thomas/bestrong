@@ -326,7 +326,7 @@ export function ManualMesocycleForm({
       </div>
 
       <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-medium text-muted-foreground">
           Weekly session outline ({sessionsPerWeek} rows — must match frequency)
         </p>
         <div className="space-y-3">

@@ -1,5 +1,5 @@
 /**
- * Milo Design System - Typography Tokens
+ * Scout Design System - Typography Tokens
  * 
  * Font families, sizes, weights, and line heights
  */

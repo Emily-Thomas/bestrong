@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-02T00:00:00.000Z",
+  "title": "Design System: Scout",
+  "extensions": {
+    "colorMeta": {
+      "signal": {
+        "role": "primary",
+        "displayName": "Floor Signal",
+        "canonical": "oklch(92% 0.22 123)",
+        "tonalRamp": [
+          "oklch(25% 0.08 123)",
+          "oklch(35% 0.12 123)",
+          "oklch(45% 0.16 123)",
+          "oklch(55% 0.19 123)",
+          "oklch(70% 0.21 123)",
+          "oklch(85% 0.22 123)",
+          "oklch(92% 0.22 123)",
+          "oklch(97% 0.10 123)"
+        ]
+      },
+      "collar": {
+        "role": "secondary",
+        "displayName": "Collar Terracotta",
+        "canonical": "oklch(68% 0.14 35)",
+        "tonalRamp": [
+          "oklch(22% 0.06 35)",
+          "oklch(32% 0.08 35)",
+          "oklch(42% 0.10 35)",
+          "oklch(52% 0.12 35)",
+          "oklch(62% 0.13 35)",
+          "oklch(68% 0.14 35)",
+          "oklch(78% 0.10 35)",
+          "oklch(92% 0.04 35)"
+        ]
+      },
+      "bone": {
+        "role": "neutral",
+        "displayName": "Bone Paper",
+        "canonical": "oklch(98% 0.004 110)",
+        "tonalRamp": [
+          "oklch(15% 0.01 110)",
+          "oklch(25% 0.01 110)",
+          "oklch(40% 0.01 110)",
+          "oklch(55% 0.008 110)",
+          "oklch(70% 0.006 110)",
+          "oklch(85% 0.005 110)",
+          "oklch(94% 0.004 110)",
+          "oklch(98% 0.004 110)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(18% 0.01 280)",
+        "tonalRamp": [
+          "oklch(18% 0.01 280)",
+          "oklch(25% 0.01 280)",
+          "oklch(35% 0.01 280)",
+          "oklch(45% 0.01 280)",
+          "oklch(55% 0.01 280)",
+          "oklch(65% 0.01 280)",
+          "oklch(75% 0.01 280)",
+          "oklch(88% 0.005 280)"
+        ]
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Danger",
+        "canonical": "oklch(55% 0.18 25)",
+        "tonalRamp": [
+          "oklch(25% 0.10 25)",
+          "oklch(35% 0.12 25)",
+          "oklch(45% 0.15 25)",
+          "oklch(55% 0.18 25)",
+          "oklch(65% 0.16 25)",
+          "oklch(75% 0.12 25)",
+          "oklch(88% 0.06 25)",
+          "oklch(96% 0.02 25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Scout wordmark and rare brand moments only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles in AppShell."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default UI copy; 65–75ch for long prose."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Metrics, sets/reps, tabular IDs."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 1px 3px 0px hsl(240 5% 6% / 0.1), 0 1px 2px -1px hsl(240 5% 6% / 0.1)",
+        "purpose": "Cards and default buttons at rest."
+      },
+      {
+        "name": "overlay",
+        "value": "0 10px 15px -3px hsl(240 5% 6% / 0.1), 0 4px 6px -4px hsl(240 5% 6% / 0.1)",
+        "purpose": "Dialogs, sheets, popovers."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-ui",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default transition-colors on buttons and nav (150–250ms)."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main CTA: signal fill, ink label.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\">Build program</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 8px 16px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; line-height: 1; color: #141416; background-color: #D4FB3C; border: none; border-radius: 10px; box-shadow: 0 1px 3px 0px hsl(240 5% 6% / 0.1); cursor: pointer; transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { background-color: color-mix(in srgb, #D4FB3C 90%, #141416 10%); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(81 95% 61% / 0.45); } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary actions on bone-deep surface.",
+      "html": "<button type=\"button\" class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 8px 16px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #141416; background-color: #EEEEE8; border: none; border-radius: 10px; box-shadow: 0 1px 2px 0px hsl(240 5% 6% / 0.05); cursor: pointer; transition: background-color 0.2s ease; } .ds-btn-secondary:hover { background-color: #E5E5E1; } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(81 95% 61% / 0.45); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary actions without fill.",
+      "html": "<button type=\"button\" class=\"ds-btn-ghost\">View details</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 8px 16px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #141416; background: transparent; border: none; border-radius: 10px; cursor: pointer; transition: background-color 0.2s ease; } .ds-btn-ghost:hover { background-color: rgba(224, 120, 86, 0.12); } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(81 95% 61% / 0.45); }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Irreversible actions.",
+      "html": "<button type=\"button\" class=\"ds-btn-destructive\">Delete client</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 8px 16px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #FFFFFF; background-color: #D64545; border: none; border-radius: 10px; box-shadow: 0 1px 2px 0px hsl(240 5% 6% / 0.05); cursor: pointer; transition: background-color 0.2s ease; } .ds-btn-destructive:hover { background-color: rgba(214, 69, 69, 0.9); } .ds-btn-destructive:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(0 60% 55% / 0.5); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Default single-line field.",
+      "html": "<input type=\"text\" class=\"ds-input\" placeholder=\"Client email\" aria-label=\"Client email\" />",
+      "css": ".ds-input { display: flex; width: 100%; max-width: 320px; height: 36px; padding: 4px 12px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; color: #141416; background: transparent; border: 1px solid #E5E5E1; border-radius: 10px; box-shadow: 0 1px 2px 0px hsl(240 5% 6% / 0.05); transition: border-color 0.2s ease, box-shadow 0.2s ease; } .ds-input::placeholder { color: #6E6E75; } .ds-input:focus-visible { outline: none; border-color: #D4FB3C; box-shadow: 0 0 0 1px #D4FB3C; } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Grouped content on bone-soft surface.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Clients</div><p class=\"ds-card-desc\">Your active roster at a glance.</p></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 8px; padding: 24px; background: #FFFFFF; color: #141416; border: 1px solid #E5E5E1; border-radius: 12px; box-shadow: 0 1px 3px 0px hsl(240 5% 6% / 0.1); } .ds-card-title { font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 600; line-height: 1.25; } .ds-card-desc { font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; color: #6E6E75; line-height: 1.5; margin: 0; }"
+    },
+    {
+      "name": "Nav Link Active",
+      "kind": "nav",
+      "refersTo": "nav-link-active",
+      "description": "Sidebar current page with signal tint and left bar.",
+      "html": "<a href=\"#\" class=\"ds-nav-link ds-nav-link--active\" aria-current=\"page\"><span class=\"ds-nav-bar\" aria-hidden=\"true\"></span><span>Clients</span></a>",
+      "css": ".ds-nav-link { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #6E6E75; text-decoration: none; border-radius: 12px; transition: background-color 0.2s ease, color 0.2s ease; } .ds-nav-link:hover { background: rgba(238, 238, 232, 0.9); color: #141416; } .ds-nav-link--active { font-weight: 600; color: #141416; background: rgba(212, 251, 60, 0.14); } .ds-nav-bar { position: absolute; left: 0; top: 50%; width: 4px; height: 28px; transform: translateY(-50%); border-radius: 0 4px 4px 0; background: #D4FB3C; } .ds-nav-link:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(81 95% 61% / 0.45); }"
+    },
+    {
+      "name": "Success Alert",
+      "kind": "custom",
+      "refersTo": "alert-success",
+      "description": "Positive feedback using semantic success.",
+      "html": "<div class=\"ds-alert ds-alert--success\" role=\"status\">Got it. Your program is ready.</div>",
+      "css": ".ds-alert { padding: 12px 16px; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 1.5; border-radius: 10px; border: 1px solid transparent; } .ds-alert--success { color: #141416; background: rgba(46, 139, 87, 0.12); border-color: rgba(46, 139, 87, 0.35); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Floor Coach",
+    "overview": "Scout's interface should feel like a capable colleague on the gym floor: energetic enough to keep momentum, direct enough to respect a coach's time, warm enough to feel human. The visual system is restrained product UI on a paper-and-ink base: bone surfaces, fog neutrals, chartreuse signal for primary action, terracotta collar for secondary warmth. Density is practical (tables, forms, client records), not marketing-sparse.\n\nThis system explicitly rejects generic B2B SaaS and obvious AI UI grammar. Familiarity matters: buttons, inputs, and navigation should match what coaches expect from serious tools, with Scout's accent used sparingly so signal stays meaningful.",
+    "keyCharacteristics": [
+      "Restrained color: signal and collar on actions and state, not decoration",
+      "Fixed rem type scale (Geist UI, Manrope for brand wordmark moments only)",
+      "Ink-tinted elevation, flat at rest, shadow on cards and hovers",
+      "shadcn/Radix component vocabulary with Scout token wiring",
+      "WCAG 2.1 AA contrast; focus rings use signal",
+      "State-rich controls: hover, focus, disabled, loading, error on every interactive pattern"
+    ],
+    "rules": [
+      {
+        "name": "The Signal Rarity Rule",
+        "body": "Chartreuse signal appears on primary actions, focus, and current selection only. If more than ~10% of a screen reads as signal, the accent has lost meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-on-Signal Rule",
+        "body": "Primary buttons and sidebar primary use ink foreground on signal background. White on chartreuse fails contrast and reads as generic SaaS.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sans Default Rule",
+        "body": "Headings in app screens use Geist, not Manrope. Manrope is for brand presence, not interface hierarchy.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fixed Scale Rule",
+        "body": "Product UI uses fixed rem steps from the token file, not fluid clamp headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-Until-State Rule",
+        "body": "Do not add shadow to static list rows or plain sections. Shadow signals interactivity (card, button, overlay), not structure.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Glass Rule",
+        "body": "Backdrop blur and glassmorphism are forbidden unless a one-off experiment is explicitly approved.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use bg-primary / text-primary-foreground for primary CTAs (signal + ink).",
+      "Do use Geist for all in-app headings, labels, and body; Manrope only for Scout brand moments.",
+      "Do use font-mono for workout numbers, metrics, and tabular data.",
+      "Do keep empty states encouraging with a clear verb+object CTA.",
+      "Do show job progress with steps for async AI work.",
+      "Do use design-system shadows with ink tint, not pure black gray.",
+      "Do meet WCAG 2.1 AA for body text and focus visibility on signal ring."
+    ],
+    "donts": [
+      "Don't use generic B2B SaaS patterns: navy-and-purple gradients, hero-metric dashboards, identical icon-card grids, sterile No data copy, buzzwords.",
+      "Don't use obvious AI UI: gradient text, glassmorphism-by-default, uppercase eyebrow kickers on every section, numbered section scaffolding without real sequence.",
+      "Don't use border-left or border-right greater than 1px as colored accents on cards, list items, or alerts (nav wayfinding bar excepted).",
+      "Don't put Manrope on buttons, table cells, or form labels.",
+      "Don't fill large background areas with signal or collar.",
+      "Don't use white text on signal or unpaired color for state.",
+      "Don't nest cards or default to card grids when a simple list or table is clearer."
+    ]
+  }
+}

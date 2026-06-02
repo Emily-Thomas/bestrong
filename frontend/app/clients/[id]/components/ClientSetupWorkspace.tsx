@@ -36,7 +36,7 @@ interface ClientSetupWorkspaceProps {
 
 function StepStatus({ done }: { done: boolean }) {
   return done ? (
-    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+    <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
   ) : (
     <Circle className="h-4 w-4 shrink-0 text-muted-foreground/60" />
   );
@@ -194,7 +194,7 @@ export function ClientSetupWorkspace({
   return (
     <div
       id="client-setup-workspace"
-      className="space-y-4 animate-in fade-in duration-300"
+      className="space-y-4"
     >
       <Alert variant="success">
         <CheckCircle2 className="h-4 w-4" />
