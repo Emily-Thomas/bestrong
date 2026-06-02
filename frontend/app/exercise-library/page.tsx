@@ -1,92 +1,122 @@
 'use client';
 
-import { Archive, Dumbbell, Edit2, Plus, RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  type ExerciseLibraryExercise,
+  exerciseLibraryApi,
+} from '@/lib/api';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+  fetchExerciseLibrary,
+  invalidateExerciseLibraryCache,
+} from '@/lib/exercise-library-cache';
+import { touchActionClass } from '@/lib/touch-targets';
+import { cn } from '@/lib/utils';
+import { ArchiveExerciseDialog } from './components/ArchiveExerciseDialog';
+import { ExerciseFormSheet } from './components/ExerciseFormSheet';
+import { ExerciseLibraryFilters } from './components/ExerciseLibraryFilters';
+import { ExerciseLibraryListPanel } from './components/ExerciseLibraryListPanel';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { type ExerciseLibraryExercise, exerciseLibraryApi } from '@/lib/api';
+  EMPTY_EXERCISE_FORM,
+  exerciseToFormState,
+  formStateToPayload,
+  serializeExerciseForm,
+  type ExerciseFormState,
+} from './lib/exercise-form';
 
-interface ExerciseFormState {
-  id?: number;
-  name: string;
-  primary_muscle_group: string;
-  equipment: string;
-  category: string;
-  default_sets: string;
-  default_reps: string;
-  default_load: string;
-  default_rest_seconds: string;
-  default_tempo: string;
-  notes: string;
-}
-
-const EMPTY_FORM: ExerciseFormState = {
-  name: '',
-  primary_muscle_group: '',
-  equipment: '',
-  category: '',
-  default_sets: '',
-  default_reps: '',
-  default_load: '',
-  default_rest_seconds: '',
-  default_tempo: '',
-  notes: '',
-};
+const PAGE_SIZE = 24;
 
 export default function ExerciseLibraryPage() {
   const [exercises, setExercises] = useState<ExerciseLibraryExercise[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState('');
+  const [listNotice, setListNotice] = useState('');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
-  const [formState, setFormState] = useState<ExerciseFormState>(EMPTY_FORM);
-  const [primaryFilter, setPrimaryFilter] = useState<string>('all');
-  const [equipmentFilter, setEquipmentFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [formState, setFormState] =
+    useState<ExerciseFormState>(EMPTY_EXERCISE_FORM);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [primaryFilter, setPrimaryFilter] = useState('all');
+  const [equipmentFilter, setEquipmentFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [archiveTarget, setArchiveTarget] =
+    useState<ExerciseLibraryExercise | null>(null);
+  const [archiving, setArchiving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const [pendingFormState, setPendingFormState] =
+    useState<ExerciseFormState | null>(null);
+  const [pendingCloseSheet, setPendingCloseSheet] = useState(false);
+  const formBaselineRef = useRef('');
 
-  const PAGE_SIZE = 24;
+  const isFormDirty =
+    formOpen && serializeExerciseForm(formState) !== formBaselineRef.current;
+
+  const openForm = useCallback((state: ExerciseFormState) => {
+    setFormState(state);
+    formBaselineRef.current = serializeExerciseForm(state);
+    setFormError('');
+    setSaveSuccess(false);
+    setFormOpen(true);
+  }, []);
+
+  const applyPendingForm = useCallback(() => {
+    if (pendingCloseSheet) {
+      setFormOpen(false);
+      setPendingCloseSheet(false);
+    } else if (pendingFormState) {
+      openForm(pendingFormState);
+      setPendingFormState(null);
+    }
+    setDiscardDialogOpen(false);
+  }, [pendingCloseSheet, pendingFormState, openForm]);
 
   useEffect(() => {
-    const load = async () => {
-      const response = await exerciseLibraryApi.getAll({ status: 'all' });
-      if (response.success && response.data) {
-        setExercises(response.data);
-      }
-    };
-    void load();
-  }, []);
+    const handle = window.setTimeout(() => setDebouncedSearch(search), 200);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
+  const loadExercises = useCallback(async () => {
+    setLoading(true);
+    setListError('');
+    setListNotice('');
+    try {
+      const status = showArchived ? 'all' : 'active';
+      const data = await fetchExerciseLibrary(status);
+      setExercises(data);
+    } catch {
+      setListError('Scout could not load your exercise library. Try Reload.');
+    } finally {
+      setLoading(false);
+    }
+  }, [showArchived]);
+
+  useEffect(() => {
+    void loadExercises();
+  }, [loadExercises]);
 
   const primaryOptions = useMemo(() => {
     const values = new Set<string>();
     for (const ex of exercises) {
-      if (ex.primary_muscle_group) {
-        values.add(ex.primary_muscle_group);
-      }
+      if (ex.primary_muscle_group) values.add(ex.primary_muscle_group);
     }
     return Array.from(values).sort((a, b) => a.localeCompare(b));
   }, [exercises]);
@@ -94,9 +124,7 @@ export default function ExerciseLibraryPage() {
   const equipmentOptions = useMemo(() => {
     const values = new Set<string>();
     for (const ex of exercises) {
-      if (ex.equipment) {
-        values.add(ex.equipment);
-      }
+      if (ex.equipment) values.add(ex.equipment);
     }
     return Array.from(values).sort((a, b) => a.localeCompare(b));
   }, [exercises]);
@@ -104,16 +132,14 @@ export default function ExerciseLibraryPage() {
   const categoryOptions = useMemo(() => {
     const values = new Set<string>();
     for (const ex of exercises) {
-      if (ex.category) {
-        values.add(ex.category);
-      }
+      if (ex.category) values.add(ex.category);
     }
     return Array.from(values).sort((a, b) => a.localeCompare(b));
   }, [exercises]);
 
   const filteredExercises = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const filtered = exercises.filter((ex) => {
+    const term = debouncedSearch.trim().toLowerCase();
+    return exercises.filter((ex) => {
       if (!showArchived && ex.status === 'archived') return false;
       if (
         primaryFilter !== 'all' &&
@@ -136,10 +162,9 @@ export default function ExerciseLibraryPage() {
         (ex.notes || '').toLowerCase().includes(term)
       );
     });
-    return filtered;
   }, [
     exercises,
-    search,
+    debouncedSearch,
     showArchived,
     primaryFilter,
     equipmentFilter,
@@ -155,100 +180,150 @@ export default function ExerciseLibraryPage() {
     startIndex + PAGE_SIZE
   );
 
+  const resetFiltersPage = useCallback(() => setPage(1), []);
+
+  const resetAllFilters = useCallback(() => {
+    setSearch('');
+    setPrimaryFilter('all');
+    setEquipmentFilter('all');
+    setCategoryFilter('all');
+    setShowArchived(false);
+    resetFiltersPage();
+  }, [resetFiltersPage]);
+
+  const hasActiveFilters =
+    debouncedSearch.trim().length > 0 ||
+    primaryFilter !== 'all' ||
+    equipmentFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    showArchived;
+
+  const requestOpenForm = useCallback(
+    (state: ExerciseFormState) => {
+      if (formOpen && isFormDirty) {
+        setPendingFormState(state);
+        setPendingCloseSheet(false);
+        setDiscardDialogOpen(true);
+        return;
+      }
+      openForm(state);
+    },
+    [formOpen, isFormDirty, openForm]
+  );
+
   const startCreate = () => {
-    setFormState(EMPTY_FORM);
-    setFormOpen(true);
+    requestOpenForm(EMPTY_EXERCISE_FORM);
   };
 
-  const startEdit = (exercise: ExerciseLibraryExercise) => {
-    setFormState({
-      id: exercise.id,
-      name: exercise.name,
-      primary_muscle_group: exercise.primary_muscle_group || '',
-      equipment: exercise.equipment || '',
-      category: exercise.category || '',
-      default_sets:
-        exercise.default_sets !== undefined
-          ? String(exercise.default_sets)
-          : '',
-      default_reps:
-        exercise.default_reps !== undefined
-          ? String(exercise.default_reps)
-          : '',
-      default_load: exercise.default_load || '',
-      default_rest_seconds:
-        exercise.default_rest_seconds !== undefined
-          ? String(exercise.default_rest_seconds)
-          : '',
-      default_tempo: exercise.default_tempo || '',
-      notes: exercise.notes || '',
-    });
-    setFormOpen(true);
+  const startEdit = useCallback(
+    (exercise: ExerciseLibraryExercise) => {
+      requestOpenForm(exerciseToFormState(exercise));
+    },
+    [requestOpenForm]
+  );
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (open) {
+      setFormOpen(true);
+      return;
+    }
+    if (isFormDirty) {
+      setPendingCloseSheet(true);
+      setPendingFormState(null);
+      setDiscardDialogOpen(true);
+      return;
+    }
+    setFormOpen(false);
+    setFormError('');
+    setSaveSuccess(false);
   };
 
   const handleFormChange = (field: keyof ExerciseFormState, value: string) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
+    if (formError) setFormError('');
+    if (saveSuccess) setSaveSuccess(false);
   };
 
   const handleSave = async () => {
-    if (!formState.name.trim()) return;
+    if (!formState.name.trim()) {
+      setFormError('Add an exercise name before saving.');
+      return;
+    }
 
-    const payload = {
-      name: formState.name.trim(),
-      primary_muscle_group: formState.primary_muscle_group.trim() || undefined,
-      equipment: formState.equipment.trim() || undefined,
-      category: formState.category.trim() || undefined,
-      default_sets: formState.default_sets
-        ? parseInt(formState.default_sets, 10)
-        : undefined,
-      default_reps: formState.default_reps.trim() || undefined,
-      default_load: formState.default_load.trim() || undefined,
-      default_rest_seconds: formState.default_rest_seconds
-        ? parseInt(formState.default_rest_seconds, 10)
-        : undefined,
-      default_tempo: formState.default_tempo.trim() || undefined,
-      notes: formState.notes.trim() || undefined,
-    };
+    setSaving(true);
+    setFormError('');
+    const payload = formStateToPayload(formState);
 
-    if (formState.id) {
-      const response = await exerciseLibraryApi.update(formState.id, payload);
+    try {
+      if (formState.id) {
+        const response = await exerciseLibraryApi.update(formState.id, payload);
+        if (response.success && response.data) {
+          const updated = response.data;
+          setExercises((prev) =>
+            prev.map((ex) => (ex.id === updated.id ? updated : ex))
+          );
+          invalidateExerciseLibraryCache();
+          const nextState = exerciseToFormState(updated);
+          setFormState(nextState);
+          formBaselineRef.current = serializeExerciseForm(nextState);
+          setSaveSuccess(true);
+        } else {
+          setFormError(
+            response.error || 'Could not update this exercise. Try again.'
+          );
+        }
+      } else {
+        const response = await exerciseLibraryApi.create(payload);
+        if (response.success && response.data) {
+          setExercises((prev) => [...prev, response.data!]);
+          invalidateExerciseLibraryCache();
+          setFormOpen(false);
+          setSaveSuccess(false);
+        } else {
+          setFormError(
+            response.error || 'Could not create this exercise. Try again.'
+          );
+        }
+      }
+    } catch {
+      setFormError('Something went wrong while saving. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    setArchiving(true);
+    setListError('');
+    try {
+      const response = await exerciseLibraryApi.archive(archiveTarget.id);
       if (response.success && response.data) {
-        const updatedExercise = response.data;
+        const archived = response.data;
         setExercises((prev) =>
-          prev.map((ex) =>
-            ex.id === updatedExercise.id ? updatedExercise : ex
-          )
+          prev.map((ex) => (ex.id === archived.id ? archived : ex))
+        );
+        invalidateExerciseLibraryCache();
+        setArchiveTarget(null);
+        setListNotice(
+          `"${archived.name}" archived. Turn on Show archived to find it again.`
+        );
+      } else {
+        setListError(
+          response.error || 'Could not archive this exercise. Try again.'
         );
       }
-    } else {
-      const response = await exerciseLibraryApi.create(payload);
-      if (response.success && response.data) {
-        const newExercise = response.data;
-        setExercises((prev) => [...prev, newExercise]);
-      }
-    }
-
-    setFormOpen(false);
-  };
-
-  const handleArchive = async (id: number) => {
-    const response = await exerciseLibraryApi.archive(id);
-    if (response.success && response.data) {
-      const archived = response.data;
-      setExercises((prev) =>
-        prev.map((ex) => (ex.id === archived.id ? archived : ex))
-      );
+    } catch {
+      setListError('Something went wrong while archiving. Try again.');
+    } finally {
+      setArchiving(false);
     }
   };
 
-  const handleRefresh = async () => {
-    const response = await exerciseLibraryApi.getAll({
-      status: showArchived ? 'all' : 'active',
-    });
-    if (response.success && response.data) {
-      setExercises(response.data);
-    }
+  const handleReload = async () => {
+    invalidateExerciseLibraryCache();
     setPage(1);
+    await loadExercises();
   };
 
   return (
@@ -257,416 +332,203 @@ export default function ExerciseLibraryPage() {
         title="Exercise library"
         description="Reusable moves Scout can drop into client workouts"
       >
-        <div className="space-y-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Add exercises once (e.g. bench, squat) and use them across programs.
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-1">
+              <p className="font-mono text-sm tabular-nums text-muted-foreground">
+                {!loading ? (
+                  hasActiveFilters ? (
+                    <>
+                      <span className="font-medium text-foreground">
+                        {totalItems}
+                      </span>{' '}
+                      matching ·{' '}
+                      <span className="font-medium text-foreground">
+                        {exercises.length}
+                      </span>{' '}
+                      in library
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium text-foreground">
+                        {exercises.length}
+                      </span>{' '}
+                      {exercises.length === 1 ? 'exercise' : 'exercises'}
+                    </>
+                  )
+                ) : (
+                  'Loading library…'
+                )}
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Reload
+            <div className="flex shrink-0 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className={touchActionClass}
+                onClick={() => void handleReload()}
+                disabled={loading}
+                aria-busy={loading}
+              >
+                <RefreshCw
+                  className={cn('mr-2 h-4 w-4', loading && 'animate-spin')}
+                  aria-hidden
+                />
+                {loading ? 'Reloading…' : 'Reload'}
               </Button>
-              <Button size="sm" onClick={startCreate}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Exercise
+              <Button
+                size="sm"
+                className={touchActionClass}
+                onClick={startCreate}
+              >
+                New exercise
               </Button>
             </div>
-          </div>
+          </header>
 
-          <Card className="shadow-lg">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Exercises</CardTitle>
-              <CardDescription>
-                Search and filter. Archived exercises stay hidden until you show them.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Input
-                  placeholder="Search by name, muscle group, equipment, or notes..."
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  className="sm:max-w-sm"
-                />
-                <div className="flex flex-wrap items-center gap-2 justify-end">
-                  <Select
-                    value={primaryFilter}
-                    onValueChange={(value) => {
-                      setPrimaryFilter(value);
-                      setPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Primary muscle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All muscles</SelectItem>
-                      {primaryOptions.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={equipmentFilter}
-                    onValueChange={(value) => {
-                      setEquipmentFilter(value);
-                      setPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Equipment" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All equipment</SelectItem>
-                      {equipmentOptions.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={categoryFilter}
-                    onValueChange={(value) => {
-                      setCategoryFilter(value);
-                      setPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All categories</SelectItem>
-                      {categoryOptions.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Input
-                      id="show-archived"
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={showArchived}
-                      onChange={(e) => {
-                        setShowArchived(e.target.checked);
-                        setPage(1);
-                      }}
-                    />
-                    <Label htmlFor="show-archived" className="text-sm">
-                      Show archived
-                    </Label>
-                  </div>
-                </div>
-              </div>
+          {(listError || listNotice) && (
+            <div className="flex flex-col gap-3">
+              {listError ? (
+                <Alert variant="destructive" role="alert" aria-live="assertive">
+                  <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{listError}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 shrink-0 px-2 text-destructive hover:text-destructive"
+                      onClick={() => setListError('')}
+                    >
+                      Dismiss
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {listNotice ? (
+                <Alert variant="success" aria-live="polite">
+                  <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{listNotice}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 shrink-0 px-2"
+                      onClick={() => setListNotice('')}
+                    >
+                      Dismiss
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+            </div>
+          )}
 
-              {filteredExercises.length === 0 ? (
-                exercises.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 py-14 text-center">
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                      <Dumbbell className="h-8 w-8 text-primary" />
-                    </div>
-                    <h3 className="mb-2 text-lg font-semibold">
-                      Ready to add your first exercise?
-                    </h3>
-                    <p className="mb-6 max-w-sm text-sm text-muted-foreground">
-                      Build your library so Scout can reference it when you program
-                      sessions.
-                    </p>
-                    <Button size="sm" onClick={startCreate}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add exercise
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-                    No matches for these filters. Try a different search, clear
-                    filters, or show archived exercises.
-                  </div>
-                )
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {paginatedExercises.map((exercise) => (
-                    <Card
-                      key={exercise.id}
-                      className="cursor-pointer shadow-md transition hover:shadow-lg"
-                      onClick={() => startEdit(exercise)}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <CardTitle className="text-base">
-                              {exercise.name}
-                            </CardTitle>
-                            <CardDescription>
-                              {exercise.primary_muscle_group ||
-                                'Muscle group not set'}
-                            </CardDescription>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            {exercise.category && (
-                              <Badge variant="outline" className="text-xs">
-                                {exercise.category}
-                              </Badge>
-                            )}
-                            {exercise.equipment && (
-                              <Badge variant="secondary" className="text-xs">
-                                {exercise.equipment}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-2 text-xs text-muted-foreground">
-                        <div className="flex flex-wrap gap-2">
-                          {exercise.default_sets !== undefined &&
-                            exercise.default_reps !== undefined && (
-                              <Badge variant="outline" className="text-xs">
-                                {exercise.default_sets} x{' '}
-                                {exercise.default_reps}
-                              </Badge>
-                            )}
-                          {exercise.default_load && (
-                            <Badge variant="outline" className="text-xs">
-                              {exercise.default_load}
-                            </Badge>
-                          )}
-                          {exercise.default_rest_seconds !== undefined && (
-                            <Badge variant="outline" className="text-xs">
-                              Rest {exercise.default_rest_seconds}s
-                            </Badge>
-                          )}
-                        </div>
-                        {exercise.notes && (
-                          <p className="line-clamp-2">{exercise.notes}</p>
-                        )}
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                startEdit(exercise);
-                              }}
-                            >
-                              <Edit2 className="h-3 w-3" />
-                            </Button>
-                            {exercise.status !== 'archived' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleArchive(exercise.id);
-                                }}
-                              >
-                                <Archive className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground">
-                            {exercise.status === 'archived'
-                              ? 'Archived'
-                              : 'Active'}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-              {filteredExercises.length > 0 && (
-                <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
-                  <span>
-                    Showing {startIndex + 1}–
-                    {Math.min(startIndex + PAGE_SIZE, totalItems)} of{' '}
-                    {totalItems} exercises
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === totalPages}
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
-                      }
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <section
+            className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+            aria-label="Exercise library"
+          >
+            <div className="border-b border-border bg-muted/20 px-4 py-4 sm:px-6">
+              <ExerciseLibraryFilters
+                search={search}
+                onSearchChange={(value) => {
+                  setSearch(value);
+                  resetFiltersPage();
+                }}
+                primaryFilter={primaryFilter}
+                equipmentFilter={equipmentFilter}
+                categoryFilter={categoryFilter}
+                onPrimaryFilterChange={(value) => {
+                  setPrimaryFilter(value);
+                  resetFiltersPage();
+                }}
+                onEquipmentFilterChange={(value) => {
+                  setEquipmentFilter(value);
+                  resetFiltersPage();
+                }}
+                onCategoryFilterChange={(value) => {
+                  setCategoryFilter(value);
+                  resetFiltersPage();
+                }}
+                showArchived={showArchived}
+                onShowArchivedChange={(checked) => {
+                  setShowArchived(checked);
+                  resetFiltersPage();
+                }}
+                primaryOptions={primaryOptions}
+                equipmentOptions={equipmentOptions}
+                categoryOptions={categoryOptions}
+                onResetFilters={resetAllFilters}
+                hasActiveFilters={hasActiveFilters}
+              />
+            </div>
+
+            <ExerciseLibraryListPanel
+              loading={loading}
+              exercises={exercises}
+              filteredCount={filteredExercises.length}
+              paginatedExercises={paginatedExercises}
+              editingExerciseId={formOpen ? formState.id ?? null : null}
+              startIndex={startIndex}
+              pageSize={PAGE_SIZE}
+              totalItems={totalItems}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onStartCreate={startCreate}
+              onEdit={startEdit}
+              onRequestArchive={setArchiveTarget}
+              onPageChange={setPage}
+              onResetFilters={resetAllFilters}
+              hasActiveFilters={hasActiveFilters}
+            />
+          </section>
         </div>
 
-        {/* Exercise Form Dialog */}
-        <Dialog open={formOpen} onOpenChange={setFormOpen}>
-          <DialogContent className="max-w-xl">
-            <DialogHeader>
-              <DialogTitle className="text-xl">
-                {formState.id ? 'Edit Exercise' : 'New Exercise'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="exercise-name">Exercise Name</Label>
-                <Input
-                  id="exercise-name"
-                  value={formState.name}
-                  onChange={(e) => handleFormChange('name', e.target.value)}
-                  placeholder="e.g., Barbell Bench Press"
-                />
-              </div>
+        <ExerciseFormSheet
+          open={formOpen}
+          onOpenChange={handleSheetOpenChange}
+          formState={formState}
+          onFieldChange={handleFormChange}
+          onSave={() => void handleSave()}
+          saving={saving}
+          formError={formError}
+          saveSuccess={saveSuccess}
+          primaryOptions={primaryOptions}
+          equipmentOptions={equipmentOptions}
+          categoryOptions={categoryOptions}
+        />
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="primary-muscle">Primary Muscle Group</Label>
-                  <Input
-                    id="primary-muscle"
-                    value={formState.primary_muscle_group}
-                    onChange={(e) =>
-                      handleFormChange('primary_muscle_group', e.target.value)
-                    }
-                    placeholder="e.g., Chest"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="equipment">Equipment</Label>
-                  <Input
-                    id="equipment"
-                    value={formState.equipment}
-                    onChange={(e) =>
-                      handleFormChange('equipment', e.target.value)
-                    }
-                    placeholder="e.g., Barbell, Dumbbell"
-                  />
-                </div>
-              </div>
+        <ArchiveExerciseDialog
+          exercise={archiveTarget}
+          archiving={archiving}
+          onOpenChange={(open) => {
+            if (!open && !archiving) setArchiveTarget(null);
+          }}
+          onConfirm={() => void confirmArchive()}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Input
-                  id="category"
-                  value={formState.category}
-                  onChange={(e) => handleFormChange('category', e.target.value)}
-                  placeholder="e.g., Strength, Accessory, Warmup"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="default-sets">Default Sets</Label>
-                  <Input
-                    id="default-sets"
-                    type="number"
-                    min="0"
-                    value={formState.default_sets}
-                    onChange={(e) =>
-                      handleFormChange('default_sets', e.target.value)
-                    }
-                    placeholder="e.g., 3"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="default-reps">Default Reps</Label>
-                  <Input
-                    id="default-reps"
-                    value={formState.default_reps}
-                    onChange={(e) =>
-                      handleFormChange('default_reps', e.target.value)
-                    }
-                    placeholder="e.g., 8-10"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="default-load">Default Load</Label>
-                  <Input
-                    id="default-load"
-                    value={formState.default_load}
-                    onChange={(e) =>
-                      handleFormChange('default_load', e.target.value)
-                    }
-                    placeholder="e.g., RIR 2 or 70% 1RM"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="default-rest">Default Rest (seconds)</Label>
-                  <Input
-                    id="default-rest"
-                    type="number"
-                    min="0"
-                    value={formState.default_rest_seconds}
-                    onChange={(e) =>
-                      handleFormChange('default_rest_seconds', e.target.value)
-                    }
-                    placeholder="e.g., 90"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="default-tempo">Default Tempo</Label>
-                <Input
-                  id="default-tempo"
-                  value={formState.default_tempo}
-                  onChange={(e) =>
-                    handleFormChange('default_tempo', e.target.value)
-                  }
-                  placeholder="e.g., 3-1-1-0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Coaching Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formState.notes}
-                  onChange={(e) => handleFormChange('notes', e.target.value)}
-                  placeholder="Setup, cues, common errors to watch out for..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setFormOpen(false)}
-                  type="button"
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} type="button">
-                  Save Exercise
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <AlertDialog open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have edits that are not saved yet. Discard them to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setPendingFormState(null);
+                  setPendingCloseSheet(false);
+                }}
+              >
+                Keep editing
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={applyPendingForm}>
+                Discard changes
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AppShell>
     </ProtectedRoute>
   );

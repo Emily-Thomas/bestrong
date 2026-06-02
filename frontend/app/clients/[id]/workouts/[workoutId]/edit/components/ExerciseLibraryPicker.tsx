@@ -2,15 +2,7 @@
 
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -18,12 +10,27 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { type ExerciseLibraryExercise, exerciseLibraryApi } from '@/lib/api';
+import { type ExerciseLibraryExercise } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { touchActionClass } from '@/lib/touch-targets';
+import { fetchExerciseLibrary } from '@/lib/exercise-library-cache';
 
 interface ExerciseLibraryPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (exercise: ExerciseLibraryExercise) => void;
+}
+
+function formatDefaultPrescription(exercise: ExerciseLibraryExercise): string | null {
+  const parts: string[] = [];
+  if (
+    exercise.default_sets !== undefined &&
+    exercise.default_reps !== undefined
+  ) {
+    parts.push(`${exercise.default_sets}×${exercise.default_reps}`);
+  }
+  if (exercise.default_load) parts.push(exercise.default_load);
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 export function ExerciseLibraryPicker({
@@ -32,22 +39,38 @@ export function ExerciseLibraryPicker({
   onSelect,
 }: ExerciseLibraryPickerProps) {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [exercises, setExercises] = useState<ExerciseLibraryExercise[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      const load = async () => {
-        const response = await exerciseLibraryApi.getAll({ status: 'active' });
-        if (response.success && response.data) {
-          setExercises(response.data);
-        }
-      };
-      void load();
+    const handle = window.setTimeout(() => setDebouncedSearch(search), 200);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
+  useEffect(() => {
+    if (!open) {
+      setSearch('');
+      setDebouncedSearch('');
+      return;
     }
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      const data = await fetchExerciseLibrary('active');
+      if (!cancelled) {
+        setExercises(data);
+        setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   const filteredExercises = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = debouncedSearch.trim().toLowerCase();
     return exercises.filter((ex) => {
       if (ex.status === 'archived') return false;
       if (!term) return true;
@@ -59,7 +82,7 @@ export function ExerciseLibraryPicker({
         (ex.notes || '').toLowerCase().includes(term)
       );
     });
-  }, [exercises, search]);
+  }, [exercises, debouncedSearch]);
 
   const handleSelect = (exercise: ExerciseLibraryExercise) => {
     onSelect(exercise);
@@ -68,84 +91,94 @@ export function ExerciseLibraryPicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl">
-            Add Exercise from Library
-          </DialogTitle>
+      <DialogContent className="max-w-xl gap-0 p-0 sm:max-w-lg">
+        <DialogHeader className="space-y-1 border-b px-4 py-4">
+          <DialogTitle className="text-lg">Pick from library</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="flex items-center gap-2">
-            <div className="relative w-full">
-              <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                className="pl-8"
-                placeholder="Search exercises by name, muscle group, equipment, or notes..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+        <div className="space-y-3 px-4 py-3">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              className="pl-8"
+              placeholder="Search name, muscle, equipment…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+              aria-label="Search exercise library"
+            />
           </div>
 
-          {filteredExercises.length === 0 ? (
+          {loading ? (
+            <p
+              className="py-8 text-center text-sm text-muted-foreground"
+              aria-live="polite"
+            >
+              Loading your exercise library…
+            </p>
+          ) : filteredExercises.length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No active exercises in the library match your search. Create some
-              exercises in the Exercise Library first.
+              No active exercises match. Add movements in Exercise Library
+              first.
             </div>
           ) : (
-            <div className="grid gap-3 max-h-[420px] overflow-y-auto pr-1 md:grid-cols-2">
-              {filteredExercises.map((exercise) => (
-                <Card key={exercise.id} className="flex flex-col">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{exercise.name}</CardTitle>
-                    <CardDescription>
-                      {exercise.primary_muscle_group || 'Muscle group not set'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col justify-between gap-3 text-xs text-muted-foreground">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        {exercise.category && (
-                          <Badge variant="outline" className="text-xs">
-                            {exercise.category}
-                          </Badge>
-                        )}
-                        {exercise.equipment && (
-                          <Badge variant="secondary" className="text-xs">
-                            {exercise.equipment}
-                          </Badge>
-                        )}
-                        {exercise.default_sets !== undefined &&
-                          exercise.default_reps !== undefined && (
-                            <Badge variant="outline" className="text-xs">
-                              {exercise.default_sets} x {exercise.default_reps}
-                            </Badge>
-                          )}
-                        {exercise.default_load && (
-                          <Badge variant="outline" className="text-xs">
-                            {exercise.default_load}
-                          </Badge>
-                        )}
+            <ul
+              className="max-h-[min(420px,55vh)] overflow-y-auto rounded-md border divide-y"
+              aria-label="Exercise library results"
+            >
+              {filteredExercises.map((exercise) => {
+                const defaults = formatDefaultPrescription(exercise);
+                const subtitle = [
+                  exercise.primary_muscle_group,
+                  exercise.equipment,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+                return (
+                  <li key={exercise.id}>
+                    <button
+                      type="button"
+                      className="flex min-h-11 w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:min-h-0"
+                      onClick={() => handleSelect(exercise)}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-foreground">
+                          {exercise.name}
+                        </p>
+                        {subtitle ? (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {subtitle}
+                          </p>
+                        ) : null}
+                        {defaults ? (
+                          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                            {defaults}
+                          </p>
+                        ) : null}
                       </div>
-                      {exercise.notes && (
-                        <p className="line-clamp-2">{exercise.notes}</p>
-                      )}
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        onClick={() => handleSelect(exercise)}
-                        type="button"
-                      >
-                        Use Exercise
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      <span className="shrink-0 text-xs font-medium text-primary">
+                        Add
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
+        </div>
+
+        <div className="border-t px-4 py-3">
+          <Button
+            type="button"
+            variant="outline"
+            className={cn('w-full', touchActionClass)}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

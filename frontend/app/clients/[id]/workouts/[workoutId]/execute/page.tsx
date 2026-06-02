@@ -7,15 +7,23 @@ import {
   Loader2,
   Save,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
   type ActualExercisePerformance,
@@ -25,13 +33,28 @@ import {
   type Workout,
   workoutsApi,
 } from '@/lib/api';
+import { touchActionClass } from '@/lib/touch-targets';
 import { cn } from '@/lib/utils';
 import { ExerciseLogCard, hasLoggedData } from './components/ExerciseLogCard';
 import {
   PreWorkoutSurvey,
   type PreWorkoutSurveyResponse,
 } from './components/PreWorkoutSurvey';
+import { WorkoutExecuteStickyFooter } from './components/WorkoutExecuteStickyFooter';
 import { WorkoutRatingSection } from './components/WorkoutRatingSection';
+import {
+  EXECUTE_PAGE_CONTAINER,
+  EXECUTE_PAGE_INNER,
+  EXECUTE_PANEL_BODY,
+  EXECUTE_PANEL_CLASS,
+  EXECUTE_PANEL_HEADER,
+} from './lib/execute-ui-classes';
+import {
+  serializeSessionSnapshot,
+  type SessionFormSnapshot,
+} from './lib/session-snapshot';
+
+const DEFAULT_FOOTER_PADDING = 120;
 
 function getConcernLevel(
   response: PreWorkoutSurveyResponse
@@ -80,6 +103,7 @@ export default function WorkoutExecutionPage() {
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
   const [actualPerformance, setActualPerformance] =
     useState<ActualWorkoutPerformance>({
@@ -98,11 +122,55 @@ export default function WorkoutExecutionPage() {
   const [surveySkipped, setSurveySkipped] = useState(false);
   const [surveyResponse, setSurveyResponse] =
     useState<PreWorkoutSurveyResponse | null>(null);
-  const [clientName, setClientName] = useState<string>('');
+  const [clientName, setClientName] = useState('');
+  const [footerPadding, setFooterPadding] = useState(DEFAULT_FOOTER_PADDING);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
+  const [sessionRevision, setSessionRevision] = useState(0);
+
+  const baselineRef = useRef('');
+  const baselineWorkoutIdRef = useRef<number | null>(null);
+
+  const clientBackHref = `/clients/${clientId}`;
+
+  const buildSnapshot = useCallback(
+    (): SessionFormSnapshot => ({
+      performance: actualPerformance,
+      sessionNotes,
+      trainerObservations,
+      workoutRating,
+      surveyResponse,
+      surveySkipped,
+    }),
+    [
+      actualPerformance,
+      sessionNotes,
+      trainerObservations,
+      workoutRating,
+      surveyResponse,
+      surveySkipped,
+    ]
+  );
+
+  const isDirty = useMemo(() => {
+    if (!baselineRef.current) return false;
+    return (
+      serializeSessionSnapshot(buildSnapshot()) !== baselineRef.current
+    );
+  }, [buildSnapshot, sessionRevision]);
+
+  const bumpSession = useCallback(() => {
+    setSessionRevision((r) => r + 1);
+  }, []);
+
+  const handleFooterHeight = useCallback((heightPx: number) => {
+    setFooterPadding(heightPx + 16);
+  }, []);
 
   const loadWorkout = useCallback(async () => {
     setLoading(true);
     setError('');
+    setSaveSuccess(false);
 
     try {
       const clientResponse = await clientsApi.getById(clientId);
@@ -129,12 +197,18 @@ export default function WorkoutExecutionPage() {
           setSessionNotes(w.actual_workout.session_notes || '');
           setTrainerObservations(w.actual_workout.trainer_observations || '');
           setWorkoutRating(w.actual_workout.workout_rating);
+        } else {
+          setSessionNotes('');
+          setTrainerObservations('');
+          setWorkoutRating(undefined);
         }
       } else {
-        setError(response.error || 'Failed to load workout');
+        setError(
+          response.error || 'Scout could not load this session. Try again.'
+        );
       }
-    } catch (_err) {
-      setError('Failed to load workout');
+    } catch {
+      setError('Scout could not load this session. Try again.');
     } finally {
       setLoading(false);
     }
@@ -142,17 +216,43 @@ export default function WorkoutExecutionPage() {
 
   useEffect(() => {
     if (workoutId) {
-      loadWorkout();
+      void loadWorkout();
     }
   }, [workoutId, loadWorkout]);
 
   useEffect(() => {
-    void workoutId;
+    baselineWorkoutIdRef.current = null;
     setSurveySkipped(false);
     setSurveyResponse(null);
     expandInitRef.current = false;
     setExpandedExerciseIndex(null);
+    baselineRef.current = '';
+    setSessionRevision(0);
   }, [workoutId]);
+
+  useEffect(() => {
+    if (loading || !workout) return;
+    if (baselineWorkoutIdRef.current === workout.id) return;
+    baselineWorkoutIdRef.current = workout.id;
+    baselineRef.current = serializeSessionSnapshot({
+      performance: actualPerformance,
+      sessionNotes,
+      trainerObservations,
+      workoutRating,
+      surveyResponse,
+      surveySkipped,
+    });
+    setSessionRevision(0);
+  }, [
+    loading,
+    workout,
+    actualPerformance,
+    sessionNotes,
+    trainerObservations,
+    workoutRating,
+    surveyResponse,
+    surveySkipped,
+  ]);
 
   useEffect(() => {
     if (!workout) return;
@@ -187,20 +287,43 @@ export default function WorkoutExecutionPage() {
     const newExercises = [...actualPerformance.exercises];
     newExercises[index] = { ...newExercises[index], ...updates };
     setActualPerformance({ ...actualPerformance, exercises: newExercises });
+    bumpSession();
   };
 
-  const completedCount = actualPerformance.exercises.filter(
-    (ex) => getExerciseStatus(ex) === 'completed'
+  const completedCount = actualPerformance.exercises.filter((ex) =>
+    hasLoggedData(ex)
   ).length;
   const totalExercises = actualPerformance.exercises.length;
   const progressPct =
     totalExercises > 0 ? (completedCount / totalExercises) * 100 : 0;
 
-  const handleSave = async () => {
-    if (!workout) return;
+  const requestLeave = useCallback(
+    (href: string) => {
+      if (saving || saveSuccess) return;
+      if (isDirty) {
+        setPendingLeaveHref(href);
+        setLeaveDialogOpen(true);
+        return;
+      }
+      router.push(href);
+    },
+    [isDirty, router, saving, saveSuccess]
+  );
 
-    if (actualPerformance.exercises.length === 0) {
-      setError('Please record performance for at least one exercise');
+  const confirmLeave = useCallback(() => {
+    if (pendingLeaveHref) {
+      router.push(pendingLeaveHref);
+    }
+    setLeaveDialogOpen(false);
+    setPendingLeaveHref(null);
+  }, [pendingLeaveHref, router]);
+
+  const handleSave = useCallback(async () => {
+    if (!workout || saving || saveSuccess) return;
+
+    const loggedExercises = actualPerformance.exercises.filter(hasLoggedData);
+    if (loggedExercises.length === 0) {
+      setError('Log reps or weight for at least one exercise before saving.');
       return;
     }
 
@@ -219,39 +342,81 @@ export default function WorkoutExecutionPage() {
     try {
       const response = await workoutsApi.complete(workout.id, input);
       if (response.success) {
-        router.push(`/clients/${clientId}`);
+        baselineRef.current = serializeSessionSnapshot(buildSnapshot());
+        setSessionRevision(0);
+        setSaveSuccess(true);
+        window.setTimeout(() => {
+          router.push(clientBackHref);
+        }, 900);
       } else {
-        setError(response.error || 'Failed to save workout');
+        setError(
+          response.error || 'Could not save this session. Try again.'
+        );
       }
-    } catch (_err) {
-      setError('Failed to save workout');
+    } catch {
+      setError('Something went wrong while saving. Try again.');
     } finally {
       setSaving(false);
     }
-  };
+  }, [
+    workout,
+    saving,
+    saveSuccess,
+    actualPerformance,
+    sessionNotes,
+    trainerObservations,
+    workoutRating,
+    buildSnapshot,
+    router,
+    clientBackHref,
+  ]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 's') return;
+      e.preventDefault();
+      if (!saving && !saveSuccess && workout) void handleSave();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleSave, saving, saveSuccess, workout]);
 
   const handleSurveyComplete = (responses: PreWorkoutSurveyResponse) => {
     setSurveyResponse(responses);
     setShowSurvey(false);
+    bumpSession();
   };
 
   const handleSurveySkip = () => {
     setSurveySkipped(true);
     setShowSurvey(false);
+    bumpSession();
   };
+
+  const hasWarmupCooldown =
+    (workout?.workout_data.warmup?.length ?? 0) > 0 ||
+    (workout?.workout_data.cooldown?.length ?? 0) > 0;
 
   if (loading) {
     return (
       <ProtectedRoute>
         <AppShell title="Session" description="Getting your workout ready">
-          <Card className="shadow-md">
-            <CardContent className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="mb-3 h-9 w-9 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Loading session...
-              </p>
-            </CardContent>
-          </Card>
+          <div className={EXECUTE_PAGE_CONTAINER}>
+            <output
+              className={cn(EXECUTE_PANEL_CLASS, 'block w-full')}
+              aria-live="polite"
+            >
+              <div className="flex flex-col items-center justify-center px-6 py-20">
+                <Loader2
+                  className="mb-3 h-9 w-9 animate-spin text-primary"
+                  aria-hidden
+                />
+                <p className="text-sm text-muted-foreground">
+                  Scout is loading this session…
+                </p>
+              </div>
+            </output>
+          </div>
         </AppShell>
       </ProtectedRoute>
     );
@@ -261,11 +426,15 @@ export default function WorkoutExecutionPage() {
     return (
       <ProtectedRoute>
         <AppShell title="Session" description={"We couldn't find that workout"}>
-          <Card className="max-w-md shadow-md">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              Workout not found. It may have been removed.
-            </CardContent>
-          </Card>
+          <div
+            className={cn(
+              EXECUTE_PANEL_CLASS,
+              EXECUTE_PANEL_BODY,
+              'max-w-md text-center text-muted-foreground'
+            )}
+          >
+            Workout not found. It may have been removed.
+          </div>
         </AppShell>
       </ProtectedRoute>
     );
@@ -275,17 +444,81 @@ export default function WorkoutExecutionPage() {
     workout.workout_name ||
     `Week ${workout.week_number} · Session ${workout.session_number}`;
 
+  if (workout.status === 'completed' || workout.status === 'skipped') {
+    return (
+      <ProtectedRoute>
+        <AppShell
+          title={sessionTitle}
+          description={
+            workout.status === 'completed'
+              ? 'This session is already logged'
+              : 'This session was skipped'
+          }
+          backAction={
+            <Button
+              variant="ghost"
+              size="sm"
+              className={touchActionClass}
+              type="button"
+              onClick={() => router.push(clientBackHref)}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+              Back to client
+            </Button>
+          }
+        >
+          <div
+            className={cn(
+              EXECUTE_PANEL_CLASS,
+              EXECUTE_PANEL_BODY,
+              'max-w-md space-y-4 text-center'
+            )}
+          >
+            <p className="text-muted-foreground">
+              {workout.status === 'completed'
+                ? 'This workout is already complete. Open it to see what was logged.'
+                : 'This session was marked skipped and cannot be logged here.'}
+            </p>
+            {workout.status === 'completed' ? (
+              <Button
+                variant="default"
+                className={touchActionClass}
+                onClick={() =>
+                  router.push(`/clients/${clientId}/workouts/${workoutId}`)
+                }
+              >
+                View logged session
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className={touchActionClass}
+                onClick={() => router.push(clientBackHref)}
+              >
+                Back to client
+              </Button>
+            )}
+          </div>
+        </AppShell>
+      </ProtectedRoute>
+    );
+  }
+
   return (
     <ProtectedRoute>
       <AppShell
         title={sessionTitle}
-        description="Log sets as you go — great on a phone or tablet at the gym"
+        description="Log sets as you go. Built for phone or tablet on the gym floor."
         backAction={
-          <Button variant="ghost" size="sm" className="min-h-[44px]" asChild>
-            <Link href={`/clients/${clientId}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Client
-            </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            className={touchActionClass}
+            onClick={() => requestLeave(clientBackHref)}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+            Back to client
           </Button>
         }
       >
@@ -297,35 +530,55 @@ export default function WorkoutExecutionPage() {
         />
 
         <div
-          className={cn('mx-auto max-w-2xl space-y-4 pb-32', 'lg:max-w-3xl')}
+          className={EXECUTE_PAGE_CONTAINER}
+          style={{ paddingBottom: footerPadding }}
         >
-          {error && (
-            <Alert variant="destructive">
+          {error ? (
+            <Alert variant="destructive" role="alert" aria-live="assertive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-          )}
+          ) : null}
 
-          <div className="sticky top-0 z-20 -mx-2 rounded-xl border border-border/60 bg-background px-3 py-3 shadow-sm sm:-mx-0 sm:px-4">
+          {saveSuccess ? (
+            <Alert variant="success" aria-live="polite">
+              <AlertDescription>
+                Session saved. Taking you back to the client…
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="sticky top-0 z-20 rounded-xl border border-border bg-background/95 px-4 py-3 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-background/80">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground">
                   Progress
                 </p>
                 <p className="truncate text-sm font-bold text-foreground">
-                  {completedCount} / {totalExercises} exercises logged
+                  {completedCount} / {totalExercises} with reps or load logged
                 </p>
               </div>
               <Badge variant="secondary" className="shrink-0 tabular-nums">
                 {Math.round(progressPct)}%
               </Badge>
             </div>
-            <Progress value={progressPct} className="mt-2 h-2" />
+            <Progress
+              value={progressPct}
+              className="mt-2 h-2"
+              aria-label="Exercise logging progress"
+            />
+            <p className="sr-only" aria-live="polite" aria-atomic="true">
+              {completedCount} of {totalExercises} exercises have reps or load
+              logged
+            </p>
           </div>
 
-          {surveyResponse && (
-            <details className="group rounded-2xl border border-scout-info/25 bg-scout-info/[0.06] dark:bg-scout-info/15">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
+          {surveyResponse ? (
+            <details
+              className="group overflow-hidden rounded-xl border border-scout-info/25 bg-scout-info/[0.06] dark:bg-scout-info/15"
+              aria-label="Pre-workout check-in summary"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
                 <span>Check-in summary</span>
                 <div className="flex items-center gap-2">
                   <Badge
@@ -347,7 +600,7 @@ export default function WorkoutExecutionPage() {
                           ? 'Low'
                           : 'Good'}
                   </Badge>
-                  <ChevronDown className="h-4 w-4 shrink-0 transition group-open:rotate-180" />
+                  <ChevronDown className="h-4 w-4 shrink-0 transition group-open:rotate-180 motion-reduce:transition-none" />
                 </div>
               </summary>
               <div className="space-y-2 border-t border-scout-info/20 px-4 py-3 text-sm">
@@ -367,9 +620,9 @@ export default function WorkoutExecutionPage() {
                   <span className="text-muted-foreground">Ready: </span>
                   {formatReadiness(surveyResponse.readiness)}
                 </div>
-                {surveyResponse.injury_notes && (
+                {surveyResponse.injury_notes ? (
                   <p className="pt-1 text-xs">{surveyResponse.injury_notes}</p>
-                )}
+                ) : null}
                 {(getConcernLevel(surveyResponse) === 'medium' ||
                   getConcernLevel(surveyResponse) === 'high') && (
                   <Alert variant="destructive" className="mt-2">
@@ -380,21 +633,19 @@ export default function WorkoutExecutionPage() {
                 )}
               </div>
             </details>
-          )}
+          ) : null}
 
-          {workout.workout_data.warmup?.length ||
-          workout.workout_data.cooldown?.length ? (
-            <details className="rounded-2xl border border-border/80 bg-muted/20">
+          {hasWarmupCooldown ? (
+            <details className="overflow-hidden rounded-xl border border-border bg-muted/20">
               <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
-                Warm-up &amp; cool-down
+                Warm-up and cool-down ({workout.workout_data.warmup?.length ?? 0}{' '}
+                + {workout.workout_data.cooldown?.length ?? 0} movements)
               </summary>
-              <div className="space-y-3 border-t px-4 py-3 text-sm text-muted-foreground">
+              <div className="space-y-3 border-t border-border px-4 py-3 text-sm text-muted-foreground">
                 {workout.workout_data.warmup &&
                   workout.workout_data.warmup.length > 0 && (
                     <div>
-                      <p className="mb-1 font-medium text-foreground">
-                        Warm-up
-                      </p>
+                      <p className="mb-1 font-medium text-foreground">Warm-up</p>
                       <ul className="list-inside list-disc space-y-1">
                         {workout.workout_data.warmup.map((ex) => (
                           <li key={`w-${ex.name}`}>{ex.name}</li>
@@ -419,107 +670,180 @@ export default function WorkoutExecutionPage() {
             </details>
           ) : null}
 
-          <div className="space-y-3">
-            <div className="flex items-end justify-between gap-2 px-1">
-              <div>
-                <h2 className="text-lg font-bold tracking-tight sm:text-xl">
-                  Exercises
-                </h2>
-                <p className="text-xs text-muted-foreground sm:text-sm">
-                  Tap to expand. Use quick totals or log each set.
+          <section className={EXECUTE_PANEL_CLASS} aria-labelledby="exercises-heading">
+            <div className={EXECUTE_PANEL_HEADER}>
+              <h2
+                id="exercises-heading"
+                className="text-sm font-semibold text-foreground"
+              >
+                Exercises
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
+                Tap a row to log reps or load. Mood and notes are optional.
+              </p>
+            </div>
+
+            {actualPerformance.exercises.length === 0 ? (
+              <div className={cn(EXECUTE_PANEL_BODY, 'text-center text-sm')}>
+                <p className="text-muted-foreground">
+                  No exercises in this session. Edit the workout to add
+                  movements first.
                 </p>
               </div>
-            </div>
+            ) : (
+              <ul
+                className="divide-y divide-border"
+                aria-label="Exercises in this session"
+              >
+                {actualPerformance.exercises.map((exercise, idx) => {
+                  const proposed = workout.workout_data.exercises[idx];
+                  const status = getExerciseStatus(exercise);
+                  const expanded = expandedExerciseIndex === idx;
 
-            <div className="flex flex-col gap-3">
-              {actualPerformance.exercises.map((exercise, idx) => {
-                const proposed = workout.workout_data.exercises[idx];
-                const status = getExerciseStatus(exercise);
-                const expanded = expandedExerciseIndex === idx;
-
-                return (
-                  <ExerciseLogCard
-                    key={`${workout.id}-ex-${idx}-${exercise.exercise_name}`}
-                    exercise={exercise}
-                    proposedExercise={proposed}
-                    exerciseIndex={idx}
-                    totalExercises={totalExercises}
-                    expanded={expanded}
-                    status={status}
-                    onToggle={() =>
-                      setExpandedExerciseIndex((cur) =>
-                        cur === idx ? null : idx
-                      )
-                    }
-                    onUpdate={(updates) =>
-                      updateExercisePerformance(idx, updates)
-                    }
-                    onGoPrev={() =>
-                      setExpandedExerciseIndex((i) =>
-                        i !== null && i > 0 ? i - 1 : i
-                      )
-                    }
-                    onGoNext={() => {
-                      if (idx < totalExercises - 1) {
-                        setExpandedExerciseIndex(idx + 1);
-                      } else {
-                        setExpandedExerciseIndex(null);
-                      }
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </div>
+                  return (
+                    <li key={`${workout.id}-ex-${idx}-${exercise.exercise_name}`}>
+                      <ExerciseLogCard
+                        exercise={exercise}
+                        proposedExercise={proposed}
+                        exerciseIndex={idx}
+                        totalExercises={totalExercises}
+                        expanded={expanded}
+                        status={status}
+                        onToggle={() =>
+                          setExpandedExerciseIndex((cur) =>
+                            cur === idx ? null : idx
+                          )
+                        }
+                        onUpdate={(updates) =>
+                          updateExercisePerformance(idx, updates)
+                        }
+                        onGoPrev={() =>
+                          setExpandedExerciseIndex((i) =>
+                            i !== null && i > 0 ? i - 1 : i
+                          )
+                        }
+                        onGoNext={() => {
+                          if (idx < totalExercises - 1) {
+                            setExpandedExerciseIndex(idx + 1);
+                          } else {
+                            setExpandedExerciseIndex(null);
+                          }
+                        }}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
 
           <WorkoutRatingSection
-            variant="compact"
             workoutRating={workoutRating}
             trainerObservations={trainerObservations}
             sessionNotes={sessionNotes}
-            onRatingChange={setWorkoutRating}
-            onObservationsChange={setTrainerObservations}
-            onSessionNotesChange={setSessionNotes}
+            onRatingChange={(rating) => {
+              setWorkoutRating(rating);
+              bumpSession();
+            }}
+            onObservationsChange={(value) => {
+              setTrainerObservations(value);
+              bumpSession();
+            }}
+            onSessionNotesChange={(value) => {
+              setSessionNotes(value);
+              bumpSession();
+            }}
           />
         </div>
 
-        <div
-          className={cn(
-            'fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background',
-            'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3',
-            'lg:left-64'
-          )}
-        >
-          <div className="mx-auto flex max-w-2xl flex-col gap-2 px-4 sm:flex-row sm:items-center lg:max-w-3xl">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-14 min-h-[56px] w-full touch-manipulation text-base sm:flex-1"
-              onClick={() => router.push(`/clients/${clientId}`)}
-              disabled={saving}
-            >
-              Exit
-            </Button>
-            <Button
-              type="button"
-              className="h-14 min-h-[56px] w-full touch-manipulation text-base font-semibold sm:flex-[2]"
-              onClick={() => handleSave()}
-              disabled={saving}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Saving…
-                </>
+        <WorkoutExecuteStickyFooter onHeightChange={handleFooterHeight}>
+          <div
+            className={cn(
+              EXECUTE_PAGE_INNER,
+              'flex flex-col gap-2 py-3 sm:flex-row sm:items-center'
+            )}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+              {isDirty ? (
+                <Badge variant="outline" className="font-normal">
+                  Unsaved changes
+                </Badge>
               ) : (
-                <>
-                  <Save className="mr-2 h-5 w-5" />
-                  Save &amp; complete session
-                </>
+                <span className="text-muted-foreground">Ready to save</span>
               )}
-            </Button>
+              <span className="sr-only">
+                Press Control+S or Command+S to save
+              </span>
+              <span
+                className="hidden text-muted-foreground md:inline"
+                aria-hidden
+              >
+                · Ctrl+S / ⌘S
+              </span>
+            </div>
+            <div className="flex w-full gap-2 sm:w-auto sm:shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-14 min-h-[56px] flex-1 touch-manipulation text-base sm:min-w-[7rem]"
+                onClick={() => requestLeave(clientBackHref)}
+                disabled={saving || saveSuccess}
+              >
+                Exit
+              </Button>
+              <Button
+                type="button"
+                className="h-14 min-h-[56px] flex-[2] touch-manipulation text-base font-semibold sm:min-w-[12rem]"
+                onClick={() => void handleSave()}
+                disabled={saving || saveSuccess}
+                aria-keyshortcuts="Control+s Meta+s"
+                aria-busy={saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2
+                      className="mr-2 h-5 w-5 animate-spin"
+                      aria-hidden
+                    />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-5 w-5" aria-hidden />
+                    Save and complete
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        </WorkoutExecuteStickyFooter>
+
+        <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have session logs that are not saved yet. Save first or
+                your work will be lost.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setPendingLeaveHref(null);
+                }}
+              >
+                Keep logging
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={confirmLeave}
+              >
+                Leave without saving
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AppShell>
     </ProtectedRoute>
   );

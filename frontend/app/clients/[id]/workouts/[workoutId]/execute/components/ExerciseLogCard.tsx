@@ -40,31 +40,23 @@ interface ExerciseLogCardProps {
   status: 'completed' | 'pending';
 }
 
+function hasNonEmptyText(value: string | number | undefined | null): boolean {
+  if (value === undefined || value === null) return false;
+  return String(value).trim() !== '';
+}
+
+/** Logged = reps, load, or per-set data. Mood and notes alone do not count. */
 export function hasLoggedData(ex: ActualExercisePerformance): boolean {
-  const hasReps =
-    ex.reps_completed !== undefined &&
-    ex.reps_completed !== null &&
-    String(ex.reps_completed).trim() !== '';
-  const hasWeight =
-    ex.weight_used !== undefined &&
-    ex.weight_used !== null &&
-    String(ex.weight_used).trim() !== '';
-  const hasRounds =
-    ex.rounds &&
-    ex.rounds.length > 0 &&
-    ex.rounds.some(
-      (r) =>
-        (r.reps !== undefined &&
-          r.reps !== null &&
-          String(r.reps).trim() !== '') ||
-        (r.weight !== undefined &&
-          r.weight !== null &&
-          String(r.weight).trim() !== '')
-    );
-  const hasRating = ex.exercise_rating !== undefined;
-  const hasNotes =
-    ex.exercise_notes !== undefined && ex.exercise_notes.trim() !== '';
-  return !!(hasReps || hasWeight || hasRounds || hasRating || hasNotes);
+  if (hasNonEmptyText(ex.reps_completed)) return true;
+  if (hasNonEmptyText(ex.weight_used)) return true;
+  if (
+    ex.rounds?.some(
+      (r) => hasNonEmptyText(r.reps) || hasNonEmptyText(r.weight)
+    )
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function ExerciseLogCard({
@@ -87,12 +79,14 @@ export function ExerciseLogCard({
   const rounds = exercise.rounds || [];
 
   useEffect(() => {
-    if (expanded && bodyRef.current) {
-      bodyRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      });
-    }
+    if (!expanded || !bodyRef.current) return;
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+    bodyRef.current.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'nearest',
+    });
   }, [expanded]);
 
   const addRound = () => {
@@ -164,11 +158,9 @@ export function ExerciseLogCard({
     <div
       ref={bodyRef}
       className={cn(
-        'rounded-2xl border-2 bg-card shadow-sm transition-shadow',
-        status === 'completed'
-          ? 'border-success/70 bg-success/[0.06]'
-          : 'border-border hover:border-primary/40',
-        expanded && 'ring-2 ring-primary/30 shadow-md'
+        'bg-card transition-shadow motion-reduce:transition-none',
+        status === 'completed' && 'bg-success/[0.06]',
+        expanded && 'ring-2 ring-primary/25 ring-inset'
       )}
     >
       <button
@@ -191,8 +183,8 @@ export function ExerciseLogCard({
               {exercise.exercise_name}
             </h3>
             {status === 'completed' && (
-              <Badge className="bg-success text-success-foreground hover:bg-success">
-                Logged
+              <Badge variant="secondary" className="bg-success/15 text-success">
+                Reps logged
               </Badge>
             )}
           </div>
@@ -332,31 +324,19 @@ export function ExerciseLogCard({
                 </Button>
               </div>
 
-              {rounds.map((round, roundIndex) => (
-                <div
-                  key={`${exerciseIndex}-r-${round.round_number}-${roundIndex}`}
-                  className="rounded-xl border-2 border-border/80 bg-muted/20 p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <h4 className="text-base font-bold">
+              <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-muted/10">
+                {rounds.map((round, roundIndex) => (
+                  <li
+                    key={`${exerciseIndex}-r-${round.round_number}-${roundIndex}`}
+                    className="grid grid-cols-1 items-end gap-3 px-3 py-3 sm:grid-cols-[3.5rem_1fr_1fr_auto]"
+                  >
+                    <span className="text-sm font-semibold text-foreground sm:pb-2">
                       Set {round.round_number}
-                    </h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-11 w-11 shrink-0 touch-manipulation"
-                      onClick={() => removeRound(roundIndex)}
-                      aria-label="Remove set"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
+                    </span>
+                    <div className="space-y-1.5">
                       <Label
                         htmlFor={`round-${exerciseIndex}-${roundIndex}-reps`}
-                        className="text-sm font-medium"
+                        className="text-xs font-medium"
                       >
                         Reps
                       </Label>
@@ -373,10 +353,10 @@ export function ExerciseLogCard({
                         className="h-12 min-h-[48px] text-lg"
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <Label
                         htmlFor={`round-${exerciseIndex}-${roundIndex}-weight`}
-                        className="text-sm font-medium"
+                        className="text-xs font-medium"
                       >
                         Weight
                       </Label>
@@ -392,9 +372,19 @@ export function ExerciseLogCard({
                         className="h-12 min-h-[48px] text-lg"
                       />
                     </div>
-                  </div>
-                </div>
-              ))}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 shrink-0 touch-manipulation sm:mb-0.5"
+                      onClick={() => removeRound(roundIndex)}
+                      aria-label={`Remove set ${round.round_number}`}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
 
               {rounds.length === 0 && (
                 <p className="py-6 text-center text-muted-foreground">
@@ -497,7 +487,7 @@ export function ExerciseLogCard({
               onClick={onGoNext}
             >
               {exerciseIndex >= totalExercises - 1
-                ? 'Finish exercise list'
+                ? 'Close list'
                 : 'Next exercise →'}
             </Button>
           </div>

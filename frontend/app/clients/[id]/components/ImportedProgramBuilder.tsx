@@ -233,29 +233,6 @@ export function ImportedProgramBuilder({
     setCopying(false);
   };
 
-  const handleQuickCopyRest = async (sourceWeek: number) => {
-    if (sourceWeek >= phaseWeeks) return;
-    setCopying(true);
-    setError('');
-    const res = await clientsApi.cloneImportedProgramWeek(clientId, {
-      recommendation_id: recommendation.id,
-      source_week: sourceWeek,
-      target_week_from: sourceWeek + 1,
-      target_week_to: phaseWeeks,
-    });
-    if (res.success && res.data) {
-      setWorkouts(res.data.workouts);
-      onWorkoutsUpdated?.(res.data.workouts);
-      setSuccessMessage(
-        `Week ${sourceWeek} copied to weeks ${sourceWeek + 1}–${phaseWeeks}`
-      );
-      setTimeout(() => setSuccessMessage(''), 4000);
-    } else {
-      setError(res.error || 'Could not copy weeks');
-    }
-    setCopying(false);
-  };
-
   const renderSessionSlot = (week: number, session: number) => {
     const workout = findWorkoutInGrid(workouts, week, session);
     const ready = workout ? isSessionReady(workout) : false;
@@ -414,37 +391,23 @@ export function ImportedProgramBuilder({
           ) : (
             <>
             <div className="space-y-4 md:hidden">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div className="space-y-2 sm:min-w-[10rem]">
-                  <Label htmlFor="mobile-focus-week">View week</Label>
-                  <Select
-                    value={String(focusWeek)}
-                    onValueChange={(v) => setFocusWeek(parseInt(v, 10))}
-                  >
-                    <SelectTrigger id="mobile-focus-week">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {weekNumbers.map((w) => (
-                        <SelectItem key={w} value={String(w)}>
-                          Week {w}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {focusWeek < phaseWeeks ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="min-h-11"
-                    disabled={copying}
-                    onClick={() => void handleQuickCopyRest(focusWeek)}
-                  >
-                    Copy week {focusWeek} to rest
-                  </Button>
-                ) : null}
+              <div className="space-y-2 sm:max-w-xs">
+                <Label htmlFor="mobile-focus-week">View week</Label>
+                <Select
+                  value={String(focusWeek)}
+                  onValueChange={(v) => setFocusWeek(parseInt(v, 10))}
+                >
+                  <SelectTrigger id="mobile-focus-week">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {weekNumbers.map((w) => (
+                      <SelectItem key={w} value={String(w)}>
+                        Week {w}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <ul className="space-y-3">
                 {sessionNumbers.map((session) => (
@@ -484,23 +447,9 @@ export function ImportedProgramBuilder({
                         scope="col"
                         className="min-w-[7.5rem] px-2 py-3 text-center"
                       >
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="font-semibold text-foreground">
-                            Week {week}
-                          </span>
-                          {week < phaseWeeks ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="min-h-11 px-3 text-xs text-muted-foreground hover:text-foreground"
-                              disabled={copying}
-                              onClick={() => void handleQuickCopyRest(week)}
-                            >
-                              Copy → rest
-                            </Button>
-                          ) : null}
-                        </div>
+                        <span className="font-semibold text-foreground">
+                          Week {week}
+                        </span>
                       </th>
                     ))}
                   </tr>
@@ -527,13 +476,6 @@ export function ImportedProgramBuilder({
                 </tbody>
               </table>
             </section>
-            {!loading && phaseWeeks >= 2 ? (
-              <p className="mt-4 hidden text-xs text-muted-foreground md:block">
-                Fill week 1, then use{' '}
-                <span className="font-medium text-foreground">Copy → rest</span>{' '}
-                on a column header to duplicate across later weeks.
-              </p>
-            ) : null}
             </>
           )}
 
