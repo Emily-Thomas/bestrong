@@ -10,6 +10,8 @@ import {
 } from '@/lib/exercise-groups';
 import { cn } from '@/lib/utils';
 
+const ON_TINT_MUTED = 'text-foreground/75';
+
 /** @deprecated Use EDIT_EXERCISES_LIST on the edit page */
 export const WORKOUT_SEGMENT_LIST_CLASS = 'flex flex-col gap-6 sm:gap-8';
 
@@ -50,7 +52,6 @@ interface GroupBlockHeaderProps {
   blockLetter: string;
   groupType: ExerciseGroupType;
   movementNames: string[];
-  restHint: string | null;
   groupRounds?: number;
   trailingAction?: ReactNode;
   completed?: boolean;
@@ -60,7 +61,6 @@ export function GroupBlockHeader({
   blockLetter,
   groupType,
   movementNames,
-  restHint,
   groupRounds,
   trailingAction,
   completed,
@@ -102,8 +102,9 @@ export function GroupBlockHeader({
                 </Badge>
               ) : null}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {roundsSummary ?? 'Set how many times to run this full block below.'}
+            <p className={cn('text-sm text-pretty', ON_TINT_MUTED)}>
+              {roundsSummary ??
+                'Set how many times to run this full block below.'}
             </p>
           </div>
         </div>
@@ -119,10 +120,17 @@ export function GroupBlockHeader({
           {flowPreview}
         </p>
       ) : null}
-      {restHint ? (
-        <p className="mt-2 text-xs font-medium text-foreground">{restHint}</p>
-      ) : null}
     </header>
+  );
+}
+
+/** Shown below a linked block when rest is prescribed on the last movement */
+export function GroupRestFooter({ restHint }: { restHint: string | null }) {
+  if (!restHint) return null;
+  return (
+    <p className={cn('text-center text-xs text-pretty', ON_TINT_MUTED)}>
+      {restHint}
+    </p>
   );
 }
 
@@ -168,12 +176,5 @@ export function GroupStepBadge({ label, className }: GroupStepBadgeProps) {
     >
       {label}
     </span>
-  );
-}
-
-export function GroupRestFooter({ restHint }: { restHint: string | null }) {
-  if (!restHint) return null;
-  return (
-    <p className="text-center text-xs text-muted-foreground">{restHint}</p>
   );
 }

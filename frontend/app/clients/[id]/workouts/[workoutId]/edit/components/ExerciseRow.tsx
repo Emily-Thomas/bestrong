@@ -26,7 +26,7 @@ interface ExerciseRowProps {
   inGroup?: boolean;
   /** Last movement in a linked block (shows rest field) */
   isLastInBlock?: boolean;
-  /** Full session list — powers the Link with… menu */
+  /** Full session list for the Link with… menu */
   sessionExercises?: Exercise[];
   onSessionExercisesChange?: (exercises: Exercise[]) => void;
   onUpdateAtIndex: (index: number, updates: Partial<Exercise>) => void;
@@ -67,6 +67,7 @@ function ExerciseRowActions({
   inGroup,
   exercise,
   index,
+  fromLibrary,
   sessionExercises,
   onSessionExercisesChange,
   onUnlinkFromGroup,
@@ -78,6 +79,7 @@ function ExerciseRowActions({
   inGroup: boolean;
   exercise: Exercise;
   index: number;
+  fromLibrary: boolean;
   sessionExercises?: Exercise[];
   onSessionExercisesChange?: (exercises: Exercise[]) => void;
   onUnlinkFromGroup?: () => void;
@@ -85,6 +87,7 @@ function ExerciseRowActions({
   handleReplace: () => void;
   handleRemove: () => void;
 }) {
+  const replaceShort = fromLibrary ? 'Change' : 'From library';
   return (
     <div
       className={cn(
@@ -114,11 +117,10 @@ function ExerciseRowActions({
       ) : null}
       <RowToolbarButton label={replaceLabel} onClick={handleReplace}>
         <BookOpen className="h-3.5 w-3.5" aria-hidden />
-        {inGroup ? 'Change' : (
-          <span className="hidden sm:inline">
-            {isLibraryLinkedExercise(exercise) ? 'Change' : 'From library'}
-          </span>
-        )}
+        <span className={cn(!inGroup && 'hidden sm:inline')}>{replaceShort}</span>
+        {!inGroup && !fromLibrary ? (
+          <span className="sm:hidden">Library</span>
+        ) : null}
       </RowToolbarButton>
       <RowToolbarButton
         label={`Remove ${displayName}`}
@@ -217,6 +219,7 @@ function ExerciseRowComponent({
             inGroup
             exercise={exercise}
             index={index}
+            fromLibrary={fromLibrary}
             onUnlinkFromGroup={onUnlinkFromGroup}
             replaceLabel={replaceLabel}
             handleReplace={handleReplace}
@@ -273,6 +276,7 @@ function ExerciseRowComponent({
             inGroup={false}
             exercise={exercise}
             index={index}
+            fromLibrary={fromLibrary}
             sessionExercises={sessionExercises}
             onSessionExercisesChange={onSessionExercisesChange}
             replaceLabel={replaceLabel}

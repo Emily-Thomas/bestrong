@@ -66,7 +66,6 @@ export function ExerciseGroupBlock({
           blockLetter={blockLetter}
           groupType={segment.groupType}
           movementNames={movementNames}
-          restHint={restHint}
           groupRounds={groupRounds}
           trailingAction={
             <Button

@@ -31,7 +31,7 @@ export function WorkoutEditStickyFooter({
     <div
       ref={ref}
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-40 border-t bg-background shadow-[0_-4px_24px_-8px_hsl(240_10%_2%/0.45)]',
+        'fixed bottom-0 left-0 right-0 z-40 border-t bg-background shadow-lg',
         'pb-[max(0.75rem,env(safe-area-inset-bottom))]',
         APP_SHELL_SIDEBAR_OFFSET_CLASS
       )}

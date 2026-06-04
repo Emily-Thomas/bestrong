@@ -78,7 +78,6 @@ export function ExerciseGroupExecuteBlock({
           blockLetter={blockLetter}
           groupType={segment.groupType}
           movementNames={movementNames}
-          restHint={restHint}
           groupRounds={blockRounds}
           completed={allLogged}
         />

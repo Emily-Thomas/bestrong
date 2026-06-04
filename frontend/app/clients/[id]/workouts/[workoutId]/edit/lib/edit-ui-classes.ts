@@ -1,6 +1,9 @@
 export { touchActionClass } from '@/lib/touch-targets';
 
-/** Main column — session panels stack with clear section breaks */
+/** Readable secondary text on signal-tinted group surfaces */
+export const EDIT_ON_TINT_MUTED = 'text-foreground/75';
+
+/** Main column: session panels stack with clear section breaks */
 export const EDIT_PAGE_CONTAINER =
   'mx-auto flex w-full max-w-5xl flex-col gap-8';
 
@@ -32,3 +35,6 @@ export const EDIT_GROUP_INNER_BODY = 'space-y-4 px-4 pb-5 pt-2 sm:px-5 sm:pb-6';
 
 export const EDIT_GROUP_MOVEMENTS_STACK =
   'divide-y divide-border/80 overflow-hidden rounded-lg border border-border/80 bg-background';
+
+export const EXERCISES_SECTION_HELPER =
+  'Link pair between movements, Link with… on a row, or select singles and link them into a block.';

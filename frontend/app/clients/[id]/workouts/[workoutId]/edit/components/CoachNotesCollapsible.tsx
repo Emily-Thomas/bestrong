@@ -34,7 +34,7 @@ export function CoachNotesCollapsible({
         >
           <ChevronDown
             className={cn(
-              'h-4 w-4 transition-transform',
+              'h-4 w-4 transition-transform motion-reduce:transition-none',
               open && 'rotate-180'
             )}
             aria-hidden

@@ -83,7 +83,6 @@ export function WorkoutExerciseList({
                   blockLetter={blockLetter}
                   groupType={segment.groupType}
                   movementNames={movementNames}
-                  restHint={restHint}
                   groupRounds={groupRounds}
                 />
                 {roundsSummary ? (

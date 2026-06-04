@@ -3,6 +3,8 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Exercise, ExerciseGroupType } from '@/lib/api';
+import { EDIT_ON_TINT_MUTED } from '../lib/edit-ui-classes';
+import { cn } from '@/lib/utils';
 import {
   groupRoundsLabelCapitalized,
   updateGroupRounds,
@@ -59,7 +61,7 @@ export function GroupBlockPrescription({
           placeholder="3"
         />
       </div>
-      <p className="text-sm text-pretty text-muted-foreground">
+      <p className={cn('text-sm text-pretty', EDIT_ON_TINT_MUTED)}>
         Reps and load for each movement below. Run all {movementCount} movements
         back-to-back, then rest, and repeat for the number of {unit.toLowerCase()}{' '}
         you enter.

@@ -38,8 +38,9 @@ export function StandaloneExerciseBlock({
       <section
         className={cn(
           STANDALONE_BLOCK_SHELL_CLASS,
+          'transition-shadow',
           selectedForLink &&
-            'ring-2 ring-primary/40 ring-offset-2 ring-offset-background'
+            'ring-2 ring-primary ring-offset-2 ring-offset-background'
         )}
         aria-label={`Single movement ${index + 1}: ${label}`}
       >

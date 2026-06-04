@@ -103,7 +103,7 @@ export function ExercisePrescriptionFields({
             id={`sets-${index}`}
             value={exercise.sets}
             onChange={(sets) => onChange({ sets })}
-            placeholder="—"
+            placeholder="Optional"
           />
         </div>
       )}
@@ -121,8 +121,8 @@ export function ExercisePrescriptionFields({
         />
       </div>
       {hideRest ? (
-        <p className="text-xs text-pretty text-muted-foreground sm:col-span-2">
-          Rest is set on the last movement in this block.
+        <p className="text-xs text-pretty text-foreground/75 sm:col-span-2">
+          Rest after the block is on the last movement below.
         </p>
       ) : (
         <div className="space-y-2">
@@ -131,7 +131,7 @@ export function ExercisePrescriptionFields({
             id={`rest-${index}`}
             value={exercise.rest_seconds}
             onChange={(rest_seconds) => onChange({ rest_seconds })}
-            placeholder="—"
+            placeholder="Optional"
           />
         </div>
       )}
@@ -165,7 +165,7 @@ export function ExercisePrescriptionFields({
           value={exercise.rir}
           onChange={(rir) => onChange({ rir })}
           parse={parseOptionalRir}
-          placeholder="—"
+          placeholder="Optional"
         />
       </div>
       <div className="space-y-2 sm:col-span-2">
@@ -206,7 +206,7 @@ export function ExercisePrescriptionFields({
           >
             <ChevronDown
               className={cn(
-                'h-4 w-4 transition-transform',
+                'h-4 w-4 transition-transform motion-reduce:transition-none',
                 moreOpen && 'rotate-180'
               )}
             />

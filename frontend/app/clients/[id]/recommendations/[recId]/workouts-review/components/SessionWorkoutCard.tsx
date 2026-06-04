@@ -13,6 +13,7 @@ import type { Exercise } from '@/lib/api';
 import {
   GROUP_BLOCK_SHELL_CLASS,
   GroupBlockHeader,
+  GroupRestFooter,
   GroupThenConnector,
   STANDALONE_BLOCK_SHELL_CLASS,
   StandaloneBlockHeader,
@@ -202,7 +203,6 @@ export function SessionWorkoutCard({
                       blockLetter={blockLetter}
                       groupType={segment.groupType}
                       movementNames={movementNames}
-                      restHint={restHint}
                     />
                     <ul className="flex flex-col px-3 py-2">
                       {segment.items.map(({ exercise, index }, pos) => (
@@ -216,6 +216,9 @@ export function SessionWorkoutCard({
                         </li>
                       ))}
                     </ul>
+                    <div className="px-3 pb-3">
+                      <GroupRestFooter restHint={restHint} />
+                    </div>
                   </section>
                 </li>
               );

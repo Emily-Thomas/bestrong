@@ -47,6 +47,7 @@ import { WorkoutEditStickyFooter } from './components/WorkoutEditStickyFooter';
 import { touchActionClass } from '@/lib/touch-targets';
 import {
   EDIT_EXERCISES_LIST,
+  EXERCISES_SECTION_HELPER,
   EDIT_PAGE_CONTAINER,
   EDIT_PAGE_INNER,
   EDIT_PANEL_BODY,
@@ -384,7 +385,7 @@ export default function EditWorkoutPage() {
     const unnamed = workoutData.exercises.some((ex) => !ex.name?.trim());
     if (unnamed) {
       setError(
-        'Every exercise needs a name. Pick from the library or enter a custom name.'
+        'Every movement needs a name. Pick from the library or enter a custom name.'
       );
       return;
     }
@@ -413,10 +414,13 @@ export default function EditWorkoutPage() {
         setSavedRevision(editRevision);
         router.push(clientBackHref);
       } else {
-        setError(response.error || 'Failed to update workout');
+        setError(
+          response.error ||
+            'Something went wrong saving this session. Try again.'
+        );
       }
     } catch (_err) {
-      setError('Failed to update workout');
+      setError('Something went wrong saving this session. Try again.');
     } finally {
       setSaving(false);
     }
@@ -485,9 +489,18 @@ export default function EditWorkoutPage() {
           <div
             className={cn(EDIT_PANEL_CLASS, EDIT_PANEL_BODY, 'max-w-md text-center')}
           >
-            <p className="text-muted-foreground">
-              Workout not found. It may have been removed.
+            <p className="text-sm text-pretty text-muted-foreground">
+              We couldn&apos;t find that session. It may have been removed.
             </p>
+            <Button
+              variant="outline"
+              className={cn('mt-4', touchActionClass)}
+              type="button"
+              onClick={() => router.push(clientBackHref)}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+              {backLabel}
+            </Button>
           </div>
         </AppShell>
       </ProtectedRoute>
@@ -619,9 +632,7 @@ export default function EditWorkoutPage() {
                     Exercises
                   </h2>
                   <p className="text-xs text-pretty text-muted-foreground">
-                    {isImportedProgram
-                      ? 'Link pairs with the button between movements, use Link with… on a row, or select several singles and link them as a block.'
-                      : 'Link pairs with the button between movements, use Link with… on a row, or select several singles and link them as a block.'}
+                    {EXERCISES_SECTION_HELPER}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
@@ -655,11 +666,11 @@ export default function EditWorkoutPage() {
                   aria-hidden
                 />
                 <p className="mt-3 text-sm font-medium text-foreground">
-                  No exercises yet
+                  Ready to add movements?
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground text-pretty">
-                  Start with Add from library. Use custom only when the movement
-                  is not in your roster.
+                <p className="mt-1 text-xs text-pretty text-muted-foreground">
+                  Start from your library. Add a custom movement only when it is
+                  not in your roster.
                 </p>
                 <Button
                   type="button"
@@ -791,6 +802,7 @@ export default function EditWorkoutPage() {
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={saving}
+                aria-busy={saving}
                 aria-keyshortcuts="Control+s Meta+s"
               >
                 {saving ? (
