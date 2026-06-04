@@ -391,34 +391,52 @@ export function ImportedProgramBuilder({
           ) : (
             <>
             <div className="space-y-4 md:hidden">
-              <div className="space-y-2 sm:max-w-xs">
-                <Label htmlFor="mobile-focus-week">View week</Label>
-                <Select
-                  value={String(focusWeek)}
-                  onValueChange={(v) => setFocusWeek(parseInt(v, 10))}
+              <div className="flex gap-3">
+                <nav
+                  className="flex w-20 shrink-0 flex-col gap-1"
+                  aria-label="Select week"
                 >
-                  <SelectTrigger id="mobile-focus-week">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {weekNumbers.map((w) => (
-                      <SelectItem key={w} value={String(w)}>
-                        Week {w}
-                      </SelectItem>
+                  {weekNumbers.map((week) => {
+                    const active = week === focusWeek;
+                    return (
+                      <Button
+                        key={week}
+                        type="button"
+                        variant={active ? 'default' : 'ghost'}
+                        size="sm"
+                        className={cn(
+                          'h-auto min-h-11 px-2 text-xs font-semibold',
+                          active && 'shadow-sm'
+                        )}
+                        aria-pressed={active}
+                        onClick={() => setFocusWeek(week)}
+                      >
+                        W{week}
+                      </Button>
+                    );
+                  })}
+                </nav>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Week {focusWeek}
+                  </p>
+                  <div
+                    className="grid gap-2"
+                    style={{
+                      gridTemplateColumns: `repeat(${Math.max(sessionsPerWeek, 1)}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {sessionNumbers.map((session) => (
+                      <div key={session} className="min-w-0 space-y-1.5">
+                        <span className="block text-center text-[10px] font-medium text-muted-foreground">
+                          S{session}
+                        </span>
+                        {renderSessionSlot(focusWeek, session)}
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                </div>
               </div>
-              <ul className="space-y-3">
-                {sessionNumbers.map((session) => (
-                  <li key={session} className="space-y-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Session {session}
-                    </span>
-                    {renderSessionSlot(focusWeek, session)}
-                  </li>
-                ))}
-              </ul>
             </div>
 
             <section
@@ -431,46 +449,47 @@ export function ImportedProgramBuilder({
               >
                 <caption id={gridCaptionId} className="sr-only">
                   {phaseWeeks} weeks with {sessionsPerWeek} training sessions
-                  each. Select a cell to add or edit exercises.
+                  each. Weeks are listed down the side; sessions across the top.
+                  Select a cell to add or edit exercises.
                 </caption>
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
                     <th
                       scope="col"
-                      className="sticky left-0 z-10 bg-muted/40 px-3 py-3 text-left font-medium text-muted-foreground"
+                      className="sticky left-0 z-10 w-24 bg-muted/40 px-3 py-3 text-left font-medium text-muted-foreground"
                     >
-                      Session
+                      Week
                     </th>
-                    {weekNumbers.map((week) => (
+                    {sessionNumbers.map((session) => (
                       <th
-                        key={week}
+                        key={session}
                         scope="col"
                         className="min-w-[7.5rem] px-2 py-3 text-center"
                       >
                         <span className="font-semibold text-foreground">
-                          Week {week}
+                          Session {session}
                         </span>
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {sessionNumbers.map((session) => (
+                  {weekNumbers.map((week) => (
                     <tr
-                      key={session}
+                      key={week}
                       className="border-b border-border/60 last:border-0"
                     >
                       <th
                         scope="row"
                         className="sticky left-0 z-10 bg-card px-3 py-2 text-left font-medium text-foreground"
                       >
-                        Session {session}
+                        Week {week}
                       </th>
-                      {weekNumbers.map((week) => (
-                          <td key={`${week}-${session}`} className="p-2">
-                            {renderSessionSlot(week, session)}
-                          </td>
-                        ))}
+                      {sessionNumbers.map((session) => (
+                        <td key={`${week}-${session}`} className="p-2">
+                          {renderSessionSlot(week, session)}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
