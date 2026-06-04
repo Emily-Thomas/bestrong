@@ -37,4 +37,11 @@ export const EDIT_GROUP_MOVEMENTS_STACK =
   'divide-y divide-border/80 overflow-hidden rounded-lg border border-border/80 bg-background';
 
 export const EXERCISES_SECTION_HELPER =
-  'Link pair between movements, Link with… on a row, or select singles and link them into a block.';
+  'Drag to reorder blocks and movements. Link pair between singles, use Link with… on a row, or select several singles and link them into a block.';
+
+/** Sortable settle (ease-out-quart); disabled when prefers-reduced-motion */
+export const DRAG_SORTABLE_TRANSITION =
+  'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)';
+
+export const DRAG_SEGMENT_GHOST_CLASS =
+  'opacity-90 shadow-xl ring-2 ring-primary/35';

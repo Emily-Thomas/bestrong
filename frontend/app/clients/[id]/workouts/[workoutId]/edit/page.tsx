@@ -39,14 +39,11 @@ import {
 } from '@/lib/api';
 import { CoachNotesCollapsible } from './components/CoachNotesCollapsible';
 import { ExerciseLibraryPicker } from './components/ExerciseLibraryPicker';
-import { ExerciseGroupBlock } from './components/ExerciseGroupBlock';
 import { LinkSelectionToolbar } from './components/LinkSelectionToolbar';
-import { SegmentPairLinkButton } from './components/SegmentPairLinkButton';
-import { StandaloneExerciseBlock } from './components/StandaloneExerciseBlock';
+import { WorkoutExerciseSortableList } from './components/WorkoutExerciseSortableList';
 import { WorkoutEditStickyFooter } from './components/WorkoutEditStickyFooter';
 import { touchActionClass } from '@/lib/touch-targets';
 import {
-  EDIT_EXERCISES_LIST,
   EXERCISES_SECTION_HELPER,
   EDIT_PAGE_CONTAINER,
   EDIT_PAGE_INNER,
@@ -60,7 +57,6 @@ import {
   dissolveExerciseGroup,
   linkExercisesAtIndices,
   normalizeWorkoutExercises,
-  segmentExercises,
   unlinkExerciseFromGroup,
   validateExerciseGroups,
 } from '@/lib/exercise-groups';
@@ -373,12 +369,6 @@ export default function EditWorkoutPage() {
     [bumpEdit]
   );
 
-  const exerciseSegments = useMemo(
-    () =>
-      workoutData ? segmentExercises(workoutData.exercises) : [],
-    [workoutData]
-  );
-
   const handleSave = useCallback(async () => {
     if (!workout || !workoutData) return;
 
@@ -689,77 +679,20 @@ export default function EditWorkoutPage() {
                   onLinkSelected={linkSelectedMovements}
                   onClear={() => setLinkSelection([])}
                 />
-                <ul
-                  className={EDIT_EXERCISES_LIST}
-                  aria-label="Exercises in this session"
-                >
-                  {exerciseSegments.flatMap((segment, segmentIndex) => {
-                    const sessionExercises = workoutData.exercises;
-                    const elements: React.ReactNode[] = [];
-
-                    if (segment.kind === 'group') {
-                      elements.push(
-                        <ExerciseGroupBlock
-                          key={segment.groupId}
-                          segment={segment}
-                          segmentIndex={segmentIndex}
-                          compactPrescription={isImportedProgram}
-                          sessionExercises={sessionExercises}
-                          onSessionExercisesChange={applySessionExercises}
-                          onUpdateAtIndex={updateExerciseAtIndex}
-                          onReplaceAtIndex={replaceExerciseAtIndex}
-                          onRemoveAtIndex={requestRemoveAtIndex}
-                          onUnlinkAtIndex={unlinkAtIndex}
-                          onDissolveGroup={dissolveGroup}
-                          onAddMovementToGroup={openAddToGroupPicker}
-                        />
-                      );
-                    } else {
-                      const { exercise, index } = segment.items[0];
-                      elements.push(
-                        <StandaloneExerciseBlock
-                          key={
-                            exercise.exercise_instance_id ??
-                            `standalone-${index}`
-                          }
-                          exercise={exercise}
-                          index={index}
-                          compactPrescription={isImportedProgram}
-                          sessionExercises={sessionExercises}
-                          onSessionExercisesChange={applySessionExercises}
-                          selectedForLink={linkSelection.includes(index)}
-                          onToggleSelectForLink={toggleLinkSelect}
-                          onUpdateAtIndex={updateExerciseAtIndex}
-                          onReplaceAtIndex={replaceExerciseAtIndex}
-                          onRemoveAtIndex={requestRemoveAtIndex}
-                        />
-                      );
-                    }
-
-                    const nextSeg = exerciseSegments[segmentIndex + 1];
-                    if (
-                      segment.kind === 'standalone' &&
-                      nextSeg?.kind === 'standalone'
-                    ) {
-                      const top = segment.items[0];
-                      const bottom = nextSeg.items[0];
-                      if (bottom.index === top.index + 1) {
-                        elements.push(
-                          <SegmentPairLinkButton
-                            key={`pair-${top.index}-${bottom.index}`}
-                            topName={top.exercise.name}
-                            bottomName={bottom.exercise.name}
-                            onLink={() =>
-                              linkAdjacentPair(top.index, bottom.index)
-                            }
-                          />
-                        );
-                      }
-                    }
-
-                    return elements;
-                  })}
-                </ul>
+                <WorkoutExerciseSortableList
+                  exercises={workoutData.exercises}
+                  compactPrescription={isImportedProgram}
+                  linkSelection={linkSelection}
+                  onApplyExercises={applySessionExercises}
+                  onToggleSelectForLink={toggleLinkSelect}
+                  onUpdateAtIndex={updateExerciseAtIndex}
+                  onReplaceAtIndex={replaceExerciseAtIndex}
+                  onRemoveAtIndex={requestRemoveAtIndex}
+                  onUnlinkAtIndex={unlinkAtIndex}
+                  onDissolveGroup={dissolveGroup}
+                  onAddMovementToGroup={openAddToGroupPicker}
+                  onLinkAdjacentPair={linkAdjacentPair}
+                />
               </>
             )}
           </section>

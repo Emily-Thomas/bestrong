@@ -53,6 +53,7 @@ interface GroupBlockHeaderProps {
   groupType: ExerciseGroupType;
   movementNames: string[];
   groupRounds?: number;
+  leadingSlot?: ReactNode;
   trailingAction?: ReactNode;
   completed?: boolean;
 }
@@ -62,6 +63,7 @@ export function GroupBlockHeader({
   groupType,
   movementNames,
   groupRounds,
+  leadingSlot,
   trailingAction,
   completed,
 }: GroupBlockHeaderProps) {
@@ -78,6 +80,7 @@ export function GroupBlockHeader({
     <header className="border-b border-primary/20 bg-primary/[0.1] px-4 py-4 sm:px-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-3">
+          {leadingSlot}
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary font-mono text-sm font-bold text-primary-foreground"
             aria-hidden
