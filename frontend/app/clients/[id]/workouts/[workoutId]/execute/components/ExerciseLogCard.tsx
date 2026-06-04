@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { GroupStepBadge } from '@/components/workout/exercise-group-visuals';
 import type { ActualExercisePerformance, ExerciseRound } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +33,11 @@ interface ExerciseLogCardProps {
   proposedExercise?: Proposed;
   exerciseIndex: number;
   totalExercises: number;
+  /** e.g. A1 in a superset; falls back to exerciseIndex + 1 */
+  movementLabel?: string;
+  inGroupBlock?: boolean;
+  /** Block-level sets/rounds (superset/triset/circuit), not per-movement sets */
+  blockRounds?: number;
   expanded: boolean;
   onToggle: () => void;
   onUpdate: (updates: Partial<ActualExercisePerformance>) => void;
@@ -64,6 +70,9 @@ export function ExerciseLogCard({
   proposedExercise,
   exerciseIndex,
   totalExercises,
+  movementLabel,
+  inGroupBlock = false,
+  blockRounds,
   expanded,
   onToggle,
   onUpdate,
@@ -71,6 +80,8 @@ export function ExerciseLogCard({
   onGoNext,
   status,
 }: ExerciseLogCardProps) {
+  const displayIndex = movementLabel ?? String(exerciseIndex + 1);
+  const showGroupBadge = inGroupBlock && movementLabel;
   const bodyRef = useRef<HTMLDivElement>(null);
   const [showRounds, setShowRounds] = useState(
     () => !!(exercise.rounds && exercise.rounds.length > 0)
@@ -104,7 +115,10 @@ export function ExerciseLogCard({
       addRound();
       return;
     }
-    const numSets = proposedExercise.sets || 1;
+    const numSets =
+      inGroupBlock && blockRounds != null && blockRounds > 0
+        ? blockRounds
+        : proposedExercise.sets || 1;
     const proposedReps = proposedExercise.reps;
     const proposedWeight = proposedExercise.weight;
     const newRounds: ExerciseRound[] = [];
@@ -152,7 +166,12 @@ export function ExerciseLogCard({
     onUpdate({ exercise_rating: rating });
   };
 
-  const setsPlanned = proposedExercise?.sets ?? 0;
+  const roundUnit = inGroupBlock ? 'round' : 'set';
+  const roundUnitCap = inGroupBlock ? 'Round' : 'Set';
+  const setsPlanned =
+    inGroupBlock && blockRounds != null && blockRounds > 0
+      ? blockRounds
+      : (proposedExercise?.sets ?? 0);
 
   return (
     <div
@@ -168,15 +187,25 @@ export function ExerciseLogCard({
         className="flex w-full items-start gap-3 p-4 text-left sm:p-5 min-h-[4.5rem] touch-manipulation"
         onClick={onToggle}
       >
-        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-current bg-background">
-          {status === 'completed' ? (
-            <Check className="h-5 w-5 text-success" strokeWidth={2.5} />
-          ) : (
-            <span className="text-sm font-bold tabular-nums text-muted-foreground">
-              {exerciseIndex + 1}
-            </span>
-          )}
-        </div>
+        {showGroupBadge ? (
+          <GroupStepBadge
+            label={displayIndex}
+            className={cn(
+              'mt-0.5 h-10 w-10 text-sm',
+              status === 'completed' && 'border-success/50 bg-success/15'
+            )}
+          />
+        ) : (
+          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-current bg-background">
+            {status === 'completed' ? (
+              <Check className="h-5 w-5 text-success" strokeWidth={2.5} />
+            ) : (
+              <span className="font-mono text-xs font-bold tabular-nums text-muted-foreground sm:text-sm">
+                {displayIndex}
+              </span>
+            )}
+          </div>
+        )}
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-bold leading-tight sm:text-xl">
@@ -190,7 +219,7 @@ export function ExerciseLogCard({
           </div>
           {proposedExercise && (
             <div className="flex flex-wrap gap-2">
-              {proposedExercise.sets !== undefined && (
+              {!inGroupBlock && proposedExercise.sets !== undefined && (
                 <Badge variant="secondary" className="text-xs font-medium">
                   {proposedExercise.sets} sets
                 </Badge>
@@ -248,7 +277,7 @@ export function ExerciseLogCard({
                     }
                   }}
                 >
-                  Set up {setsPlanned} sets
+                  Set up {setsPlanned} {roundUnit}s
                 </Button>
               )}
             </div>
@@ -311,7 +340,9 @@ export function ExerciseLogCard({
           {showRounds && (
             <div className="space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Label className="text-base font-semibold">By set</Label>
+                <Label className="text-base font-semibold">
+                  By {roundUnit}
+                </Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -320,7 +351,7 @@ export function ExerciseLogCard({
                   className="h-12 min-h-[48px] w-full touch-manipulation sm:w-auto"
                 >
                   <Plus className="mr-2 h-5 w-5" />
-                  Add set
+                  Add {roundUnit}
                 </Button>
               </div>
 
@@ -331,7 +362,7 @@ export function ExerciseLogCard({
                     className="grid grid-cols-1 items-end gap-3 px-3 py-3 sm:grid-cols-[3.5rem_1fr_1fr_auto]"
                   >
                     <span className="text-sm font-semibold text-foreground sm:pb-2">
-                      Set {round.round_number}
+                      {roundUnitCap} {round.round_number}
                     </span>
                     <div className="space-y-1.5">
                       <Label
@@ -378,7 +409,7 @@ export function ExerciseLogCard({
                       size="icon"
                       className="h-11 w-11 shrink-0 touch-manipulation sm:mb-0.5"
                       onClick={() => removeRound(roundIndex)}
-                      aria-label={`Remove set ${round.round_number}`}
+                      aria-label={`Remove ${roundUnit} ${round.round_number}`}
                     >
                       <Trash2 className="h-5 w-5" />
                     </Button>
@@ -388,7 +419,7 @@ export function ExerciseLogCard({
 
               {rounds.length === 0 && (
                 <p className="py-6 text-center text-muted-foreground">
-                  No sets yet — use &quot;Set up&quot; above or add a set.
+                  {`No ${roundUnit}s yet — use "Set up" above or add a ${roundUnit}.`}
                 </p>
               )}
             </div>
@@ -414,7 +445,7 @@ export function ExerciseLogCard({
             >
               {showRounds
                 ? 'Use quick totals instead'
-                : 'Log each set separately'}
+                : `Log each ${roundUnit} separately`}
             </Button>
           </div>
 

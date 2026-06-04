@@ -74,6 +74,10 @@ interface ExercisePrescriptionFieldsProps {
   onChange: (updates: Partial<Exercise>) => void;
   /** Imported program: sets/reps/rest first, rest under More */
   compact?: boolean;
+  /** Linked block: sets live on the block, not this movement */
+  hideSets?: boolean;
+  /** Linked block: rest after the block is on the last movement only */
+  hideRest?: boolean;
 }
 
 export function ExercisePrescriptionFields({
@@ -81,6 +85,8 @@ export function ExercisePrescriptionFields({
   index,
   onChange,
   compact = false,
+  hideSets = false,
+  hideRest = false,
 }: ExercisePrescriptionFieldsProps) {
   const showAdvancedByDefault = useMemo(
     () => !compact || hasAdvancedPrescription(exercise),
@@ -90,15 +96,17 @@ export function ExercisePrescriptionFields({
 
   const primaryFields = (
     <>
-      <div className="space-y-2">
-        <Label htmlFor={`sets-${index}`}>Sets</Label>
-        <OptionalNumericInput
-          id={`sets-${index}`}
-          value={exercise.sets}
-          onChange={(sets) => onChange({ sets })}
-          placeholder="—"
-        />
-      </div>
+      {hideSets ? null : (
+        <div className="space-y-2">
+          <Label htmlFor={`sets-${index}`}>Sets</Label>
+          <OptionalNumericInput
+            id={`sets-${index}`}
+            value={exercise.sets}
+            onChange={(sets) => onChange({ sets })}
+            placeholder="—"
+          />
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor={`reps-${index}`}>Reps</Label>
         <Input
@@ -112,15 +120,21 @@ export function ExercisePrescriptionFields({
           placeholder="e.g., 8-10 or 8"
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor={`rest-${index}`}>Rest (seconds)</Label>
-        <OptionalNumericInput
-          id={`rest-${index}`}
-          value={exercise.rest_seconds}
-          onChange={(rest_seconds) => onChange({ rest_seconds })}
-          placeholder="—"
-        />
-      </div>
+      {hideRest ? (
+        <p className="text-xs text-pretty text-muted-foreground sm:col-span-2">
+          Rest is set on the last movement in this block.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor={`rest-${index}`}>Rest (seconds)</Label>
+          <OptionalNumericInput
+            id={`rest-${index}`}
+            value={exercise.rest_seconds}
+            onChange={(rest_seconds) => onChange({ rest_seconds })}
+            placeholder="—"
+          />
+        </div>
+      )}
     </>
   );
 

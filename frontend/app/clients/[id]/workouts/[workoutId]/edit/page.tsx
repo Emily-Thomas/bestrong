@@ -39,21 +39,35 @@ import {
 } from '@/lib/api';
 import { CoachNotesCollapsible } from './components/CoachNotesCollapsible';
 import { ExerciseLibraryPicker } from './components/ExerciseLibraryPicker';
-import { ExerciseRow } from './components/ExerciseRow';
+import { ExerciseGroupBlock } from './components/ExerciseGroupBlock';
+import { LinkSelectionToolbar } from './components/LinkSelectionToolbar';
+import { SegmentPairLinkButton } from './components/SegmentPairLinkButton';
+import { StandaloneExerciseBlock } from './components/StandaloneExerciseBlock';
 import { WorkoutEditStickyFooter } from './components/WorkoutEditStickyFooter';
 import { touchActionClass } from '@/lib/touch-targets';
 import {
+  EDIT_EXERCISES_LIST,
   EDIT_PAGE_CONTAINER,
   EDIT_PAGE_INNER,
   EDIT_PANEL_BODY,
   EDIT_PANEL_CLASS,
   EDIT_PANEL_HEADER,
-  WORKOUT_EXERCISE_ROW_GRID,
 } from './lib/edit-ui-classes';
 import { exerciseFromLibrary } from './lib/exercise-from-library';
 import { mergeExerciseUpdates } from './lib/merge-exercise-updates';
+import {
+  dissolveExerciseGroup,
+  linkExercisesAtIndices,
+  normalizeWorkoutExercises,
+  segmentExercises,
+  unlinkExerciseFromGroup,
+  validateExerciseGroups,
+} from '@/lib/exercise-groups';
 
-type PickerTarget = { type: 'new' } | { type: 'replace'; index: number };
+type PickerTarget =
+  | { type: 'new' }
+  | { type: 'replace'; index: number }
+  | { type: 'add_to_group'; groupId: string; insertAfterIndex: number };
 
 const DEFAULT_FOOTER_PADDING = 112;
 
@@ -81,6 +95,7 @@ export default function EditWorkoutPage() {
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
   const [removeIndex, setRemoveIndex] = useState<number | null>(null);
+  const [linkSelection, setLinkSelection] = useState<number[]>([]);
 
   const bumpEdit = useCallback(() => {
     setEditRevision((r) => r + 1);
@@ -119,7 +134,10 @@ export default function EditWorkoutPage() {
       if (response.success && response.data) {
         const w = response.data;
         setWorkout(w);
-        setWorkoutData(w.workout_data);
+        setWorkoutData({
+          ...w.workout_data,
+          exercises: normalizeWorkoutExercises(w.workout_data.exercises ?? []),
+        });
         setWorkoutName(w.workout_name || '');
         setWorkoutReasoning(w.workout_reasoning || '');
         resetEditBaseline();
@@ -197,6 +215,18 @@ export default function EditWorkoutPage() {
             exercises: [...prev.exercises, exerciseFromLibrary(lib)],
           };
         }
+        if (target.type === 'add_to_group') {
+          const newExercises = [...prev.exercises];
+          const inserted = {
+            ...exerciseFromLibrary(lib),
+            group_id: target.groupId,
+          };
+          newExercises.splice(target.insertAfterIndex + 1, 0, inserted);
+          return {
+            ...prev,
+            exercises: normalizeWorkoutExercises(newExercises),
+          };
+        }
         const newExercises = [...prev.exercises];
         const prior = newExercises[target.index];
         newExercises[target.index] = exerciseFromLibrary(lib, prior ?? {});
@@ -240,12 +270,113 @@ export default function EditWorkoutPage() {
       if (!prev) return prev;
       return {
         ...prev,
-        exercises: prev.exercises.filter((_, i) => i !== removeIndex),
+        exercises: normalizeWorkoutExercises(
+          prev.exercises.filter((_, i) => i !== removeIndex)
+        ),
       };
     });
+    const removedAt = removeIndex;
     setRemoveIndex(null);
+    setLinkSelection((prev) =>
+      prev
+        .filter((i) => i !== removedAt)
+        .map((i) => (i > removedAt ? i - 1 : i))
+    );
     bumpEdit();
   };
+
+  const applySessionExercises = useCallback(
+    (exercises: Exercise[]) => {
+      setWorkoutData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          exercises: normalizeWorkoutExercises(exercises),
+        };
+      });
+      bumpEdit();
+    },
+    [bumpEdit]
+  );
+
+  const toggleLinkSelect = useCallback((index: number) => {
+    setLinkSelection((prev) => {
+      if (prev.includes(index)) {
+        return prev.filter((i) => i !== index);
+      }
+      return [...prev, index].sort((a, b) => a - b);
+    });
+  }, []);
+
+  const linkSelectedMovements = useCallback(() => {
+    if (!workoutData || linkSelection.length < 2) return;
+    applySessionExercises(
+      linkExercisesAtIndices(workoutData.exercises, linkSelection)
+    );
+    setLinkSelection([]);
+  }, [workoutData, linkSelection, applySessionExercises]);
+
+  const linkAdjacentPair = useCallback(
+    (topIndex: number, bottomIndex: number) => {
+      if (!workoutData) return;
+      applySessionExercises(
+        linkExercisesAtIndices(workoutData.exercises, [topIndex, bottomIndex])
+      );
+    },
+    [workoutData, applySessionExercises]
+  );
+
+  const openAddToGroupPicker = useCallback(
+    (groupId: string) => {
+      if (!workoutData) return;
+      let insertAfterIndex = -1;
+      workoutData.exercises.forEach((ex, i) => {
+        if (ex.group_id === groupId) insertAfterIndex = i;
+      });
+      if (insertAfterIndex < 0) return;
+      pickerTargetRef.current = {
+        type: 'add_to_group',
+        groupId,
+        insertAfterIndex,
+      };
+      setLibraryPickerOpen(true);
+    },
+    [workoutData]
+  );
+
+  const unlinkAtIndex = useCallback(
+    (index: number) => {
+      setWorkoutData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          exercises: unlinkExerciseFromGroup(prev.exercises, index),
+        };
+      });
+      bumpEdit();
+    },
+    [bumpEdit]
+  );
+
+  const dissolveGroup = useCallback(
+    (groupId: string) => {
+      setWorkoutData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          exercises: dissolveExerciseGroup(prev.exercises, groupId),
+        };
+      });
+      bumpEdit();
+    },
+    [bumpEdit]
+  );
+
+  const exerciseSegments = useMemo(
+    () =>
+      workoutData ? segmentExercises(workoutData.exercises) : [],
+    [workoutData]
+  );
 
   const handleSave = useCallback(async () => {
     if (!workout || !workoutData) return;
@@ -258,13 +389,24 @@ export default function EditWorkoutPage() {
       return;
     }
 
+    const groupError = validateExerciseGroups(workoutData.exercises);
+    if (groupError) {
+      setError(groupError);
+      return;
+    }
+
+    const normalizedData = {
+      ...workoutData,
+      exercises: normalizeWorkoutExercises(workoutData.exercises),
+    };
+
     setSaving(true);
     setError('');
 
     try {
       const response = await workoutsApi.update(workout.id, {
         workout_name: workoutName || undefined,
-        workout_data: workoutData,
+        workout_data: normalizedData,
         workout_reasoning: workoutReasoning || undefined,
       });
       if (response.success) {
@@ -478,8 +620,8 @@ export default function EditWorkoutPage() {
                   </h2>
                   <p className="text-xs text-pretty text-muted-foreground">
                     {isImportedProgram
-                      ? 'Library movements keep prescriptions consistent across the program.'
-                      : 'Choose from your library so prescriptions stay consistent across clients.'}
+                      ? 'Link pairs with the button between movements, use Link with… on a row, or select several singles and link them as a block.'
+                      : 'Link pairs with the button between movements, use Link with… on a row, or select several singles and link them as a block.'}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
@@ -531,32 +673,81 @@ export default function EditWorkoutPage() {
               </div>
             ) : (
               <>
-                <div
-                  className={cn(
-                    'hidden border-b border-border bg-muted/30 px-5 py-2.5 text-xs font-medium text-muted-foreground sm:grid sm:px-6',
-                    WORKOUT_EXERCISE_ROW_GRID
-                  )}
-                  aria-hidden
-                >
-                  <span>Movement</span>
-                  <span className="text-right sm:text-center">Actions</span>
-                </div>
+                <LinkSelectionToolbar
+                  selectedIndices={linkSelection}
+                  onLinkSelected={linkSelectedMovements}
+                  onClear={() => setLinkSelection([])}
+                />
                 <ul
-                  className="divide-y divide-border"
+                  className={EDIT_EXERCISES_LIST}
                   aria-label="Exercises in this session"
                 >
-                  {workoutData.exercises.map((exercise, index) => (
-                    <li key={`${exercise.library_exercise_id ?? 'custom'}-${index}-${exercise.name}`}>
-                      <ExerciseRow
-                        exercise={exercise}
-                        index={index}
-                        compactPrescription={isImportedProgram}
-                        onUpdateAtIndex={updateExerciseAtIndex}
-                        onReplaceAtIndex={replaceExerciseAtIndex}
-                        onRemoveAtIndex={requestRemoveAtIndex}
-                      />
-                    </li>
-                  ))}
+                  {exerciseSegments.flatMap((segment, segmentIndex) => {
+                    const sessionExercises = workoutData.exercises;
+                    const elements: React.ReactNode[] = [];
+
+                    if (segment.kind === 'group') {
+                      elements.push(
+                        <ExerciseGroupBlock
+                          key={segment.groupId}
+                          segment={segment}
+                          segmentIndex={segmentIndex}
+                          compactPrescription={isImportedProgram}
+                          sessionExercises={sessionExercises}
+                          onSessionExercisesChange={applySessionExercises}
+                          onUpdateAtIndex={updateExerciseAtIndex}
+                          onReplaceAtIndex={replaceExerciseAtIndex}
+                          onRemoveAtIndex={requestRemoveAtIndex}
+                          onUnlinkAtIndex={unlinkAtIndex}
+                          onDissolveGroup={dissolveGroup}
+                          onAddMovementToGroup={openAddToGroupPicker}
+                        />
+                      );
+                    } else {
+                      const { exercise, index } = segment.items[0];
+                      elements.push(
+                        <StandaloneExerciseBlock
+                          key={
+                            exercise.exercise_instance_id ??
+                            `standalone-${index}`
+                          }
+                          exercise={exercise}
+                          index={index}
+                          compactPrescription={isImportedProgram}
+                          sessionExercises={sessionExercises}
+                          onSessionExercisesChange={applySessionExercises}
+                          selectedForLink={linkSelection.includes(index)}
+                          onToggleSelectForLink={toggleLinkSelect}
+                          onUpdateAtIndex={updateExerciseAtIndex}
+                          onReplaceAtIndex={replaceExerciseAtIndex}
+                          onRemoveAtIndex={requestRemoveAtIndex}
+                        />
+                      );
+                    }
+
+                    const nextSeg = exerciseSegments[segmentIndex + 1];
+                    if (
+                      segment.kind === 'standalone' &&
+                      nextSeg?.kind === 'standalone'
+                    ) {
+                      const top = segment.items[0];
+                      const bottom = nextSeg.items[0];
+                      if (bottom.index === top.index + 1) {
+                        elements.push(
+                          <SegmentPairLinkButton
+                            key={`pair-${top.index}-${bottom.index}`}
+                            topName={top.exercise.name}
+                            bottomName={bottom.exercise.name}
+                            onLink={() =>
+                              linkAdjacentPair(top.index, bottom.index)
+                            }
+                          />
+                        );
+                      }
+                    }
+
+                    return elements;
+                  })}
                 </ul>
               </>
             )}

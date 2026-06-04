@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { WorkoutExerciseList } from '@/components/workout/WorkoutExerciseList';
 import { type Workout, workoutsApi } from '@/lib/api';
 
 export default function WorkoutDetailPage() {
@@ -191,30 +192,7 @@ export default function WorkoutDetailPage() {
 
               <div>
                 <h4 className="font-semibold mb-2">Exercises</h4>
-                <div className="space-y-3">
-                  {workout.workout_data.exercises.map((ex, idx) => (
-                    <div
-                      key={`pe-${idx}-${ex.name}`}
-                      className="p-3 border rounded-lg"
-                    >
-                      <div className="font-medium">{ex.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {ex.sets && <span>{ex.sets} sets</span>}
-                        {ex.reps && <span> • {ex.reps} reps</span>}
-                        {ex.weight && <span> • {ex.weight}</span>}
-                        {ex.rir !== undefined && <span> • RIR {ex.rir}</span>}
-                        {ex.rest_seconds && (
-                          <span> • {ex.rest_seconds}s rest</span>
-                        )}
-                      </div>
-                      {ex.notes && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {ex.notes}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <WorkoutExerciseList exercises={workout.workout_data.exercises} />
               </div>
 
               {workout.workout_data.cooldown &&
@@ -264,9 +242,15 @@ export default function WorkoutDetailPage() {
                   <div className="space-y-3">
                     {workout.actual_workout.actual_performance.exercises.map(
                       (ex, idx) => {
-                        const proposedEx = workout.workout_data.exercises.find(
-                          (e) => e.name === ex.exercise_name
-                        );
+                        const proposedEx =
+                          workout.workout_data.exercises.find(
+                            (e) =>
+                              ex.exercise_instance_id &&
+                              e.exercise_instance_id === ex.exercise_instance_id
+                          ) ??
+                          workout.workout_data.exercises.find(
+                            (e) => e.name === ex.exercise_name
+                          );
                         return (
                           <div
                             key={`ap-${idx}-${ex.exercise_name}`}

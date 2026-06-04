@@ -35,7 +35,7 @@ import {
 } from '@/lib/api';
 import { touchActionClass } from '@/lib/touch-targets';
 import { cn } from '@/lib/utils';
-import { ExerciseLogCard, hasLoggedData } from './components/ExerciseLogCard';
+import { hasLoggedData } from './components/ExerciseLogCard';
 import {
   PreWorkoutSurvey,
   type PreWorkoutSurveyResponse,
@@ -53,6 +53,16 @@ import {
   serializeSessionSnapshot,
   type SessionFormSnapshot,
 } from './lib/session-snapshot';
+import {
+  ExerciseGroupExecuteBlock,
+  StandaloneExerciseExecuteBlock,
+  WORKOUT_SEGMENT_LIST_CLASS,
+} from './components/ExerciseGroupExecuteBlock';
+import {
+  buildInitialActualFromPrescription,
+  mergeActualWithPrescriptionGroups,
+  segmentExercises,
+} from '@/lib/exercise-groups';
 
 const DEFAULT_FOOTER_PADDING = 120;
 
@@ -184,16 +194,29 @@ export default function WorkoutExecutionPage() {
         const w = response.data;
         setWorkout(w);
 
-        if (w.workout_data.exercises) {
-          const exercises: ActualExercisePerformance[] =
-            w.workout_data.exercises.map((ex) => ({
-              exercise_name: ex.name,
-            }));
-          setActualPerformance({ exercises });
+        if (w.workout_data.exercises?.length) {
+          if (w.actual_workout) {
+            setActualPerformance({
+              ...w.actual_workout.actual_performance,
+              exercises: mergeActualWithPrescriptionGroups(
+                w.workout_data.exercises,
+                w.actual_workout.actual_performance.exercises
+              ),
+            });
+          } else {
+            setActualPerformance({
+              exercises: buildInitialActualFromPrescription(
+                w.workout_data.exercises
+              ),
+            });
+          }
+        }
+
+        if (w.actual_workout && !w.workout_data.exercises?.length) {
+          setActualPerformance(w.actual_workout.actual_performance);
         }
 
         if (w.actual_workout) {
-          setActualPerformance(w.actual_workout.actual_performance);
           setSessionNotes(w.actual_workout.session_notes || '');
           setTrainerObservations(w.actual_workout.trainer_observations || '');
           setWorkoutRating(w.actual_workout.workout_rating);
@@ -296,6 +319,13 @@ export default function WorkoutExecutionPage() {
   const totalExercises = actualPerformance.exercises.length;
   const progressPct =
     totalExercises > 0 ? (completedCount / totalExercises) * 100 : 0;
+
+  const performanceSegments = useMemo(
+    () => segmentExercises(actualPerformance.exercises),
+    [actualPerformance.exercises]
+  );
+
+  const proposedExercises = workout?.workout_data.exercises ?? [];
 
   const requestLeave = useCallback(
     (href: string) => {
@@ -679,7 +709,8 @@ export default function WorkoutExecutionPage() {
                 Exercises
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
-                Tap a row to log reps or load. Mood and notes are optional.
+                Tap a row to log reps or load. Linked blocks are supersets,
+                trisets, or circuits. Mood and notes are optional.
               </p>
             </div>
 
@@ -692,45 +723,65 @@ export default function WorkoutExecutionPage() {
               </div>
             ) : (
               <ul
-                className="divide-y divide-border"
+                className={WORKOUT_SEGMENT_LIST_CLASS}
                 aria-label="Exercises in this session"
               >
-                {actualPerformance.exercises.map((exercise, idx) => {
-                  const proposed = workout.workout_data.exercises[idx];
-                  const status = getExerciseStatus(exercise);
-                  const expanded = expandedExerciseIndex === idx;
+                {performanceSegments.map((segment, segmentIndex) => {
+                  const toggleAt = (idx: number) =>
+                    setExpandedExerciseIndex((cur) =>
+                      cur === idx ? null : idx
+                    );
+                  const goPrev = (_idx: number) =>
+                    setExpandedExerciseIndex((i) =>
+                      i !== null && i > 0 ? i - 1 : i
+                    );
+                  const goNext = (idx: number) => {
+                    if (idx < totalExercises - 1) {
+                      setExpandedExerciseIndex(idx + 1);
+                    } else {
+                      setExpandedExerciseIndex(null);
+                    }
+                  };
 
-                  return (
-                    <li key={`${workout.id}-ex-${idx}-${exercise.exercise_name}`}>
-                      <ExerciseLogCard
-                        exercise={exercise}
-                        proposedExercise={proposed}
-                        exerciseIndex={idx}
+                  if (segment.kind === 'group') {
+                    return (
+                      <ExerciseGroupExecuteBlock
+                        key={segment.groupId}
+                        segment={segment}
+                        segmentIndex={segmentIndex}
+                        proposedExercises={proposedExercises}
                         totalExercises={totalExercises}
-                        expanded={expanded}
-                        status={status}
-                        onToggle={() =>
-                          setExpandedExerciseIndex((cur) =>
-                            cur === idx ? null : idx
-                          )
-                        }
-                        onUpdate={(updates) =>
-                          updateExercisePerformance(idx, updates)
-                        }
-                        onGoPrev={() =>
-                          setExpandedExerciseIndex((i) =>
-                            i !== null && i > 0 ? i - 1 : i
-                          )
-                        }
-                        onGoNext={() => {
-                          if (idx < totalExercises - 1) {
-                            setExpandedExerciseIndex(idx + 1);
-                          } else {
-                            setExpandedExerciseIndex(null);
-                          }
-                        }}
+                        expandedExerciseIndex={expandedExerciseIndex}
+                        onToggle={toggleAt}
+                        onUpdate={updateExercisePerformance}
+                        onGoPrev={goPrev}
+                        onGoNext={goNext}
+                        getStatus={getExerciseStatus}
                       />
-                    </li>
+                    );
+                  }
+
+                  const { exercise, index: idx } = segment.items[0];
+                  const proposed = proposedExercises[idx];
+                  return (
+                    <StandaloneExerciseExecuteBlock
+                      key={
+                        exercise.exercise_instance_id ??
+                        `${workout.id}-ex-${idx}-${exercise.exercise_name}`
+                      }
+                      exercise={exercise}
+                      proposed={proposed}
+                      index={idx}
+                      totalExercises={totalExercises}
+                      expanded={expandedExerciseIndex === idx}
+                      status={getExerciseStatus(exercise)}
+                      onToggle={() => toggleAt(idx)}
+                      onUpdate={(updates) =>
+                        updateExercisePerformance(idx, updates)
+                      }
+                      onGoPrev={() => goPrev(idx)}
+                      onGoNext={() => goNext(idx)}
+                    />
                   );
                 })}
               </ul>

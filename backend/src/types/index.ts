@@ -406,6 +406,8 @@ export interface ExerciseLibraryMetadataSnapshot {
   category?: string | null;
 }
 
+export type ExerciseGroupType = 'superset' | 'triset' | 'circuit';
+
 export interface Exercise {
   name: string;
   sets?: number;
@@ -420,6 +422,11 @@ export interface Exercise {
   library_exercise_id?: number;
   library_exercise_name?: string;
   library_metadata?: ExerciseLibraryMetadataSnapshot;
+  exercise_instance_id?: string;
+  group_id?: string;
+  group_type?: ExerciseGroupType;
+  group_position?: number;
+  group_rounds?: number;
 }
 
 export interface ExerciseLibraryExercise {
@@ -553,6 +560,11 @@ export interface ActualExercisePerformance {
   exercise_notes?: string; // What went right/wrong for this exercise
   notes?: string; // Exercise-specific notes (deprecated, use exercise_notes)
   rest_taken_seconds?: number; // Actual rest time
+  exercise_instance_id?: string;
+  group_id?: string;
+  group_type?: ExerciseGroupType;
+  group_position?: number;
+  group_rounds?: number;
 }
 
 export interface ActualWorkoutPerformance {

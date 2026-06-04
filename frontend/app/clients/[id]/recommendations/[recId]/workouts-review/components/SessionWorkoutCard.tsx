@@ -10,6 +10,20 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { Exercise } from '@/lib/api';
+import {
+  GROUP_BLOCK_SHELL_CLASS,
+  GroupBlockHeader,
+  GroupThenConnector,
+  STANDALONE_BLOCK_SHELL_CLASS,
+  StandaloneBlockHeader,
+  WORKOUT_SEGMENT_LIST_CLASS,
+} from '@/components/workout/exercise-group-visuals';
+import {
+  blockLetterForSegmentIndex,
+  formatRestAfterGroup,
+  restAfterGroupSeconds,
+  segmentExercises,
+} from '@/lib/exercise-groups';
 import { cn } from '@/lib/utils';
 import {
   categorizeMuscle,
@@ -37,6 +51,7 @@ export function SessionWorkoutCard({
   onSwap,
 }: SessionWorkoutCardProps) {
   const exercises = workout.workout_data.exercises ?? [];
+  const segments = segmentExercises(exercises);
   const duration = estimateSessionMinutes(exercises);
   const title = workout.workout_name ?? `Session ${workout.session_number}`;
 
@@ -77,21 +92,22 @@ export function SessionWorkoutCard({
           <MuscleBodyDiagram exercises={exercises} />
         ) : null}
       </CardHeader>
-      <CardContent className="space-y-0 p-0">
-        <ul className="divide-y divide-border/60">
-          {exercises.map((ex, i) => {
+      <CardContent className="p-4 sm:p-5">
+        <ul className={cn(WORKOUT_SEGMENT_LIST_CLASS, 'p-0')}>
+          {segments.map((segment, segmentIndex) => {
+            const renderRow = (ex: Exercise, i: number, label: string) => {
             const cat = categorizeMuscle(
               ex.library_metadata?.primary_muscle_group ?? ex.name
             );
             const meta = MUSCLE_CATEGORY_META[cat];
             return (
-              <li
+              <div
                 key={`${workout.id}-${i}-${ex.name}`}
-                className="group flex flex-col gap-3 p-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
+                className="group flex flex-col gap-3 rounded-lg border border-border/80 bg-card p-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4"
               >
                 <div className="flex shrink-0 items-start gap-3 sm:items-center">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-sm font-bold text-primary shadow-inner">
-                    {i + 1}
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/12 font-mono text-sm font-bold text-primary shadow-inner">
+                    {label}
                   </span>
                   <div
                     className={cn(
@@ -167,6 +183,54 @@ export function SessionWorkoutCard({
                     catalog.
                   </TooltipContent>
                 </Tooltip>
+              </div>
+            );
+            };
+
+            if (segment.kind === 'group') {
+              const blockLetter = blockLetterForSegmentIndex(segmentIndex);
+              const restHint = formatRestAfterGroup(
+                restAfterGroupSeconds(segment.items)
+              );
+              const movementNames = segment.items.map(
+                ({ exercise }) => exercise.name
+              );
+              return (
+                <li key={segment.groupId} className="list-none">
+                  <section className={GROUP_BLOCK_SHELL_CLASS}>
+                    <GroupBlockHeader
+                      blockLetter={blockLetter}
+                      groupType={segment.groupType}
+                      movementNames={movementNames}
+                      restHint={restHint}
+                    />
+                    <ul className="flex flex-col px-3 py-2">
+                      {segment.items.map(({ exercise, index }, pos) => (
+                        <li key={`${workout.id}-g-${index}`} className="list-none">
+                          {pos > 0 ? <GroupThenConnector /> : null}
+                          {renderRow(
+                            exercise,
+                            index,
+                            `${blockLetter}${pos + 1}`
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </li>
+              );
+            }
+
+            const { exercise, index } = segment.items[0];
+            return (
+              <li key={`${workout.id}-s-${index}`} className="list-none">
+                <section className={STANDALONE_BLOCK_SHELL_CLASS}>
+                  <StandaloneBlockHeader
+                    movementNumber={index + 1}
+                    exerciseName={exercise.name}
+                  />
+                  {renderRow(exercise, index, String(index + 1))}
+                </section>
               </li>
             );
           })}
